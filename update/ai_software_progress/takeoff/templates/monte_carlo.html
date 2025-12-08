@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monte Carlo Rollouts</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        #yamlEditor {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            tab-size: 2;
+        }
+        .config-section {
+            background: var(--surface-1);
+            border: 1px solid var(--surface-2);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">Monte Carlo Rollouts</h3>
+            <div>
+                <a class="btn btn-outline-secondary" href="/">Back to Model</a>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <!-- Configuration Editor Column -->
+            <div class="col-lg-6">
+                <div class="card config-section">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Sampling Configuration (YAML)</span>
+                        <div class="btn-group btn-group-sm">
+                            <button id="loadDefaultBtn" class="btn btn-outline-primary">Reset to Default</button>
+                            <button id="downloadYamlBtn" class="btn btn-outline-secondary">Download YAML</button>
+                            <button id="uploadYamlBtn" class="btn btn-outline-secondary">Upload YAML</button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <textarea id="yamlEditor" class="form-control border-0 rounded-0" rows="30" spellcheck="false"></textarea>
+                        <input type="file" id="yamlFileInput" accept=".yaml,.yml" style="display:none;" />
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="d-flex gap-2 align-items-center mb-3">
+                            <button id="runBtn" class="btn btn-primary flex-grow-1">Run Monte Carlo</button>
+                            <button id="cancelBtn" class="btn btn-danger" style="display:none;">Cancel Job</button>
+                        </div>
+                        <div id="errorMsg" class="alert alert-danger" style="display:none;"></div>
+                        <div id="successMsg" class="alert alert-success" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">Job Status</div>
+                    <div class="card-body">
+                        <div id="jobStatus" class="small text-muted">No job started.</div>
+                        <pre id="jobLog" class="mt-2 small" style="max-height: 220px; overflow: auto; background: var(--surface-2); padding: 8px; margin-bottom: 0;"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Plots and Analysis Column -->
+            <div class="col-lg-6">
+                <!-- Live SC-time Histogram -->
+                <div class="card">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Live AC Time Histogram</span>
+                        <span id="liveHistStatus" class="small text-muted"></span>
+                    </div>
+                    <div class="card-body">
+                        <div id="liveHistWrap" style="display:none;">
+                            <img id="imgLiveScHist" class="img-fluid rounded border" alt="Live AC time histogram" />
+                        </div>
+                        <div id="liveHistEmpty" class="text-muted small">Start a job to see a live-updating AC time histogram while rollouts are running.</div>
+                    </div>
+                </div>
+
+                <!-- Live Horizon Trajectories -->
+                <div class="card mt-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Live Horizon Trajectories</span>
+                        <span id="liveTrajStatus" class="small text-muted"></span>
+                    </div>
+                    <div class="card-body">
+                        <div id="liveTrajWrap" style="display:none;">
+                            <img id="imgLiveTraj" class="img-fluid rounded border" alt="Live horizon trajectories" />
+                        </div>
+                        <div id="liveTrajEmpty" class="text-muted small">Start a job to see a live-updating horizon trajectories plot while rollouts are running.</div>
+                    </div>
+                </div>
+
+                <!-- Analysis Results -->
+                <div class="card mt-3">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <span>Rollout Analysis</span>
+                        <span class="small text-muted">Auto-generated after run</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="analysisEmpty" class="text-muted small">Run a job to see the AC time distribution and sensitivity plots here.</div>
+                        <div id="analysisWrap" class="row g-3" style="display:none;">
+                            <div class="col-12 d-flex gap-2 align-items-center">
+                                <button id="btnDownloadZip" class="btn btn-sm btn-outline-primary">Download all outputs (ZIP)</button>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Download individual files
+                                    </button>
+                                    <ul class="dropdown-menu" id="downloadMenu"></ul>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small">AC Time Distribution</label>
+                                <img id="imgScHist" class="img-fluid rounded border" alt="AC time histogram" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small">Horizon Trajectories</label>
+                                <img id="imgHorizonTraj" class="img-fluid rounded border" alt="Horizon trajectories" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Sensitivity: Pearson Correlation (top)</label>
+                                <img id="imgSensPearson" class="img-fluid rounded border" alt="Sensitivity Pearson" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Sensitivity: Spearman Correlation (top)</label>
+                                <img id="imgSensSpearman" class="img-fluid rounded border" alt="Sensitivity Spearman" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentYaml = '';
+        let jobId = null;
+        let sessionJobIds = [];
+        let pollTimer = null;
+        let liveHistTimer = null;
+        let liveTrajTimer = null;
+        let cancelOnUnload = false;
+
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            el.style.display = '';
+            setTimeout(() => { el.style.display = 'none'; }, 10000);
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('successMsg');
+            el.textContent = msg;
+            el.style.display = '';
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+
+        async function loadDefaultConfig() {
+            try {
+                const res = await fetch('/api/monte-carlo/default-config');
+                const data = await res.json();
+                if (!data.success) {
+                    showError(data.error || 'Failed to load default config');
+                    return;
+                }
+                currentYaml = data.yaml_text || '';
+                document.getElementById('yamlEditor').value = currentYaml;
+                showSuccess('Loaded default configuration from config/sampling_config.yaml');
+            } catch (e) {
+                showError('Failed to load default config: ' + e.message);
+            }
+        }
+
+        function downloadYaml() {
+            const yaml = document.getElementById('yamlEditor').value;
+            const blob = new Blob([yaml], { type: 'application/x-yaml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sampling_config.yaml';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function uploadYaml() {
+            document.getElementById('yamlFileInput').click();
+        }
+
+        async function startRun() {
+            const yaml = document.getElementById('yamlEditor').value.trim();
+            if (!yaml) {
+                showError('Configuration is empty');
+                return;
+            }
+
+            document.getElementById('runBtn').disabled = true;
+            document.getElementById('jobStatus').textContent = 'Submitting job...';
+            document.getElementById('jobLog').textContent = '';
+            stopLiveHist();
+            stopLiveTraj();
+            setLiveHistVisible(false);
+            setLiveTrajVisible(false);
+
+            try {
+                const res = await fetch('/api/monte-carlo/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ yaml_config: yaml })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to start job');
+                }
+                jobId = data.job_id;
+                cancelOnUnload = true;
+                sessionJobIds.push(jobId);
+                document.getElementById('jobStatus').textContent = `Job ${jobId} started...`;
+                document.getElementById('cancelBtn').style.display = '';
+                showSuccess(`Job ${jobId} started successfully`);
+                pollJob();
+                startLiveHist();
+                startLiveTraj();
+            } catch (e) {
+                showError('Error: ' + e.message);
+                document.getElementById('jobStatus').textContent = `Error: ${e.message}`;
+                document.getElementById('runBtn').disabled = false;
+            }
+        }
+
+        async function cancelJob() {
+            if (!jobId) return;
+            try {
+                const res = await fetch(`/api/monte-carlo/cancel/${jobId}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showSuccess('Job cancelled successfully');
+                    document.getElementById('cancelBtn').style.display = 'none';
+                    document.getElementById('runBtn').disabled = false;
+                    cancelOnUnload = false;
+                }
+            } catch (e) {
+                showError('Failed to cancel job: ' + e.message);
+            }
+        }
+
+        async function pollJob() {
+            if (!jobId) return;
+            try {
+                const res = await fetch(`/api/monte-carlo/status/${jobId}?tail=80`);
+                const data = await res.json();
+                if (data.success) {
+                    const j = data.job;
+                    const status = j.status;
+                    const outDir = j.output_dir ? ` | output: ${j.output_dir}` : '';
+                    document.getElementById('jobStatus').textContent = `Status: ${status}${outDir}`;
+                    document.getElementById('jobLog').textContent = (data.log_tail || []).join('\n');
+
+                    if (status === 'running') {
+                        setLiveHistVisible(true);
+                        setLiveTrajVisible(true);
+                        clearTimeout(pollTimer);
+                        pollTimer = setTimeout(pollJob, 1500);
+                    } else {
+                        document.getElementById('runBtn').disabled = false;
+                        document.getElementById('cancelBtn').style.display = 'none';
+                        stopLiveHist();
+                        stopLiveTraj();
+                        setLiveHistVisible(false);
+                        setLiveTrajVisible(false);
+                        cancelOnUnload = false;
+
+                        if (status === 'succeeded') {
+                            showSuccess('Job completed successfully!');
+                            renderArtifacts(j);
+                        } else if (status === 'failed') {
+                            showError('Job failed. Check log for details.');
+                        } else if (status === 'cancelled') {
+                            showSuccess('Job was cancelled.');
+                        }
+                    }
+                } else {
+                    document.getElementById('jobStatus').textContent = data.error || 'Job not found';
+                    document.getElementById('runBtn').disabled = false;
+                    document.getElementById('cancelBtn').style.display = 'none';
+                }
+            } catch (e) {
+                document.getElementById('jobStatus').textContent = `Error polling job: ${e.message}`;
+                document.getElementById('runBtn').disabled = false;
+                document.getElementById('cancelBtn').style.display = 'none';
+            }
+        }
+
+        function setLiveHistVisible(show) {
+            document.getElementById('liveHistWrap').style.display = show ? '' : 'none';
+            document.getElementById('liveHistEmpty').style.display = show ? 'none' : '';
+        }
+
+        function startLiveHist() {
+            stopLiveHist();
+            const img = document.getElementById('imgLiveScHist');
+            const statusEl = document.getElementById('liveHistStatus');
+            const tick = async () => {
+                if (!jobId) return;
+                const url = `/api/monte-carlo/live-sc-hist/${jobId}.png?t=${Date.now()}`;
+                img.onload = () => { statusEl.textContent = ''; };
+                img.onerror = () => { statusEl.textContent = 'waiting for data…'; };
+                img.src = url;
+            };
+            tick();
+            liveHistTimer = setInterval(tick, 2000);
+        }
+
+        function stopLiveHist() {
+            if (liveHistTimer) {
+                clearInterval(liveHistTimer);
+                liveHistTimer = null;
+            }
+            document.getElementById('liveHistStatus').textContent = '';
+        }
+
+        function setLiveTrajVisible(show) {
+            document.getElementById('liveTrajWrap').style.display = show ? '' : 'none';
+            document.getElementById('liveTrajEmpty').style.display = show ? 'none' : '';
+        }
+
+        function startLiveTraj() {
+            stopLiveTraj();
+            const img = document.getElementById('imgLiveTraj');
+            const statusEl = document.getElementById('liveTrajStatus');
+            const tick = async () => {
+                if (!jobId) return;
+                const params = new URLSearchParams({ t: String(Date.now()), max: '2000', stop_at_sc: '0' });
+                const url = `/api/monte-carlo/live-horizon-trajectories/${jobId}.png?${params.toString()}`;
+                img.onload = () => { statusEl.textContent = ''; };
+                img.onerror = () => { statusEl.textContent = 'waiting for data…'; };
+                img.src = url;
+            };
+            tick();
+            liveTrajTimer = setInterval(tick, 2500);
+        }
+
+        function stopLiveTraj() {
+            if (liveTrajTimer) {
+                clearInterval(liveTrajTimer);
+                liveTrajTimer = null;
+            }
+            document.getElementById('liveTrajStatus').textContent = '';
+        }
+
+        function renderArtifacts(job) {
+            const artifacts = job.artifacts || [];
+            const hasAny = (name) => artifacts.includes(name);
+            const ts = Date.now();
+            const base = (name) => `/api/monte-carlo/artifact/${jobId}/${encodeURIComponent(name)}?t=${ts}`;
+            const dlAll = () => `/api/monte-carlo/download/${jobId}?t=${ts}`;
+
+            const wrap = document.getElementById('analysisWrap');
+            const empty = document.getElementById('analysisEmpty');
+
+            wrap.style.display = 'flex';
+            empty.style.display = 'none';
+
+            const scWrap = document.getElementById('imgScHist').closest('.col-12');
+            const htWrap = document.getElementById('imgHorizonTraj').closest('.col-12');
+            const pearsonWrap = document.getElementById('imgSensPearson').closest('.col-md-6');
+            const spWrap = document.getElementById('imgSensSpearman').closest('.col-md-6');
+
+            if (hasAny('aa_time_hist.png')) {
+                document.getElementById('imgScHist').src = base('aa_time_hist.png');
+                scWrap.style.display = '';
+            } else {
+                scWrap.style.display = 'none';
+            }
+
+            if (hasAny('horizon_trajectories.png')) {
+                document.getElementById('imgHorizonTraj').src = base('horizon_trajectories.png');
+                htWrap.style.display = '';
+            } else {
+                htWrap.style.display = 'none';
+            }
+
+            if (hasAny('sensitivity_pearson_top.png')) {
+                document.getElementById('imgSensPearson').src = base('sensitivity_pearson_top.png');
+                pearsonWrap.style.display = '';
+            } else {
+                pearsonWrap.style.display = 'none';
+            }
+
+            if (hasAny('sensitivity_spearman_top.png')) {
+                document.getElementById('imgSensSpearman').src = base('sensitivity_spearman_top.png');
+                spWrap.style.display = '';
+            } else {
+                spWrap.style.display = 'none';
+            }
+
+            const btnZip = document.getElementById('btnDownloadZip');
+            if (btnZip) {
+                btnZip.onclick = () => { window.location.href = dlAll(); };
+            }
+
+            const menu = document.getElementById('downloadMenu');
+            if (menu) {
+                const items = [];
+                const addItem = (label, fname) => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.className = 'dropdown-item';
+                    a.href = base(fname);
+                    a.download = fname;
+                    a.textContent = label;
+                    li.appendChild(a);
+                    items.push(li);
+                };
+
+                ['samples.jsonl', 'rollouts.jsonl', 'metadata.json', 'model_config_snapshot.yaml', 'model_config_snapshot.json']
+                    .forEach(fname => addItem(fname, fname));
+                artifacts.forEach(fname => addItem(fname, fname));
+
+                menu.innerHTML = '';
+                items.forEach(li => menu.appendChild(li));
+            }
+        }
+
+        // Event handlers
+        document.getElementById('loadDefaultBtn').addEventListener('click', loadDefaultConfig);
+        document.getElementById('downloadYamlBtn').addEventListener('click', downloadYaml);
+        document.getElementById('uploadYamlBtn').addEventListener('click', uploadYaml);
+        document.getElementById('runBtn').addEventListener('click', startRun);
+        document.getElementById('cancelBtn').addEventListener('click', cancelJob);
+
+        document.getElementById('yamlFileInput').addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                document.getElementById('yamlEditor').value = text;
+                showSuccess('Loaded configuration from file');
+            } catch (err) {
+                showError('Failed to read file');
+            }
+        });
+
+        // Cancel job and delete files when user exits the page
+        function sendCancelBeacon() {
+            if (!cancelOnUnload || sessionJobIds.length === 0) return;
+            const url = '/api/monte-carlo/cleanup';
+            const blob = new Blob([JSON.stringify({ reason: 'unload', job_ids: sessionJobIds })], { type: 'application/json' });
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon(url, blob);
+            }
+        }
+        window.addEventListener('beforeunload', sendCancelBeacon);
+
+        // Load default config on page load
+        loadDefaultConfig();
+    </script>
+</body>
+</html>

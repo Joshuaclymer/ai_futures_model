@@ -1,0 +1,793 @@
+"""
+Configuration file for the progress model.
+Contains hardcoded values for numerical stability, caps, and other model parameters.
+"""
+
+# =============================================================================
+# NUMERICAL STABILITY & PRECISION
+# =============================================================================
+RHO_COBB_DOUGLAS_THRESHOLD = 1e-9
+RHO_LEONTIEF_THRESHOLD = -50.0
+SIGMOID_EXPONENT_CLAMP = 100.0
+AUTOMATION_FRACTION_CLIP_MIN = 1e-9
+
+# =============================================================================
+# PARAMETER CLIPPING (in Parameters.__post_init__)
+# =============================================================================
+RHO_CLIP_MIN = -50.0
+PARAM_CLIP_MIN = 1e-6
+AUTOMATION_SLOPE_CLIP_MIN = 0.1
+AUTOMATION_SLOPE_CLIP_MAX = 10.0
+RESEARCH_STOCK_START_MIN = 1e-10
+NORMALIZATION_MIN = 1e-10
+experiment_compute_exponent_CLIP_MIN = 0.001
+experiment_compute_exponent_CLIP_MAX = 10.0
+# Clipping for parallel penalty parameter
+PARALLEL_PENALTY_MIN = 0.0
+PARALLEL_PENALTY_MAX = 1.0
+
+# =============================================================================
+# OTHER RANDOM CONSTANTS
+# =============================================================================
+
+# Serial labor multiplier component for AI2027-SC milestone
+# Formula: (SERIAL_LABOR_MULT_EXTRA_FOR_AI2027_SC * 30) ** (1 / parallel_penalty) * 30
+SERIAL_LABOR_MULT_EXTRA_FOR_AI2027_SC = 10
+# Aggregate Research Taste configuration
+AGGREGATE_RESEARCH_TASTE_BASELINE = 1.0
+AGGREGATE_RESEARCH_TASTE_FALLBACK = 1.0
+
+# Research Taste Distribution Parameters (Log-Normal)
+TOP_PERCENTILE = 0.999                    # quantile classed as "top" researchers (0.999 = 99.9th percentile)
+MEDIAN_TO_TOP_TASTE_MULTIPLIER = 3.7           # threshold taste ÷ median taste
+
+# Standard deviations for milestone definitions
+# Computed from scipy.stats.norm.ppf(TOP_PERCENTILE)
+TOP_RESEARCHER_SD = 3.090232306167813     # SD corresponding to TOP_PERCENTILE (99.9th percentile)
+
+# Taste floor interpolation grid configuration
+# Below this percentile, floor has negligible effect on mean (return precomputed mean)
+TASTE_FLOOR_GRID_LOW_PERCENTILE = 0.001   # 0.1th percentile
+# Above this percentile, mean ≈ floor (return floor directly)
+TASTE_FLOOR_GRID_HIGH_PERCENTILE = 0.9999  # 99.99th percentile
+# Number of grid points for interpolation between low and high percentiles
+TASTE_FLOOR_GRID_POINTS = 200
+
+# Research Taste Schedule Configuration (UI-level options)
+# Internally, both SD-based options map to 'sd_per_progress' logic; units differ in UI only
+TASTE_SCHEDULE_TYPES = ["SDs per effective OOM", "SDs per progress-year"]
+DEFAULT_TASTE_SCHEDULE_TYPE = "SDs per progress-year"
+
+# Default AI research taste slope values for different modes
+TASTE_SLOPE_DEFAULTS = {
+    "SDs per effective OOM": 1.47,
+    "SDs per progress-year": 2.2
+}
+
+# Horizon Extrapolation Configuration
+HORIZON_EXTRAPOLATION_TYPES = ["exponential", "decaying doubling time"]  # Available extrapolation types
+DEFAULT_HORIZON_EXTRAPOLATION_TYPE = "decaying doubling time"
+
+# Manual Horizon Fitting Parameters
+DEFAULT_present_day = 2025.6
+DEFAULT_present_horizon = 26  # Will be optimized if None
+DEFAULT_present_doubling_time = 0.458  # Will be optimized if None
+DEFAULT_DOUBLING_DIFFICULTY_GROWTH_FACTOR = 0.920  # Will be optimized if None (1 - 0.080)
+
+# AI Research Taste clipping bounds
+AI_RESEARCH_TASTE_MIN = 0.0
+AI_RESEARCH_TASTE_MAX = 1e30  # Match the upper bound from PARAMETER_BOUNDS
+AI_RESEARCH_TASTE_MAX_SD = 10e30
+
+BASE_FOR_SOFTWARE_LOM = 10.0
+
+# labor and compute anchors are based on these
+REFERENCE_YEAR = 2024.8
+REFERENCE_LABOR_CHANGE = 30.0
+REFERENCE_COMPUTE_CHANGE = 0.1
+
+# This is used to set "r". The idea is that we know quickly software efficiency was growing in this year.
+SOFTWARE_PROGRESS_SCALE_REFERENCE_YEAR = 2024.0
+
+# Normalize "0 software efficiency" to Grok 3, which was released in 2025.13 and trained with 10^26.54 FLOPs.
+TRAINING_COMPUTE_REFERENCE_YEAR = 2025.13
+TRAINING_COMPUTE_REFERENCE_OOMS = 26.54
+
+# Anchor ECI to the same year, but use the SOTA ECI rather than Grok 3's ECI (this might not make sense.)
+CAPABILITY_REFERENCE_SCORE = 141
+CAPABILITY_POINTS_PER_OOM = 7.0135
+
+# benchmarks and gaps mode
+
+# =============================================================================
+# MODEL RATE & VALUE CAPS
+# =============================================================================
+MAX_RESEARCH_EFFORT = 1e30
+MAX_NORMALIZED_PROGRESS_RATE = 1e30
+TIME_EXTRAPOLATION_WINDOW = 10.0
+
+# =============================================================================
+# ODE INTEGRATION
+# =============================================================================
+PROGRESS_ODE_CLAMP_MAX = 1e30
+RESEARCH_STOCK_ODE_CLAMP_MAX = 1e30
+ODE_MAX_STEP = 1.0
+EULER_FALLBACK_MIN_STEPS = 100
+EULER_FALLBACK_STEPS_PER_YEAR = 10
+DENSE_OUTPUT_STEP_SIZE = 0.1  # Step size in years for output time series (was 250 points over 50 years = 0.2 years/step)
+
+# ODE step size logging configuration
+ODE_STEP_SIZE_LOGGING = False
+ODE_SMALL_STEP_THRESHOLD = 1e-6  # Threshold for warning about very small steps
+ODE_STEP_VARIATION_THRESHOLD = 100.0  # Threshold for warning about step size variation
+
+# =============================================================================
+# PARAMETER ESTIMATION
+# =============================================================================
+RELATIVE_ERROR_CLIP = 100.0
+
+# Parameter bounds for website sliders and monte carlo sampling
+PARAMETER_BOUNDS = {
+    'rho_coding_labor': (-10, -.000001),
+    'rho_experiment_capacity': (-1, 1),
+    'alpha_experiment_capacity': (0.001, 0.999),
+    'r_software': (0.1, 10),
+    'software_progress_rate_at_reference_year': (0.05, 10),
+    'automation_fraction_at_coding_automation_anchor': (0.1, 1.0),
+    'swe_multiplier_at_present_day': (1.0, 10.0),
+    'automation_logistic_asymptote': (1.0001, 2.0),  # Upper asymptote for logistic schedule
+    'coding_labor_normalization': (0.00001, 10),
+    'experiment_compute_exponent': (experiment_compute_exponent_CLIP_MIN, experiment_compute_exponent_CLIP_MAX),
+    # AI Research Taste parameter bounds
+    'ai_research_taste_at_coding_automation_anchor_sd': (-10, 10),
+    'ai_research_taste_slope': (0.1, 10.0),
+    'progress_at_aa': (1.0, 500),
+    'ac_time_horizon_minutes': (60, 100000000000),
+    'pre_gap_ac_time_horizon': (60, 100000000000),
+    # Manual horizon fitting parameter bounds
+    'present_day': (2020.0, 2030.0),
+    'present_horizon': (0.001, 10000),  # minutes
+    'present_doubling_time': (0.01, 2),  # doubling time in present years
+    'doubling_difficulty_growth_factor': (0.5, 1.5),  # difficulty growth rate (1 - decay rate)
+    # exp capacity pseudoparameters
+    'inf_labor_asymptote': (1, 100000),
+    'inf_compute_asymptote': (1, 10000000),
+    'labor_anchor_exp_cap': (1, 10),
+    'compute_anchor_exp_cap': (1, 10),
+    'inv_compute_anchor_exp_cap': (1, 10),
+    # parallel penalty for experiment capacity CES
+    'parallel_penalty': (0.0, 1.0),
+    # Research taste distribution parameter
+    'median_to_top_taste_multiplier': (1.01, 100.0), # seeing potential errors on the web app if allow up to 500, unclear if they would affect user`:w
+    'top_percentile': (0.5, 0.99999),
+    'taste_limit': (0, 100),
+    'taste_limit_smoothing': (0.001, 0.999),
+    # Median-to-best multipliers for general capability milestones
+    'strat_ai_m2b': (0.01, 100.0),  # STRAT-AI median-to-bests above SAR
+    'ted_ai_m2b': (0.01, 100.0),    # TED-AI median-to-bests above SAR (ASI is always 2 M2Bs above TED-AI)
+    # Optimal CES coding labor parameters
+    'coding_automation_efficiency_slope': (0.01, 10.0),
+    'optimal_ces_eta_init': (1e-12, 1e12),
+    'optimal_ces_grid_size': (256, 16384),
+    'optimal_ces_frontier_tail_eps': (1e-20, 1e-1),
+    'optimal_ces_frontier_cap': (1.0, 1e30),
+    'max_serial_coding_labor_multiplier': (1.0, 1e30),
+    # coding labor mode (categorical; bounds unused by UI collector)
+    'coding_labor_mode': (0, 1),
+    'plan_a_start_time': (2025.0, 2040.0),
+    'blacksite_initial_years_behind': (0.0, 10.0),
+    'blacksite_training_compute_penalty_ooms': (0.0, 10.0),
+    'blacksite_training_compute_growth_rate': (0.0, 0.0),
+    'blacksite_human_labor_penalty_ooms': (0.0, 10.0),
+    'blacksite_experiment_compute_penalty_ooms': (0.0, 10.0),
+    'blacksite_inference_compute_penalty_ooms': (0.0, 10.0),
+    'blacksite_human_taste_penalty': (0.0, 100.0),
+    'blacksite_start_time': (2025.0, 2040.0),
+    # Training compute growth rate parameters
+    'constant_training_compute_growth_rate': (0.0, 2.0),
+    'slowdown_year': (2020.0, 2040.0),
+    'post_slowdown_training_compute_growth_rate': (0.0, 2.0),
+}
+
+# Validation thresholds for parameter combinations
+PARAM_VALIDATION_THRESHOLDS = {
+    'automation_fraction_superhuman_coder_min': 0.05,
+    'automation_fraction_superhuman_coder_max': 1,
+    # removed legacy automation sigmoid thresholds
+    'rho_extreme_abs': 0.8,
+    'rho_product_max': 0.5,
+    'coding_labor_normalization_max': 10
+}
+
+FEASIBILITY_CHECK_THRESHOLDS = {
+    'progress_rate_target_max': 1000.0,
+}
+
+OBJECTIVE_FUNCTION_CONFIG = {
+    'high_penalty': 1e6,
+    'elasticity_regularization_weight': 0.001,
+    'boundary_avoidance_regularization_weight': 0.001,
+    'boundary_avoidance_threshold': 0.35,
+}
+
+OPTIMIZATION_CONFIG = {
+    'early_termination_fun_threshold_excellent': 1e-6,
+    'early_termination_fun_threshold_good': 1e-3,
+}
+
+STRATEGIC_STARTING_POINTS_CONFIG = {
+    'extreme_factor_min': 0.1,
+    'extreme_factor_max': 0.9,
+    'lhs_points': 5,
+    'high_progress_rate_threshold': 2.0,
+    'rho_adjustment_factor': 0.8,
+    'high_automation_threshold': 0.5,
+    'progress_at_half_automation_adjustment_factor': 0.7,
+    'perturbed_points': 3,
+    'critical_param_perturbation_factor': 0.1,
+    'other_param_perturbation_factor': 0.2
+}
+
+# =============================================================================
+# DEFAULT MODEL PARAMETERS (FOR WEBSITE ONLY(? is this true???), MONTE CARLO USES CONFIG/SAMPLING_CONFIG.YAML)
+# BH: it is possible that the monte carlo is affected by these, for example if a mparameter is left out of sampling_config.yaml.
+# =============================================================================
+DEFAULT_PARAMETERS = {
+    'rho_coding_labor': -2,
+    'direct_input_exp_cap_ces_params': False,
+    'r_software': 2.40,
+    'software_progress_rate_at_reference_year': 1.25,
+    'automation_fraction_at_coding_automation_anchor': 1,
+    'swe_multiplier_at_present_day': 1.6,
+    'automation_interp_type': "logistic",
+    'automation_logistic_asymptote': 1.05,  # Upper asymptote for logistic automation schedule (clipped to 1)
+    'coding_labor_normalization': 1,
+    # AI Research Taste parameters
+    'ai_research_taste_at_coding_automation_anchor_sd': 0.5,
+    'ai_research_taste_at_coding_automation_anchor_fallback': 1, # Only used if conversion from SD to taste fails
+    'ai_research_taste_slope': TASTE_SLOPE_DEFAULTS[DEFAULT_TASTE_SCHEDULE_TYPE],
+    'taste_schedule_type': DEFAULT_TASTE_SCHEDULE_TYPE,
+    # Automation anchor params
+    'progress_at_aa': None,
+    'ac_time_horizon_minutes': 1.2e7, # 100 work years
+    'automation_anchors': None,
+    # Manual horizon fitting parameters
+    'present_day': DEFAULT_present_day,
+    'present_horizon': DEFAULT_present_horizon,
+    'present_doubling_time': DEFAULT_present_doubling_time,
+    'doubling_difficulty_growth_factor': DEFAULT_DOUBLING_DIFFICULTY_GROWTH_FACTOR,
+    'horizon_extrapolation_type': DEFAULT_HORIZON_EXTRAPOLATION_TYPE,
+    # exp throughput parameters
+    'inf_labor_asymptote': 15.0,
+    'inf_compute_asymptote': 1000,
+    'labor_anchor_exp_cap': 1.6, # unused
+    'compute_anchor_exp_cap': None, # unused
+    'inv_compute_anchor_exp_cap': 2.8,
+    'rho_experiment_capacity': -0.155,
+    'alpha_experiment_capacity': 0.777,
+    'experiment_compute_exponent': 0.655,
+    # penalty on parallel coding labor contribution in exp capacity
+    'parallel_penalty': 0.5,
+    # Gap mode
+    'include_gap': 'no gap',
+    'gap_years': 1.5,
+    'pre_gap_ac_time_horizon': 124600.0,
+    # Research taste distribution parameter
+    'median_to_top_taste_multiplier': MEDIAN_TO_TOP_TASTE_MULTIPLIER,
+    'top_percentile': TOP_PERCENTILE,
+    'taste_limit': 8, # this is in m2b above the best, taken as a multiplier on absolute taste.
+    'taste_limit_smoothing': 0.51,
+    # Median-to-best multipliers for general capability milestones
+    'strat_ai_m2b': 2.0,  # STRAT-AI is 2 M2Bs above SAR (same as SIAR for now)
+    'ted_ai_m2b': 3.0,    # TED-AI is 3 M2Bs above SAR (ASI is always 2 M2Bs above TED-AI)
+    # Coding labor automation (OOMs/progress-year, converted to OOMs/OOM using anchor rate)
+    'coding_automation_efficiency_slope': 3.0,
+    'optimal_ces_eta_init': 0.05,
+    # Optimal CES coding labor configuration
+    'coding_labor_mode': 'optimal_ces',  # {'simple_ces','optimal_ces'}
+    'optimal_ces_grid_size': 4096,
+    'optimal_ces_frontier_tail_eps': 1e-6,
+    'optimal_ces_frontier_cap': 1e12,
+    'max_serial_coding_labor_multiplier': 1e8,
+    # SOS mode
+    'sos_mode': False,
+    'plan_a_mode': False,
+    'is_blacksite': False,
+    'show_blacksite': False,
+    'sw_leaks_to_blacksite': True,
+    'plan_a_start_time': 2030.0,
+    'main_project_training_compute_growth_rate': 0.8,
+    'main_project_software_progress_rate': 0.5,
+    'blacksite_initial_years_behind': 0.0,
+    'blacksite_training_compute_penalty_ooms': 2,
+    'blacksite_training_compute_growth_rate': 0,
+    'blacksite_human_labor_penalty_ooms': 2,
+    'blacksite_experiment_compute_penalty_ooms': 2,
+    'blacksite_inference_compute_penalty_ooms': 2,
+    'blacksite_human_taste_penalty': 2,
+    'blacksite_can_stack_training_compute': False,
+    'blacksite_can_stack_software_progress': False,
+    'blacksite_start_time': 2030.0,
+    # Training compute growth rate parameters (from sampling_config_brendan.yaml)
+    'constant_training_compute_growth_rate': 0.6,
+    'slowdown_year': 2028.0,
+    'post_slowdown_training_compute_growth_rate': 0.25,
+}
+
+# =============================================================================
+# WEBSITE PLOT CONFIGURATION - SINGLE SOURCE OF TRUTH
+# =============================================================================
+
+PLOT_METADATA = {
+    # Time Horizons plots
+    'plot_horizon_lengths': {
+        'title': 'Time Horizon Lengths',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Horizon Length (log scale)', 'type': 'log', 'range': [-3, 11], 'custom_ticks': True},
+        'data_keys': ['times', 'horizon_lengths'],
+        'special_handling': ['metr_data', 'ac_time_horizon_minutes']
+    },
+    'plot_horizon_lengths_vs_progress': {
+        'title': 'Horizon Length vs Progress',
+        'x_axis': {'title': 'Cumulative Progress', 'type': 'linear'},
+        'y_axis': {'title': 'Horizon Length (log scale)', 'type': 'log', 'range': [-3, 11], 'custom_ticks': True},
+        'data_keys': ['progress_values', 'horizon_lengths'],
+        'special_handling': ['metr_data', 'ac_time_horizon_minutes', 'progress_at_aa']
+    },
+    
+    # Input plots
+    'plot_human_labor': {
+        'title': 'Human Labor',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Total AGI Researchers', 'type': 'log'},
+        'data_keys': ['times', 'L_HUMAN']
+    },
+    'plot_ai_labor': {
+        'title': 'Inference Compute for R&D Automation',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'H100e', 'type': 'log'},
+        'data_keys': ['times', 'inference_compute']
+    },
+    'plot_experiment_compute': {
+        'title': 'Experiment Compute',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'H100e', 'type': 'log'},
+        'data_keys': ['times', 'experiment_compute']
+    },
+    'plot_training_compute_growth_rate': {
+        'title': 'Training Compute Growth Rate',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'OOMs/year', 'type': 'linear'},
+        'data_keys': ['times', 'training_compute_growth_rate']
+    },
+    'plot_software_efficiency': {
+        'title': 'Software Efficiency',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': f'log({round(TRAINING_COMPUTE_REFERENCE_YEAR)}-FLOP/FLOP)', 'type': 'linear'},
+        'data_keys': ['times', 'software_efficiency']
+    },
+    'plot_labor_comparison': {
+        'title': 'Inference Compute and Human Labor',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'H100e / Humans', 'type': 'log'},
+        'data_keys': ['time_series']
+    },
+    'plot_compute_comparison': {
+        'title': 'Compute Comparison',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Compute (log scale)', 'type': 'log'},
+        'data_keys': ['time_series']
+    },
+    
+    # Automation plots
+    'plot_automation_fraction': {
+        'title': 'Coding Automation Fraction',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'SWE Tasks Automated, %', 'type': 'linear'},
+        'data_keys': ['times', 'automation_fraction']
+    },
+    'plot_progress_vs_automation': {
+        'title': 'Progress vs Automation',
+        'x_axis': {'title': 'Cumulative Progress', 'type': 'linear'},
+        'y_axis': {'title': 'SWE Tasks Automated, %', 'type': 'linear'},
+        'data_keys': ['progress', 'automation_fraction']
+    },
+    'plot_ai_research_taste': {
+        'title': 'AI Research Taste',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Research effort per unit experiment', 'type': 'log'},
+        'data_keys': ['times', 'ai_research_taste']
+    },
+    'plot_ai_research_taste_sd': {
+        'title': 'AI Research Taste (Standard Deviations)',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Std. Dev. from OB Median', 'type': 'linear'},
+        'data_keys': ['times', 'ai_research_taste_sd']
+    },
+    'plot_ai_research_taste_quantile': {
+        'title': 'AI Research Taste (Quantile)',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Quantile Among OB Researchers', 'type': 'linear'},
+        'data_keys': ['times', 'ai_research_taste_quantile']
+    },
+    'plot_aggregate_research_taste': {
+        'title': 'Aggregate Research Taste, Humans and AIs',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Research effort per unit experiment', 'type': 'log'},
+        'data_keys': ['times', 'aggregate_research_taste']
+    },
+    'plot_ai_vs_aggregate_research_taste': {
+        'title': 'AI vs Aggregate Research Taste',
+        'x_axis': {'title': 'AI Research Taste', 'type': 'linear'},
+        'y_axis': {'title': 'Aggregate Research Taste', 'type': 'linear'},
+        'data_keys': ['ai_research_taste', 'aggregate_research_taste']
+    },
+    'plot_ai_research_taste_vs_effective_compute': {
+        'title': 'AI Research Taste vs Effective Compute',
+        'x_axis': {'title': 'Effective Compute (OOMs)', 'type': 'linear'},
+        'y_axis': {'title': 'Research effort per unit experiment', 'type': 'log'},
+        'data_keys': ['effective_compute', 'ai_research_taste']
+    },
+    'plot_ai_research_taste_sd_vs_effective_compute': {
+        'title': 'AI Research Taste (SD) vs Effective Compute',
+        'x_axis': {'title': 'Effective Compute (OOMs)', 'type': 'linear'},
+        'y_axis': {'title': 'Std. Dev. from OB Median', 'type': 'linear'},
+        'data_keys': ['effective_compute', 'ai_research_taste_sd']
+    },
+    'plot_aggregate_research_taste_vs_effective_compute': {
+        'title': 'Aggregate Research Taste vs Effective Compute',
+        'x_axis': {'title': 'Effective Compute (OOMs)', 'type': 'linear'},
+        'y_axis': {'title': 'Research effort per unit experiment', 'type': 'log'},
+        'data_keys': ['effective_compute', 'aggregate_research_taste']
+    },
+    'plot_ai_research_taste_vs_ai_research_taste_sd': {
+        'title': 'AI Research Taste vs AI Research Taste SD',
+        'x_axis': {'title': 'Std. Dev. from OB Median', 'type': 'linear'},
+        'y_axis': {'title': 'Research effort per unit experiment', 'type': 'log'},
+        'data_keys': ['ai_research_taste_sd', 'ai_research_taste']
+    },
+    'plot_aggregate_research_taste_vs_ai_research_taste_sd': {
+        'title': 'Aggregate Research Taste vs AI Research Taste SD',
+        'x_axis': {'title': 'Std. Dev. from OB Median', 'type': 'linear'},
+        'y_axis': {'title': 'Research effort per unit experiment', 'type': 'log'},
+        'data_keys': ['ai_research_taste_sd', 'aggregate_research_taste']
+    },
+
+    # Cognitive Output plots
+    'plot_coding_labor_with_compute': {
+        'title': 'Inputs to Experiment Capacity',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Nonsense units', 'type': 'log'},
+        'data_keys': ['times', 'serial_coding_labors']
+    },
+    'plot_cognitive_components': {
+        'title': 'Normalized Coding Labor, Humans and AIs',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Nonsense units', 'type': 'log'},
+        'data_keys': ['times', 'coding_labors', 'human_labor_contributions']
+    },
+    'plot_coding_labor_with_present_resources': {
+        'title': 'Coding Labor (Present Resources)',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Nonsense units', 'type': 'log'},
+        'data_keys': ['times', 'coding_labors_with_present_resources']
+    },
+    'plot_ai_coding_labor_multiplier': {
+        'title': 'AI Parallel Coding Labor Multiplier',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Coding labor per human', 'type': 'log'},
+        'data_keys': ['times', 'ai_coding_labor_multipliers']
+    },
+    'plot_ai_coding_labor_mult_ref_present_day': {
+        'title': 'AI Coding Labor Multiplier (Ref Present Day Human Labor)',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Coding labor per present-day human', 'type': 'log'},
+        'data_keys': ['times', 'ai_coding_labor_mult_ref_present_day']
+    },
+    
+    # Software R&D plots
+    'plot_research_stock': {
+        'title': 'Cumulative Research Effort',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'mysterious unit (dollars??)', 'type': 'log'},
+        'data_keys': ['times', 'research_stocks']
+    },
+    'plot_research_effort': {
+        'title': 'Research Effort',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'mysterious unit (dollars/year??)', 'type': 'log'},
+        'data_keys': ['times', 'research_efforts']
+    },
+    'plot_experiment_capacity': {
+        'title': 'Experiment Capacity',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Effort per unit taste', 'type': 'log'},
+        'data_keys': ['times', 'experiment_capacity']
+    },
+    'plot_software_progress_rate': {
+        'title': 'Software Progress Rate',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'OOMs/year', 'type': 'linear'},
+        'data_keys': ['times', 'software_progress_rates']
+    },
+    
+    # Combined Progress plots
+    'plot_cumulative_progress': {
+        'title': 'Components of Effective Compute',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': f'log({round(TRAINING_COMPUTE_REFERENCE_YEAR)}-FLOP)', 'type': 'linear'},
+        'data_keys': ['times', 'effective_compute', 'training_compute']
+    },
+    'plot_progress_rate': {
+        'title': 'Effective Compute Growth Rate',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'OOMs/year', 'type': 'linear'},
+        'data_keys': ['times', 'progress_rates']
+    },
+    'plot_rate_components': {
+        'title': 'Rate Components',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'OOMs/year', 'type': 'linear', 'range': [0, 10]},
+        'data_keys': ['times', 'progress_rates', 'training_compute_growth_rate']
+    },
+    
+    # Other Metrics plots
+    'plot_ai_research_stock_multiplier': {
+        'title': 'AI Research Stock Multiplier',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': '???', 'type': 'log'},
+        'data_keys': ['times', 'ai_research_stock_multipliers']
+    },
+    'plot_ai_sw_progress_mult_ref_present_day': {
+        'title': 'AI Software Progress Multiplier (Ref Present Day)',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Multiplier (log scale)', 'type': 'log'},
+        'data_keys': ['times', 'ai_sw_progress_mult_ref_present_day']
+    },
+    'plot_all_ai_multipliers': {
+        'title': 'All AI Multipliers',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Multiplier (log scale)', 'type': 'log'},
+        'data_keys': ['times', 'ai_coding_labor_multipliers', 'ai_research_stock_multipliers', 
+                     'ai_software_progress_multipliers', 'ai_overall_progress_multipliers']
+    },
+    'plot_human_only_progress_rate': {
+        'title': 'Human-Only Progress Rate',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Human-Only Rate', 'type': 'linear'},
+        'data_keys': ['times', 'human_only_progress_rates']
+    },
+    'plot_automation_multiplier': {
+        'title': 'Automation Multiplier',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Automation Multiplier', 'type': 'linear'},
+        'data_keys': ['times', 'automation_multipliers']
+    },
+    'plot_exp_cap_mult_with_infinite_compute': {
+        'title': 'Experiment Capacity Multiplier (Infinite Compute)',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Multiplier (log scale)', 'type': 'log'},
+        'data_keys': ['times', 'exp_cap_mult_with_infinite_compute']
+    },
+    'plot_exp_cap_mult_with_infinite_labor': {
+        'title': 'Experiment Capacity Multiplier (Infinite Labor)',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'Multiplier (log scale)', 'type': 'log'},
+        'data_keys': ['times', 'exp_cap_mult_with_infinite_labor']
+    },
+    'plot_capability_eci': {
+        'title': 'Capability (ECI Score)',
+        'x_axis': {'title': 'Time', 'type': 'linear'},
+        'y_axis': {'title': 'ECI Score', 'type': 'linear'},
+        'data_keys': ['times', 'capability_ecis']
+    }
+}
+
+TAB_CONFIGURATIONS = {
+    'time_horizons': {
+        'id': 'time-horizons',
+        'name': 'Time Horizons',
+        'rows': 1, 'cols': 1,
+        'subplot_titles': [''],  # Empty title to avoid duplication with tab title
+        'plots': [
+            {'function': 'plot_horizon_lengths', 'position': (1, 1)},
+        ],
+        'explanation': """
+## Time Horizons
+
+This tab shows how the 80% time horizon of frontier AI systems evolves over time. The red dashed line shows the required time horizon for the AC milestone. The AC time horizon can be adjusted in the sidebar.
+        """
+    },
+    'inputs': {
+        'id': 'inputs',
+        'name': 'Inputs',
+        'rows': 2, 'cols': 2,
+        'plots': [
+            {'function': 'plot_human_labor', 'position': (1, 1)},
+            {'function': 'plot_ai_labor', 'position': (1, 2)},
+            {'function': 'plot_experiment_compute', 'position': (2, 1)},
+            {'function': 'plot_training_compute_growth_rate', 'position': (2, 2)}
+        ],
+        'explanation': """
+## Input Time Series
+
+This tab displays the exogenous inputs that drive AI progress in the model:
+
+### Human Labor (Top Left)
+Human researchers and engineers working on AGI development, calculated using data from [this post](https://forum.effectivealtruism.org/posts/xoX936hEvpxToeuLw/estimating-the-substitutability-between-compute-and).
+
+### Inference Compute for R&D Automation (Top Right) 
+Inference compute budget for running agents to be spread across automated tasks. Measured in H100-equivalents.
+
+### Experiment Compute (Bottom Left)
+Compute budget for running experiments. Measured in H100-equivalents.
+
+### Training Compute Growth Rate (Bottom Right)
+Factor by which frontier training run compute grows each year, measured in OOMs.
+        """
+    },
+    'automation': {
+        'id': 'automation',
+        'name': 'Automation',
+        'rows': 3, 'cols': 2,
+        'plots': [
+            {'function': 'plot_automation_fraction', 'position': (1, 1)},
+            {'function': 'plot_ai_research_taste_sd', 'position': (1, 2)},
+            {'function': 'plot_ai_research_taste', 'position': (2, 1)},
+            {'function': 'plot_ai_research_taste_quantile', 'position': (2, 2)},
+            {'function': 'plot_aggregate_research_taste', 'position': (3, 1)}
+        ],
+        'explanation': """
+## Automation (from AC time horizon and effective compute)
+
+This tab shows how the current capability level feeds into the production function.
+
+### Coding Automation Fraction (Top Left)
+Abstract "percentage of coding tasks performed by AI". Exponentially interpolates between two anchors, using the current effective OOMs:
+1. At (anchor time), it should equal (whatever percentage makes the coding labor multiplier equal a given value). set both of these in the sidebar.
+2. At AC, it should equal 100%.
+
+### Various plots of research taste
+We assume that each OOM of effective compute increases AI research taste by a fixed number of standard deviations within the human range. 
+The units of research taste are such that if you replace all researchers with researchers of a given taste level, holding experiment capacity constant, research effort scales by that taste level.
+The scale is informed by our survey of frontier AGI researchers, where they gave a median 3.25x ratio in the speedups from replacing everyone with the top researcher vs replacing everyone with the median researcher.
+We assume that research taste (in these units) is lognormally distributed among human researchers with a mean of 1. *Note: AI research taste gets capped at +23 standard deviations.*
+
+### Aggregate Research Taste (Bottom Left)
+Average of the research taste distribution, after replacing sub-AI human researchers with AI researchers.
+        """
+    },
+    'coding_labor': {
+        'id': 'cognitive-output',
+        'name': 'Coding Labor',
+        'rows': 3, 'cols': 2,
+        'plots': [
+            {'function': 'plot_labor_comparison', 'position': (1, 1)},
+            {'function': 'plot_automation_fraction', 'position': (1, 2)},
+            {'function': 'plot_coding_labor_with_present_resources', 'position': (2, 1)},
+            {'function': 'plot_ai_coding_labor_multiplier', 'position': (2, 2)},
+            {'function': 'plot_ai_coding_labor_mult_ref_present_day', 'position': (3, 1)},
+            {'function': 'plot_cognitive_components', 'position': (3, 2)}
+        ],
+        'explanation': """
+## Coding Labor (from coding automation fraction, human labor, and AI labor)
+
+### Available labor pools
+See Inputs tab.
+
+### Coding Automation Fraction
+See Automation tab.
+
+### AI Coding Labor Multiplier (Bottom Left)
+Obtained by taking the (pre-discounting) combined coding labor and dividing it by the (pre-discounting) human labor.
+
+### Present-Day-Referenced Coding Labor Multiplier (Bottom Right)
+Multiplier of coding labor relative to the present-day human labor baseline (with current inference compute), raised to 1/parallel_penalty when enabled.
+
+        """
+    },
+    'research_effort': {
+        'id': 'research-effort',
+        'name': 'Research Effort',
+        'rows': 2, 'cols': 2,
+        'plots': [
+            {'function': 'plot_coding_labor_with_compute', 'position': (1, 1)},
+            
+            {'function': 'plot_experiment_capacity', 'position': (1, 2)},
+            {'function': 'plot_aggregate_research_taste', 'position': (2, 1)},
+            {'function': 'plot_research_effort', 'position': (2, 2)}
+        ],
+        'explanation': """
+## Research Effort (from coding labor, experiment compute, and research taste)
+
+Research effort is aggregate research taste times experiment capacity. Experiment capacity is the CES combination of coding labor and experiment compute.
+        """
+    },
+    'software_rd': {
+        'id': 'software-rd',
+        'name': 'Software R&D',
+        'rows': 2, 'cols': 2,
+        'plots': [
+            {'function': 'plot_research_effort', 'position': (1, 1)},
+            {'function': 'plot_software_progress_rate', 'position': (1, 2)},
+            {'function': 'plot_research_stock', 'position': (2,1)},
+            {'function': 'plot_software_efficiency', 'position': (2, 2)}
+            
+        ],
+        'explanation': """
+## Software Research & Development (from research effort)
+This captures the diminishing returns to research effort. We use the same semi-endogenous "software law of motion" as Davidson's FTM. Except that we don't impose physical limits to software efficiency at the moment.
+      """
+    },
+    'combined_progress': {
+        'id': 'combined-progress',
+        'name': 'Effective Compute',
+        'rows': 2, 'cols': 1,
+        'subplot_titles': ['', 'Components of effective compute growth'],
+        'plots': [
+            {'function': 'plot_cumulative_progress', 'position': (1, 1)},
+            {'function': 'plot_rate_components', 'position': (2, 1)},
+        ],
+        'explanation': """
+## Effective Compute (from software growth rate and training compute growth rate)
+OOMs/year from hardware combine with OOMs/year from software efficiency to get OOMs/year of effective compute.
+The cumulative OOMs of effective compute feeds back into the functions that determine 
+- time horizon,
+- automation fraction, and  
+- AI research taste.
+        """
+    },
+    'ai_sw_progress_mult_ref_present_day': {
+        'id': 'ai-sw-progress-mult-ref-present-day',
+        'name': 'AI R&D Progress Multiplier',
+        'rows': 1, 'cols': 1,
+        'subplot_titles': [''],
+        'plots': [
+            {'function': 'plot_ai_sw_progress_mult_ref_present_day', 'position': (1, 1)}
+        ],
+        'explanation': """
+## AI Software Progress Multiplier (Ref Present Day)
+
+This graph shows the factor by which today's software efficiency growth rate would be improved (compared to the current human-only software efficiency growth rate) if the frontier AI systems at a given time were deployed within today's leading AI company.
+This is meant to be a clean measure of AI R&D capabilities, and depends on three things:
+- the experiment selection skill level of the AIs
+- the SWE automation fraction of the AIs
+- the AI's distribution of automation efficiency levels across tasks (FTE per H100be)
+        """
+    },
+    'capability_eci': {
+        'id': 'capability-eci',
+        'name': 'Capability (ECI)',
+        'rows': 1, 'cols': 1,
+        'subplot_titles': [''],
+        'plots': [
+            {'function': 'plot_capability_eci', 'position': (1, 1)}
+        ],
+        'explanation': """
+## Capability (ECI Score)
+
+This tab shows the model's capability measured using the ECI (Effective Compute Index) score over time. The ECI score is calculated based on training compute and software efficiency.
+        """
+    },
+    'other_metrics': {
+        'id': 'other-metrics',
+        'name': 'Other Metrics / Debug',
+        'rows': 5, 'cols': 2,
+        'plots': [
+            {'function': 'plot_ai_coding_labor_multiplier', 'position': (1, 1)},
+            {'function': 'plot_human_only_progress_rate', 'position': (1, 2)},
+            {'function': 'plot_horizon_lengths_vs_progress', 'position': (2, 1)},
+            {'function': 'plot_exp_cap_mult_with_infinite_compute', 'position': (2, 2)},
+            {'function': 'plot_exp_cap_mult_with_infinite_labor', 'position': (3, 1)},
+            {'function': 'plot_ai_research_taste_vs_effective_compute', 'position': (3, 2)},
+            {'function': 'plot_ai_research_taste_sd_vs_effective_compute', 'position': (4, 1)},
+            {'function': 'plot_aggregate_research_taste_vs_effective_compute', 'position': (4, 2)},
+            {'function': 'plot_ai_research_taste_vs_ai_research_taste_sd', 'position': (5, 1)},
+            {'function': 'plot_aggregate_research_taste_vs_ai_research_taste_sd', 'position': (5, 2)},
+        ],
+        'explanation': """
+## Additional Metrics and Multipliers
+Under construction, don't trust these.
+        """
+    }
+} 

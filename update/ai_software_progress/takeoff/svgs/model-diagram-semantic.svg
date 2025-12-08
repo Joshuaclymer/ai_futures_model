@@ -1,0 +1,167 @@
+<svg width="562" height="199" viewBox="0 0 562 199" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>
+  [data-label] { cursor: pointer; }
+</style>
+<g clip-path="url(#clip0_51_618)">
+
+<!-- Human coding labor -->
+<g data-label="Human coding labor">
+<rect data-box-bg="true" x="0" y="73" width="169" height="23" fill="transparent"/>
+<rect x="0.5" y="73.5" width="168" height="22" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="5" y="86.4619">HUMAN CODING LABOR</tspan></text>
+</g>
+
+<!-- Aggregate experiment selection skill -->
+<g data-label="Aggregate experiment selection skill">
+<rect data-box-bg="true" x="184" y="58" width="180" height="38" fill="transparent"/>
+<rect x="184.5" y="58.5" width="179" height="37" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="190" y="71.4619">AGGREGATE EXPERIMENT </tspan><tspan x="190" y="83.4619">SELECTION SKILL</tspan></text>
+</g>
+
+<!-- Arrows between columns -->
+<path d="M371.881 64.2201C371.881 64.4962 372.219 64.6915 372.458 64.5534L376.303 62.3333C376.542 62.1953 376.542 61.8047 376.303 61.6667L372.458 59.4466C372.219 59.3085 371.881 59.5038 371.881 59.7799V64.2201ZM367 62V62.5H372.381V62V61.5H367V62Z" fill="black" fill-opacity="0.5"/>
+<path d="M372 142.22C372 142.496 371.662 142.691 371.422 142.553L367.577 140.333C367.338 140.195 367.338 139.805 367.577 139.667L371.422 137.447C371.662 137.309 372 137.504 372 137.78V142.22ZM376.88 140V140.5H371.5V140V139.5H376.88V140Z" fill="black" fill-opacity="0.5"/>
+<path d="M176.881 87.2201C176.881 87.4962 177.219 87.6915 177.458 87.5534L181.303 85.3333C181.542 85.1953 181.542 84.8047 181.303 84.6667L177.458 82.4466C177.219 82.3085 176.881 82.5038 176.881 82.7799V87.2201ZM172 85V85.5H177.381V85V84.5H172V85Z" fill="black" fill-opacity="0.5"/>
+<path d="M176.881 47.2201C176.881 47.4962 177.219 47.6915 177.458 47.5534L181.303 45.3333C181.542 45.1953 181.542 44.8047 181.303 44.6667L177.458 42.4466C177.219 42.3085 176.881 42.5038 176.881 42.7799V47.2201ZM172 45V45.5H177.381V45V44.5H172V45Z" fill="black" fill-opacity="0.5"/>
+<path d="M176.881 28.2201C176.881 28.4962 177.219 28.6915 177.458 28.5534L181.303 26.3333C181.542 26.1953 181.542 25.8047 181.303 25.6667L177.458 23.4466C177.219 23.3085 176.881 23.5038 176.881 23.7799V28.2201ZM172 26V26.5H177.381V26V25.5H172V26Z" fill="black" fill-opacity="0.5"/>
+<path d="M371.881 30.2201C371.881 30.4962 372.219 30.6915 372.458 30.5534L376.303 28.3333C376.542 28.1953 376.542 27.8047 376.303 27.6667L372.458 25.4466C372.219 25.3085 371.881 25.5038 371.881 25.7799V30.2201ZM367 28V28.5H372.381V28V27.5H367V28Z" fill="black" fill-opacity="0.5"/>
+<path d="M371.881 9.22008C371.881 9.49623 372.219 9.69149 372.458 9.55342L376.303 7.33333C376.542 7.19526 376.542 6.80474 376.303 6.66667L372.458 4.44658C372.219 4.30851 371.881 4.50377 371.881 4.77992V9.22008ZM367 7V7.5H372.381V7V6.5H367V7Z" fill="black" fill-opacity="0.5"/>
+
+<!-- Software efficiency -->
+<g data-label="Software efficiency">
+<rect data-box-bg="true" x="380" y="74" width="182" height="22" fill="transparent"/>
+<rect x="380.5" y="74.5" width="181" height="21" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="386" y="87.4619">SOFTWARE EFFICIENCY</tspan></text>
+</g>
+
+<!-- Automated experiment selection skill -->
+<g data-label="Automated experiment selection skill">
+<rect data-box-bg="true" x="0" y="103" width="169" height="40" fill="transparent"/>
+<rect x="0.5" y="103.5" width="168" height="39" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<rect x="0" y="103" width="6" height="40" fill="#079669"/>
+<g clip-path="url(#clip1_51_618)">
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="11" y="117.462">AUTOMATED EXPERIMENT </tspan><tspan x="11" y="129.462">SELECTION SKILL</tspan></text>
+</g>
+</g>
+
+<!-- Coding automation fraction and efficiency -->
+<g data-label="Coding automation fraction and efficiency">
+<rect data-box-bg="true" x="0" y="146" width="169" height="53" fill="transparent"/>
+<rect x="0.5" y="146.5" width="168" height="52" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<rect x="0" y="146" width="6" height="53" fill="#079669"/>
+<g clip-path="url(#clip2_51_618)">
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="12" y="161.462">CODING AUTOMATION &#10;</tspan><tspan x="12" y="173.462">FRACTION AND EFFICIENCY</tspan></text>
+</g>
+</g>
+
+<!-- Automated Coder Time Horizon -->
+<g data-label="Automated Coder Time Horizon">
+<rect data-box-bg="true" x="230" y="120" width="134" height="41" fill="transparent"/>
+<rect x="230.5" y="120.5" width="133" height="40" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<g clip-path="url(#clip3_51_618)">
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="236" y="133.462">AUTOMATED CODER&#10;</tspan><tspan x="236" y="145.462">TIME HORIZON</tspan></text>
+</g>
+</g>
+
+<!-- Software research effort -->
+<g data-label="Software research effort">
+<rect data-box-bg="true" x="380" y="42" width="182" height="25" fill="transparent"/>
+<rect x="380.5" y="42.5" width="181" height="24" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="386" y="55.4619">SOFTWARE RESEARCH EFFORT</tspan></text>
+</g>
+
+<!-- Vertical arrows -->
+<path d="M468.78 68C468.504 68 468.309 68.3382 468.447 68.5774L470.667 72.4226C470.805 72.6618 471.195 72.6618 471.333 72.4226L473.553 68.5774C473.691 68.3382 473.496 68 473.22 68H468.78Z" fill="black" fill-opacity="0.5"/>
+<path d="M468.78 97C468.504 97 468.309 97.3382 468.447 97.5774L470.667 101.423C470.805 101.662 471.195 101.662 471.333 101.423L473.553 97.5774C473.691 97.3382 473.496 97 473.22 97H468.78Z" fill="black" fill-opacity="0.5"/>
+<path d="M468.78 178.832C468.504 178.832 468.309 178.494 468.447 178.255L470.667 174.41C470.805 174.17 471.195 174.17 471.333 174.41L473.553 178.255C473.691 178.494 473.496 178.832 473.22 178.832H468.78Z" fill="black" fill-opacity="0.5"/>
+<path d="M473.22 36C473.496 36 473.691 36.3382 473.553 36.5774L471.333 40.4226C471.195 40.6618 470.805 40.6618 470.667 40.4226L468.447 36.5774C468.309 36.3382 468.504 36 468.78 36H473.22Z" fill="black" fill-opacity="0.5"/>
+
+<!-- Automation compute -->
+<g data-label="Automation compute">
+<rect data-box-bg="true" x="0" y="40" width="169" height="22" fill="transparent"/>
+<rect x="0.5" y="40.5" width="168" height="21" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="5" y="53.4619">AUTOMATION COMPUTE</tspan></text>
+</g>
+
+<!-- Automation feedback arrows -->
+<path d="M50.0425 67.9087C50.3186 67.9087 50.5425 67.6848 50.5425 67.4087C50.5425 67.1325 50.3186 66.9087 50.0425 66.9087V67.4087V67.9087ZM131.86 66.9087C131.584 66.9087 131.36 67.1325 131.36 67.4087C131.36 67.6848 131.584 67.9087 131.86 67.9087V67.4087V66.9087ZM176.903 69.6288C176.903 69.9049 177.241 70.1002 177.48 69.9621L181.325 67.742C181.564 67.604 181.564 67.2134 181.325 67.0754L177.48 64.8553C177.241 64.7172 176.903 64.9125 176.903 65.1886V69.6288ZM0 67.4087V67.9087H50.0425V67.4087V66.9087H0V67.4087ZM131.86 67.4087V67.9087H177.403V67.4087V66.9087H131.86V67.4087Z" fill="#1E942E" fill-opacity="0.6"/>
+<text fill="#1E942E" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="7" font-weight="bold" letter-spacing="-0.011em"><tspan x="51.5753" y="69.832">AUTOMATION FEEDBACK</tspan></text>
+<path d="M50.0425 35.3049C50.3186 35.3049 50.5425 35.0811 50.5425 34.8049C50.5425 34.5288 50.3186 34.3049 50.0425 34.3049V34.8049V35.3049ZM131.86 34.3049C131.584 34.3049 131.36 34.5288 131.36 34.8049C131.36 35.0811 131.584 35.3049 131.86 35.3049V34.8049V34.3049ZM176.903 37.025C176.903 37.3012 177.241 37.4964 177.48 37.3583L181.325 35.1383C181.564 35.0002 181.564 34.6097 181.325 34.4716L177.48 32.2515C177.241 32.1134 176.903 32.3087 176.903 32.5848V37.025ZM0 34.8049V35.3049H50.0425V34.8049V34.3049H0V34.8049ZM131.86 34.8049V35.3049H177.403V34.8049V34.3049H131.86V34.8049Z" fill="#1E942E" fill-opacity="0.6"/>
+<text fill="#1E942E" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="7" font-weight="bold" letter-spacing="-0.011em"><tspan x="51.5753" y="37.2283">AUTOMATION FEEDBACK</tspan></text>
+
+<!-- Experiment compute -->
+<g data-label="Experiment compute">
+<rect data-box-bg="true" x="184" y="0" width="180" height="19" fill="transparent"/>
+<rect x="184.5" y="0.5" width="179" height="18" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="190" y="12.4619">EXPERIMENT COMPUTE</tspan></text>
+</g>
+
+<!-- Experiment throughput -->
+<g data-label="Experiment throughput">
+<rect data-box-bg="true" x="380" y="0" width="182" height="35" fill="transparent"/>
+<rect x="380.5" y="0.5" width="181" height="34" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="386" y="12.4619">EXPERIMENT THROUGHPUT</tspan></text>
+</g>
+
+<!-- Aggregate coding labor -->
+<g data-label="Aggregate coding labor">
+<rect data-box-bg="true" x="184" y="23" width="180" height="31" fill="transparent"/>
+<rect x="184.5" y="23.5" width="179" height="30" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<g clip-path="url(#clip4_51_618)">
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="190" y="36.4619">AGGREGATE CODING LABOR</tspan></text>
+</g>
+</g>
+
+<!-- Human experiment selection skill -->
+<g data-label="Human experiment selection skill">
+<rect data-box-bg="true" x="0" y="0" width="169" height="30" fill="transparent"/>
+<rect x="0.5" y="0.5" width="168" height="29" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="5" y="11.9619">HUMAN EXPERIMENT </tspan><tspan x="5" y="22.9619">SELECTION SKILL</tspan></text>
+</g>
+
+<!-- Effective Compute -->
+<g data-label="Effective Compute">
+<rect data-box-bg="true" x="380" y="103" width="182" height="70" fill="transparent"/>
+<rect x="380.5" y="103.5" width="181" height="69" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="386" y="116.462">EFFECTIVE COMPUTE</tspan></text>
+</g>
+
+<!-- Training compute -->
+<g data-label="Training compute">
+<rect data-box-bg="true" x="380" y="181" width="182" height="18" fill="transparent"/>
+<rect x="380.5" y="181.5" width="181" height="17" stroke="black" stroke-opacity="0.7" stroke-width="0.5px" fill="none"/>
+<text fill="black" fill-opacity="0.6" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="10" font-weight="bold" letter-spacing="0.5px"><tspan x="387" y="192.462">TRAINING COMPUTE</tspan></text>
+</g>
+
+<!-- Anchor arrows -->
+<path d="M177.518 109.781C177.518 109.505 177.18 109.31 176.941 109.448L173.095 111.668C172.856 111.806 172.856 112.196 173.095 112.335L176.941 114.555C177.18 114.693 177.518 114.497 177.518 114.221V109.781ZM177.018 112.001V112.501H376.179V112.001V111.501H177.018V112.001Z" fill="black" fill-opacity="0.5"/>
+<path d="M178.455 165.536C178.455 165.26 178.117 165.065 177.878 165.203L174.032 167.423C173.793 167.561 173.793 167.952 174.032 168.09L177.878 170.31C178.117 170.448 178.455 170.253 178.455 169.976V165.536ZM177.955 167.756V168.256H375.988V167.756V167.256H177.955V167.756Z" fill="black" fill-opacity="0.5"/>
+<path d="M178.455 149.181C178.455 148.905 178.117 148.709 177.878 148.847L174.032 151.068C173.793 151.206 173.793 151.596 174.032 151.734L177.878 153.954C178.117 154.092 178.455 153.897 178.455 153.621V149.181ZM186.8 151.901C187.076 151.901 187.3 151.677 187.3 151.401C187.3 151.125 187.076 150.901 186.8 150.901V151.401V151.901ZM213.9 150.901C213.624 150.901 213.4 151.125 213.4 151.401C213.4 151.677 213.624 151.901 213.9 151.901V151.401V150.901ZM177.955 151.401V151.901H186.8V151.401V150.901H177.955V151.401ZM213.9 151.401V151.901H227.245V151.401V150.901H213.9V151.401Z" fill="black" fill-opacity="0.7"/>
+<g clip-path="url(#clip5_51_618)">
+<text fill="black" fill-opacity="0.7" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="6" font-weight="bold" letter-spacing="-0.011em"><tspan x="187.894" y="153.478">ANCHORS</tspan></text>
+</g>
+<path d="M177.858 129.203C177.858 128.927 177.52 128.732 177.281 128.87L173.436 131.09C173.197 131.228 173.197 131.619 173.436 131.757L177.281 133.977C177.52 134.115 177.858 133.92 177.858 133.643V129.203ZM186.501 131.923C186.777 131.923 187.001 131.7 187.001 131.423C187.001 131.147 186.777 130.923 186.501 130.923V131.423V131.923ZM213.601 129.656C213.325 129.656 213.101 129.88 213.101 130.156C213.101 130.432 213.325 130.656 213.601 130.656V130.156V129.656ZM177.358 131.423V131.923H186.501V131.423V130.923H177.358V131.423ZM213.601 130.156V130.656H227.244V130.156V129.656H213.601V130.156Z" fill="black" fill-opacity="0.7"/>
+<text fill="black" fill-opacity="0.7" xml:space="preserve" style="white-space: pre" font-family="SFMono-Regular, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace" font-size="6" font-weight="bold" letter-spacing="-0.011em"><tspan x="187.596" y="132.867">ANCHORS</tspan></text>
+
+</g>
+<defs>
+<clipPath id="clip0_51_618">
+<rect width="562" height="199" fill="transparent"/>
+</clipPath>
+<clipPath id="clip1_51_618">
+<rect y="103" width="169" height="40" fill="transparent"/>
+</clipPath>
+<clipPath id="clip2_51_618">
+<rect y="146" width="169" height="53" fill="transparent"/>
+</clipPath>
+<clipPath id="clip3_51_618">
+<rect x="230" y="120" width="134" height="41" fill="transparent"/>
+</clipPath>
+<clipPath id="clip4_51_618">
+<rect x="184" y="23" width="180" height="31" fill="transparent"/>
+</clipPath>
+<clipPath id="clip5_51_618">
+<rect width="27.1" height="6.1" fill="transparent" transform="translate(186.8 148.351)"/>
+</clipPath>
+</defs>
+</svg>
