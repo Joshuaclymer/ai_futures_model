@@ -1,9 +1,9 @@
-from typing import List, Optional, Dict
+from typing import list, dict
 from classes.assets import Compute, Assets
 from classes.policies import AIPolicy, VerificationCapacity
 from classes.software_progress import AISoftwareProgress
 from classes.perceptions import Perceptions
-from classes.economy import StateEconomy
+from classes.state_economy import StateEconomy
 from classes.attacks import Attack, SoftwareSecurityLevel
 from classes.takeover_risks import AIAlignmentStatus
 from classes.technology_progress import Technologies
@@ -11,17 +11,17 @@ from classes.utilities import Utilities
 
 class Entity: # Can be a Coalition or State, Organization, legal person, etc
     id : str
-    verification_capacity : Optional[VerificationCapacity] = None
-    policies_entity_is_verifying : Optional[List[AIPolicy]] = None
-    policies_entity_is_subject_to : Optional[List[AIPolicy]] = None
-    assets_under_ownership: Optional[List[Assets]] = None
-    perceptions : Optional[Perceptions] = None
-    utilities : Optional[Utilities] = None
-    current_attacks : Optional[List[Attack]] = None
+    verification_capacity : VerificationCapacity | None = None
+    policies_entity_is_verifying : list[AIPolicy] | None = None
+    policies_entity_is_subject_to : list[AIPolicy] | None = None
+    assets_under_ownership: list[Assets] | None = None
+    perceptions : Perceptions | None = None
+    utilities : Utilities | None = None
+    current_attacks : list[Attack] | None = None
 
 class Coalition(Entity):
     id: str
-    member_states: List["State"]
+    member_states: list["State"]
 
 class NamedCoalitions():
     USA_ALLIES = "USA_Allies"
@@ -31,13 +31,13 @@ class NamedCoalitions():
 
 class State(Entity):
     id: str
-    leading_ai_software_developer : Optional["AISoftwareDeveloper"] = None
-    black_project : Optional["BlackProject"] = None
-    all_entities_under_jurisdiction: List[Entity]
+    leading_ai_software_developer : "AISoftwareDeveloper | None" = None
+    black_project : "BlackProject | None" = None
+    all_entities_under_jurisdiction: list[Entity]
 
     economy : StateEconomy
-    technologies_unlocked : List[Technologies]
-    division_of_political_influence : List[Entity]
+    technologies_unlocked : list[Technologies]
+    division_of_political_influence : list[Entity]
 
     proportion_of_GDP_spent_on_kinetic_offense: float
     proportion_of_GDP_spent_on_kinetic_defense: float
@@ -51,8 +51,8 @@ class NamedStates():
 class AISoftwareDeveloper(Entity):
     id: str
     is_primarily_controlled_by_misaligned_AI : bool
-    compute_in_use: List[Compute]
-    compute_allocation: List["ComputeAllocation"]
+    compute_in_use: list[Compute]
+    compute_allocation: list["ComputeAllocation"]
     ai_software_progress: AISoftwareProgress
     ai_alignment_status: AIAlignmentStatus
     software_security_level: SoftwareSecurityLevel
@@ -64,7 +64,7 @@ class ComputeAllocation:
     fraction_of_compute_used_for_external_deployment: float
     fraction_of_compute_used_for_alignment_research: float
     fraction_of_compute_used_for_frontier_training: float
-    compute_hijacked_by_other_actors: Dict[Entity, float]
+    compute_hijacked_by_other_actors: dict[Entity, float]
 
 class AIBlackProject(AISoftwareDeveloper):
     parent_entity: Entity
@@ -75,8 +75,8 @@ class AIBlackProject(AISoftwareDeveloper):
     human_fab_operating_labor : int
     human_ai_capability_researchers : int
 
-    proportion_of_compute_taken_from_parent_entity_initially : Optional[float]
-    proportion_of_SME_taken_from_parent_entity_initially : Optional[float]
-    proportion_of_unconcealed_datacenters_taken_from_parent_entity_initially : Optional[float]
-    proportion_of_researcher_headcount_taken_from_parent_entity_initially : Optional[float] 
-    max_proportion_of_energy_taken_from_parent_entity_ongoingly: Optional[float]
+    proportion_of_compute_taken_from_parent_entity_initially : float | None
+    proportion_of_SME_taken_from_parent_entity_initially : float | None
+    proportion_of_unconcealed_datacenters_taken_from_parent_entity_initially : float | None
+    proportion_of_researcher_headcount_taken_from_parent_entity_initially : float | None
+    max_proportion_of_energy_taken_from_parent_entity_ongoingly: float | None

@@ -1,0 +1,264 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --vivid-background: #fffff8;
+  --vivid-foreground: #000;
+  --dull-background: #f0f0f0;
+  --dull-foreground: #666;
+  --accent: #2A623D; /* Slytherin green */
+  --race-background: #8B0000;
+  --slowdown-background: #2A623D;
+}
+
+.race {
+  --accent: var(--race-background);
+}
+
+@property --w {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 0.00000001%;
+}
+
+body.antialiased {
+  -webkit-font-smoothing: subpixel-antialiased;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+summary {
+  cursor: pointer;
+}
+
+details b,
+details strong,
+.report-details b,
+.report-details strong {
+  font-weight: 600;
+}
+
+.content-with-chart {
+  padding-top: 50vh;
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.main-content {
+  flex: 1;
+}
+
+.sticky-chart-container {
+  position: sticky;
+  top: 20px;
+  width: 330px;
+  overflow: hidden;
+  margin-top: 250px;
+  opacity: 0.05;
+  transition: opacity 0.15s ease-in-out;
+  flex-grow: 0.35;
+  border: 1.5px solid grey;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.footnote-hover {
+  position: relative;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+/* The container for the actual footnote DOM */
+.footnote-popup {
+  position: absolute;
+  top: 1.2em; /* or bottom: 1.2em, etc. */
+  left: 0;
+  width: 250px;
+  max-width: 300px;
+  background-color: rgba(245, 245, 245, 0.95);
+  color: #444;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  z-index: 9999;
+}
+
+/* Show the .footnote-popup when hovering over the parent link */
+.footnote-hover:hover .footnote-popup {
+  display: block;
+}
+
+/* HUD PIP and fullscreen mode styles */
+.hud-pip {
+  transform-origin: bottom right;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+}
+
+.hud-pip [data-state="open"] {
+  display: none !important; /* Disable tooltips in PIP mode */
+}
+
+.hud-fullscreen {
+  z-index: 999;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  /* .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  } */
+}
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+h2 {
+  scroll-margin-top: 25vh;
+}
+
+/* Add this CSS rule into your global stylesheet */
+/* Reveal the text by clipping it from the bottom upward */
+@keyframes revealDown {
+  0% {
+    clip-path: inset(0 0 100% 0); /* Clipped from the bottom (hidden) */
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+    clip-path: inset(0 0 95% 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 0); /* Fully visible */
+    opacity: 1;
+  }
+}
+
+/* CSS class to trigger the revealDown animation */
+.animate-revealDown {
+  animation: revealDown 1.5s ease-out forwards;
+}
+
+/* Override katex default larger font size */
+.katex.katex {
+  font-size: 1em;
+}
+
+number-flow-react::part(left),
+number-flow-react::part(right),
+number-flow-react::part(left)::after,
+number-flow-react::part(right)::after,
+number-flow-react::part(symbol) {
+	padding: calc(var(--number-flow-mask-height, 0.25em) / 2) 0;
+}
+
+.essay-footnote {
+  flex-direction: row;
+  gap: 10px;
+}
+
+.essay-footnote p, .essay-footnote ol, .essay-footnote ul {
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+main h1 {
+  font-size: 52px;
+}
+
+.footnote-page p {
+  display: inline;
+}
+
+.summary-chart p {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.tab-boxes p, .tab-boxes li {
+  font-size: 16px;
+  line-height: 1.45;
+  margin-bottom: 0.5em;
+}
+
+.tab-boxes ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.tab-boxes a {
+  text-decoration: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.prose a {
+  color: var(--accent);
+}
+
+@supports not selector(:first-child) {
+  .requires-modern-css {
+    display: none !important;
+  }
+}

@@ -17,7 +17,7 @@ Entities are legal entities, which can have assets and be subject to state or in
 ```python
 class Entity:
     name : str
-    history_of_policies_entity_is_party_to: Dict[Time, AIPolicy]
+    history_of_policies_entity_is_party_to: dict[Time, AIPolicy]
 ```
 
 There are four types of entities:
@@ -47,16 +47,16 @@ An AI policy is a set of rules that restrict entities. Here are supported AI pol
 [todo update these]
 ```python
 class AIPolicy:
-    compute_export_blacklist = List[Entity]
-    SME_export_blacklist = List[Entity]
+    compute_export_blacklist = list[Entity]
+    SME_export_blacklist = list[Entity]
     stock_reporting_requirements: bool = True
-    experiment_compute_cap: Optional[float] = None  # in H100e TPP
-    experiment_plus_training_compute_cap: Optional[float] = None  # in H100e TPP
+    experiment_compute_cap: float | None = None  # in H100e TPP
+    experiment_plus_training_compute_cap: float | None = None  # in H100e TPP
     shut_down_chips_not_under_verification: bool = True
-    ai_researcher_headcount_cap: Optional[int] = None  # number of researchers
-    ai_capability_cap: Optional[Capability] = None #
-    compute_production_cap: Optional[float] = None  # units of H100e TPP per month
-    compute_production_capacity_cap: Optional[float] = None # Can states keep building fabs?
+    ai_researcher_headcount_cap: int | None = None  # number of researchers
+    ai_capability_cap: Capability | None = None #
+    compute_production_cap: float | None = None  # units of H100e TPP per month
+    compute_production_capacity_cap: float | None = None # Can states keep building fabs?
     alignment_to_international_controllability_standard: bool = False
 ```
 

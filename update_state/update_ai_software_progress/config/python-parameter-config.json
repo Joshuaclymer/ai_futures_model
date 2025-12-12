@@ -1,0 +1,339 @@
+{
+  "generated_at": "2025-11-29T03:48:10.050829+00:00",
+  "config_source": "/home/bhalstead/ai-safety/various-capabilities-model-clones/ai-futures-calculator-2/model_config.py",
+  "raw_defaults": {
+    "rho_coding_labor": -2,
+    "direct_input_exp_cap_ces_params": false,
+    "r_software": 2.4,
+    "software_progress_rate_at_reference_year": 1.25,
+    "automation_fraction_at_coding_automation_anchor": 1,
+    "swe_multiplier_at_present_day": 1.6,
+    "automation_interp_type": "logistic",
+    "automation_logistic_asymptote": 1.05,
+    "coding_labor_normalization": 1,
+    "ai_research_taste_at_coding_automation_anchor_sd": 0.5,
+    "ai_research_taste_at_coding_automation_anchor_fallback": 1,
+    "ai_research_taste_slope": 2.2,
+    "taste_schedule_type": "SDs per progress-year",
+    "progress_at_aa": null,
+    "ac_time_horizon_minutes": 12000000.0,
+    "automation_anchors": null,
+    "present_day": 2025.6,
+    "present_horizon": 26,
+    "present_doubling_time": 0.458,
+    "doubling_difficulty_growth_factor": 0.92,
+    "horizon_extrapolation_type": "decaying doubling time",
+    "inf_labor_asymptote": 15.0,
+    "inf_compute_asymptote": 1000,
+    "labor_anchor_exp_cap": 1.6,
+    "compute_anchor_exp_cap": null,
+    "inv_compute_anchor_exp_cap": 2.8,
+    "rho_experiment_capacity": -0.155,
+    "alpha_experiment_capacity": 0.777,
+    "experiment_compute_exponent": 0.655,
+    "parallel_penalty": 0.5,
+    "include_gap": "no gap",
+    "gap_years": 1.5,
+    "pre_gap_ac_time_horizon": 124600.0,
+    "median_to_top_taste_multiplier": 3.7,
+    "top_percentile": 0.999,
+    "taste_limit": 8,
+    "taste_limit_smoothing": 0.51,
+    "strat_ai_m2b": 2.0,
+    "ted_ai_m2b": 3.0,
+    "coding_automation_efficiency_slope": 3.0,
+    "optimal_ces_eta_init": 0.05,
+    "coding_labor_mode": "optimal_ces",
+    "optimal_ces_grid_size": 4096,
+    "optimal_ces_frontier_tail_eps": 1e-06,
+    "optimal_ces_frontier_cap": 1000000000000.0,
+    "max_serial_coding_labor_multiplier": 100000000.0,
+    "sos_mode": false,
+    "plan_a_mode": false,
+    "is_blacksite": false,
+    "show_blacksite": false,
+    "sw_leaks_to_blacksite": true,
+    "plan_a_start_time": 2030.0,
+    "main_project_training_compute_growth_rate": 0.8,
+    "main_project_software_progress_rate": 0.5,
+    "blacksite_initial_years_behind": 0.0,
+    "blacksite_training_compute_penalty_ooms": 2,
+    "blacksite_training_compute_growth_rate": 0,
+    "blacksite_human_labor_penalty_ooms": 2,
+    "blacksite_experiment_compute_penalty_ooms": 2,
+    "blacksite_inference_compute_penalty_ooms": 2,
+    "blacksite_human_taste_penalty": 2,
+    "blacksite_can_stack_training_compute": false,
+    "blacksite_can_stack_software_progress": false,
+    "blacksite_start_time": 2030.0,
+    "constant_training_compute_growth_rate": 0.6,
+    "slowdown_year": 2028.0,
+    "post_slowdown_training_compute_growth_rate": 0.25
+  },
+  "parameter_bounds": {
+    "rho_coding_labor": [
+      -10,
+      -1e-06
+    ],
+    "rho_experiment_capacity": [
+      -1,
+      1
+    ],
+    "alpha_experiment_capacity": [
+      0.001,
+      0.999
+    ],
+    "r_software": [
+      0.1,
+      10
+    ],
+    "software_progress_rate_at_reference_year": [
+      0.05,
+      10
+    ],
+    "automation_fraction_at_coding_automation_anchor": [
+      0.1,
+      1.0
+    ],
+    "swe_multiplier_at_present_day": [
+      1.0,
+      10.0
+    ],
+    "automation_logistic_asymptote": [
+      1.0001,
+      2.0
+    ],
+    "coding_labor_normalization": [
+      1e-05,
+      10
+    ],
+    "experiment_compute_exponent": [
+      0.001,
+      10.0
+    ],
+    "ai_research_taste_at_coding_automation_anchor_sd": [
+      -10,
+      10
+    ],
+    "ai_research_taste_slope": [
+      0.1,
+      10.0
+    ],
+    "progress_at_aa": [
+      1.0,
+      500
+    ],
+    "ac_time_horizon_minutes": [
+      60,
+      100000000000
+    ],
+    "pre_gap_ac_time_horizon": [
+      60,
+      100000000000
+    ],
+    "present_day": [
+      2020.0,
+      2030.0
+    ],
+    "present_horizon": [
+      0.001,
+      10000
+    ],
+    "present_doubling_time": [
+      0.01,
+      2
+    ],
+    "doubling_difficulty_growth_factor": [
+      0.5,
+      1.5
+    ],
+    "inf_labor_asymptote": [
+      1,
+      100000
+    ],
+    "inf_compute_asymptote": [
+      1,
+      10000000
+    ],
+    "labor_anchor_exp_cap": [
+      1,
+      10
+    ],
+    "compute_anchor_exp_cap": [
+      1,
+      10
+    ],
+    "inv_compute_anchor_exp_cap": [
+      1,
+      10
+    ],
+    "parallel_penalty": [
+      0.0,
+      1.0
+    ],
+    "median_to_top_taste_multiplier": [
+      1.01,
+      100.0
+    ],
+    "top_percentile": [
+      0.5,
+      0.99999
+    ],
+    "taste_limit": [
+      0,
+      100
+    ],
+    "taste_limit_smoothing": [
+      0.001,
+      0.999
+    ],
+    "strat_ai_m2b": [
+      0.01,
+      100.0
+    ],
+    "ted_ai_m2b": [
+      0.01,
+      100.0
+    ],
+    "coding_automation_efficiency_slope": [
+      0.01,
+      10.0
+    ],
+    "optimal_ces_eta_init": [
+      1e-12,
+      1000000000000.0
+    ],
+    "optimal_ces_grid_size": [
+      256,
+      16384
+    ],
+    "optimal_ces_frontier_tail_eps": [
+      1e-20,
+      0.1
+    ],
+    "optimal_ces_frontier_cap": [
+      1.0,
+      1e+30
+    ],
+    "max_serial_coding_labor_multiplier": [
+      1.0,
+      1e+30
+    ],
+    "coding_labor_mode": [
+      0,
+      1
+    ],
+    "plan_a_start_time": [
+      2025.0,
+      2040.0
+    ],
+    "blacksite_initial_years_behind": [
+      0.0,
+      10.0
+    ],
+    "blacksite_training_compute_penalty_ooms": [
+      0.0,
+      10.0
+    ],
+    "blacksite_training_compute_growth_rate": [
+      0.0,
+      0.0
+    ],
+    "blacksite_human_labor_penalty_ooms": [
+      0.0,
+      10.0
+    ],
+    "blacksite_experiment_compute_penalty_ooms": [
+      0.0,
+      10.0
+    ],
+    "blacksite_inference_compute_penalty_ooms": [
+      0.0,
+      10.0
+    ],
+    "blacksite_human_taste_penalty": [
+      0.0,
+      100.0
+    ],
+    "blacksite_start_time": [
+      2025.0,
+      2040.0
+    ],
+    "constant_training_compute_growth_rate": [
+      0.0,
+      2.0
+    ],
+    "slowdown_year": [
+      2020.0,
+      2040.0
+    ],
+    "post_slowdown_training_compute_growth_rate": [
+      0.0,
+      2.0
+    ]
+  },
+  "taste_schedule_types": [
+    "SDs per effective OOM",
+    "SDs per progress-year"
+  ],
+  "taste_slope_defaults": {
+    "SDs per effective OOM": 1.47,
+    "SDs per progress-year": 2.2
+  },
+  "horizon_extrapolation_types": [
+    "exponential",
+    "decaying doubling time"
+  ],
+  "ui_defaults": {
+    "present_doubling_time": 0.458,
+    "ac_time_horizon_minutes": 7.079181246047625,
+    "doubling_difficulty_growth_factor": 0.92,
+    "rho_coding_labor": -2.0,
+    "rho_experiment_capacity": -0.155,
+    "alpha_experiment_capacity": 0.777,
+    "direct_input_exp_cap_ces_params": false,
+    "r_software": 2.4,
+    "software_progress_rate_at_reference_year": 1.25,
+    "coding_labor_normalization": 1.0,
+    "experiment_compute_exponent": 0.655,
+    "coding_labor_exponent": 0.5,
+    "automation_fraction_at_coding_automation_anchor": 1.0,
+    "automation_interp_type": "logistic",
+    "automation_logistic_asymptote": 1.05,
+    "swe_multiplier_at_present_day": 1.6,
+    "automation_anchors": null,
+    "ai_research_taste_at_coding_automation_anchor_sd": 0.5,
+    "ai_research_taste_slope": 2.2,
+    "taste_schedule_type": "SDs per progress-year",
+    "progress_at_aa": 1.0,
+    "saturation_horizon_minutes": 124600.0,
+    "present_day": 2025.6,
+    "present_horizon": 26.0,
+    "horizon_extrapolation_type": "decaying doubling time",
+    "inf_labor_asymptote": 15.0,
+    "inf_compute_asymptote": 1000.0,
+    "labor_anchor_exp_cap": 1.6,
+    "compute_anchor_exp_cap": null,
+    "inv_compute_anchor_exp_cap": 2.8,
+    "benchmarks_and_gaps_mode": false,
+    "gap_years": 1.5,
+    "coding_automation_efficiency_slope": 3.0,
+    "max_serial_coding_labor_multiplier": 100000000.0,
+    "median_to_top_taste_multiplier": 3.7,
+    "top_percentile": 0.999,
+    "taste_limit": 8.0,
+    "taste_limit_smoothing": 0.51,
+    "strat_ai_m2b": 2.0,
+    "ted_ai_m2b": 3.0,
+    "optimal_ces_eta_init": 0.05,
+    "constant_training_compute_growth_rate": 0.6,
+    "slowdown_year": 2028.0,
+    "post_slowdown_training_compute_growth_rate": 0.25
+  },
+  "model_constants": {
+    "training_compute_reference_year": 2025.13,
+    "training_compute_reference_ooms": 26.54,
+    "software_progress_scale_reference_year": 2024.0,
+    "base_for_software_lom": 10.0
+  }
+}

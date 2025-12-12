@@ -1,10 +1,10 @@
-from typing import List, Optional
-from classes.policies import VerificationMeasure 
+from typing import list
+from classes.policies import VerificationMeasure
 from enum import Enum
 
 class Assets():
-    asset_status: List["AssetStatus"]
-    under_verification_measures: Optional[VerificationMeasure] = None
+    asset_status: list["AssetStatus"]
+    under_verification_measures: VerificationMeasure | None = None
 
 class AssetStatus(Enum):
     OPERATING = "operating"
@@ -23,9 +23,9 @@ class Compute(Assets):
     """Represents the stock of a single type of chip."""
     total_tpp_h100e: float
     total_energy_requirements_watts: float
-    number_of_chips: Optional[int] = None
-    inter_chip_bandwidth_gbps: Optional[float] = None
-    intra_chip_bandwidth_gbps: Optional[float] = None
+    number_of_chips: int | None = None
+    inter_chip_bandwidth_gbps: float | None = None
+    intra_chip_bandwidth_gbps: float | None = None
 
 class Datacenters(Assets):
     data_center_capacity_gw : float
@@ -35,10 +35,10 @@ class Fabs(Assets):
     production_method: ProductionTechnology
 
     # Optional, more detailed info
-    tsmc_process_node_equivalent_in_nm: Optional[float]
-    number_of_lithography_scanners : Optional[int]
-    h100_sized_chips_per_wafer : Optional[float]
-    wafers_per_month_during_operation: Optional[float]
+    tsmc_process_node_equivalent_in_nm: float | None
+    number_of_lithography_scanners : int | None
+    h100_sized_chips_per_wafer : float | None
+    wafers_per_month_during_operation: float | None
 
 class EnergyGeneration(Assets):
     continuous_power_generation_GW: float
@@ -60,7 +60,7 @@ class RobotFactories(Assets):
 
 class UnmannedWeapons(Assets):
     type : "UnmannedWeaponType"
-    metric_tons_of_explosives: Optional[float]
+    metric_tons_of_explosives: float | None
 
 class UnmannedWeaponType(Enum):
     DRONES = "drones"

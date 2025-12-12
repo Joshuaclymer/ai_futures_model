@@ -1,4 +1,3 @@
-from typing import Dict
 from classes.simulation_parameters import DistributionOverSimulationParameters, SimulationParameters
 from classes.entities import AISoftwareDeveloper, Coalition, State
 from classes.policies import AIPolicy
@@ -17,13 +16,14 @@ class Duration:
     years : float
 
 class WorldState:
-    coalitions: Dict[str, Coalition]  # id -> all coalitions of states in the world at this time
-    states: Dict[str, State] # id -> all states in the world at this time
-    ai_software_developers: Dict[str, AISoftwareDeveloper]  # id -> all AI software developers in the world at this time
-    ai_policies: Dict[str, AIPolicy]  # id -> all AI policies in effect at this time
+    current_time: Time
+    coalitions: dict[str, Coalition]  # id -> all coalitions of states in the world at this time
+    states: dict[str, State] # id -> all states in the world at this time
+    ai_software_developers: dict[str, AISoftwareDeveloper]  # id -> all AI software developers in the world at this time
+    ai_policies: dict[str, AIPolicy]  # id -> all AI policies in effect at this time
 
 @dataclass
-class Updator(ABC):
+class Updater(ABC):
     simulation_run : SimulationRun
     next_world_state : WorldState = None
 

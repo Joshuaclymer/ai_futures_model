@@ -1,0 +1,18 @@
+# Eli sampling configuration
+# Inherits all settings from sampling_config.yaml and overrides specific parameters
+
+parent: "sampling_config_2200.yaml"
+
+# Override global settings if needed
+# Uncomment any of these to override the parent config:
+
+# num_rollouts: 500  # Example: run fewer samples for testing
+# time_range: [2012.0, 2060.0]  # Example: extend simulation end date
+time_range: [2012.0, 2200.0]  # Example: extend simulation end date
+input_data: inputs/2200.csv
+per_sample_timeout: 30  # Example: increase timeout
+
+parameters:
+  include_gap:
+    dist: fixed
+    value: "gap"

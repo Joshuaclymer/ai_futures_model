@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import list
 from entity import Entity
 from assets import Assets, UnmannedWeapons
 from entities import AISoftwareDeveloper
@@ -11,10 +11,10 @@ class Attack:
 class CyberAttack(Attack):
     operational_capacity_level_of_attack : "OperationalCapacityLevel"
     attack_success : bool
-    exfiltrate_weights_of_developer : Optional[AISoftwareDeveloper] = None
-    hijack_developer : Optional[AISoftwareDeveloper] = None
-    hijack_what_fraction_of_compute : Optional[float] = None
-    sabotage_developer : Optional[AISoftwareDeveloper] = None
+    exfiltrate_weights_of_developer : AISoftwareDeveloper | None = None
+    hijack_developer : AISoftwareDeveloper | None = None
+    hijack_what_fraction_of_compute : float | None = None
+    sabotage_developer : AISoftwareDeveloper | None = None
 
 class OperationalCapacityLevel(Enum):
     OC1 = "attacker_at_RAND_Operational_Capacity_level_1"
@@ -35,7 +35,7 @@ class SoftwareSecurityLevel(Enum): # Software Security Defense Levels
 class KineticAttack(Attack):
     target_entity: Entity
     target_assets: Assets
-    strike_vehicles: List[UnmannedWeapons]
+    strike_vehicles: list[UnmannedWeapons]
 
 class UntargetedNovelBioAttack(Attack):
     pass # This attack reduces the human population of every nation by 20x
@@ -43,3 +43,5 @@ class UntargetedNovelBioAttack(Attack):
 class PoliticalInfluenceOperation(Attack):
     target_entity: Entity
     proportion_of_population_persuadable_absent_AI_defense: float # (represents the strength of the attack)
+
+# fab sabotage
