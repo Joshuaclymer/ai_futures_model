@@ -1,13 +1,8 @@
-from typing import list, dict
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from classes.entities import Entity
 from classes.software_progress import AISoftwareCapabilityCap
-from abc import ABC, abstractmethod
-from enum import Enum
-from classes.simulation_parameters import SimulationParameters
-from classes.simulations import Updater, SimulationParameters, Time, WorldState
-from classes.entities import Entity, NamedStates, NamedCoalitions
-from abc import ABC
-from dataclasses import dataclass
+from classes.simulations import SimulationParameters, Time, WorldState
 
 class AIPolicy:
     template_id : str

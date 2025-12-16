@@ -1,7 +1,6 @@
-from classes.policies import AIPolicyTemplateIDs, AIPolicyTemplate, AIPolicy, VerificationMechanismIDs, VerificationProtocol
-from classes.simulations import SimulationParameters, WorldState
-from classes.entities import Entity, NamedStates, NamedCoalitions, State
 from dataclasses import dataclass, field
+from classes.policies import AIPolicyTemplateIDs, AIPolicyTemplate, AIPolicy, VerificationMechanismIDs, VerificationProtocol
+from classes.entities import Entity, NamedStates, NamedCoalitions 
 from verification_mechanisms import get_verification_mechanisms, get_available_verification_mechanisms
 from classes.simulation_parameters import MethodOfSettingCaps
 from classes.software_progress import AISoftwareCapabilityCap
