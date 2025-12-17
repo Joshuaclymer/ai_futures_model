@@ -71,6 +71,3 @@ class UnmannedWeaponsFactory(Assets):
     type : "UnmannedWeaponType"
     monthly_production: Robots
     production_method: ProductionTechnology
-
-class Stars(Assets):
-    sun_equivalents_of_energy: float

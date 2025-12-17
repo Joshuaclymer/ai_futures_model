@@ -5,28 +5,16 @@ from abc import ABC
 from classes.simulation_parameters import SimulationParameters
 from dataclasses import dataclass
 
-class SimulationRun:
-    world_states: dict["Time", "WorldState"]  # Mapping from Time to WorldState
-    simulation_parameters : SimulationParameters
-
 class Time:
     year : float
 
 class Duration:
     years : float
 
+@dataclass
 class WorldState:
     current_time: Time
     coalitions: dict[str, Coalition]  # id -> all coalitions of states in the world at this time
     states: dict[str, State] # id -> all states in the world at this time
     ai_software_developers: dict[str, AISoftwareDeveloper]  # id -> all AI software developers in the world at this time
     ai_policies: dict[str, AIPolicy]  # id -> all AI policies in effect at this time
-
-@dataclass
-class Updater(ABC):
-    simulation_run : SimulationRun
-    next_world_state : WorldState = None
-
-    def get_next_world_state(self) -> WorldState:
-        # Logic to generate the updated world state based on previous states and simulation parameters
-        pass

@@ -1,8 +1,9 @@
 from classes.perceptions import LevelsOfAINationalSecurityImportance
+
 import enum as Enum
 from dataclasses import dataclass
 
-class DistributionOverSimulationParameters:
+class ModelParameters:
     pass # Placeholder for class implementation
 
 @dataclass

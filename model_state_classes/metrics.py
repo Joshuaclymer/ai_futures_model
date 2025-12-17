@@ -1,0 +1,3 @@
+@dataclass
+class Metrics:
+    pass
