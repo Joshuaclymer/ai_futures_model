@@ -1,0 +1,129 @@
+# Default parameters for the AI Futures Simulator
+# All values are point estimates (no uncertainty)
+#
+# To add uncertainty, replace any value with a distribution spec:
+#   r_software: 2.4              # Point estimate
+#   r_software:                   # Distribution
+#     dist: uniform
+#     min: 2.0
+#     max: 3.0
+
+seed: 42
+initial_progress: 0.0
+
+# =============================================================================
+# SIMULATION SETTINGS
+# =============================================================================
+settings:
+  simulation_start_year: 2026
+  simulation_end_year: 2040.0
+  n_eval_points: 100
+
+# =============================================================================
+# SOFTWARE R&D PARAMETERS
+#
+# NOTE: Some parameters below are set to null because they are CALIBRATED
+# at runtime by parameters/calibrate.py. The calibration uses anchor parameters
+# (like software_progress_rate_at_reference_year, swe_multiplier_at_present_day)
+# to compute the actual CES parameters. See calibrate.py for details.
+# =============================================================================
+software_r_and_d:
+  # =========================================================================
+  # MODE FLAGS
+  # =========================================================================
+  human_only: false
+
+  # =========================================================================
+  # PRODUCTION FUNCTION PARAMETERS (CES)
+  # =========================================================================
+  # Coding labor CES
+  rho_coding_labor: -2.0
+  coding_labor_normalization: 1.0
+
+  # Experiment capacity CES
+  # These are CALIBRATED from the anchor parameters below - leave as null
+  direct_input_exp_cap_ces_params: false
+  rho_experiment_capacity: null      # Calibrated from anchor params
+  alpha_experiment_capacity: null    # Calibrated from anchor params
+  experiment_compute_exponent: null  # Calibrated from anchor params
+
+  # Experiment capacity anchor parameters (used by calibration)
+  inf_labor_asymptote: 15.0
+  inf_compute_asymptote: 1000.0
+  labor_anchor_exp_cap: 1.6
+  compute_anchor_exp_cap: null
+  inv_compute_anchor_exp_cap: 2.8
+
+  # Parallel penalty
+  parallel_penalty: 0.5
+
+  # =========================================================================
+  # SOFTWARE PROGRESS PARAMETERS
+  # =========================================================================
+  # r_software is CALIBRATED from software_progress_rate_at_reference_year - leave as null
+  r_software: null
+  software_progress_rate_at_reference_year: 1.25
+
+  # =========================================================================
+  # AUTOMATION SCHEDULE PARAMETERS
+  # =========================================================================
+  automation_fraction_at_coding_automation_anchor: 1.0
+  # automation_anchors is CALIBRATED from swe_multiplier_at_present_day - leave as null
+  automation_anchors: null
+  automation_interp_type: "logistic"
+  automation_logistic_asymptote: 1.05
+  swe_multiplier_at_present_day: 1.6
+
+  # Coding labor mode
+  coding_labor_mode: "optimal_ces"
+  coding_automation_efficiency_slope: 3.0
+  optimal_ces_eta_init: 0.05
+  optimal_ces_grid_size: 4096
+  optimal_ces_frontier_tail_eps: 0.000001
+  optimal_ces_frontier_cap: 1000000000000.0
+  max_serial_coding_labor_multiplier: 100000000.0
+
+  # =========================================================================
+  # AI RESEARCH TASTE PARAMETERS
+  # =========================================================================
+  ai_research_taste_at_coding_automation_anchor_sd: 0.5
+  ai_research_taste_slope: 2.2
+  taste_schedule_type: "SDs per progress-year"
+
+  # Research taste distribution
+  median_to_top_taste_multiplier: 3.7
+  top_percentile: 0.999
+  taste_limit: 8.0
+  taste_limit_smoothing: 0.51
+
+  # =========================================================================
+  # HORIZON / MILESTONE PARAMETERS
+  # =========================================================================
+  progress_at_aa: null
+  ac_time_horizon_minutes: 12000000.0
+  pre_gap_ac_time_horizon: 124600.0
+  horizon_extrapolation_type: "decaying doubling time"
+
+  # Manual horizon fitting
+  present_day: 2025.6
+  present_horizon: 26.0
+  present_doubling_time: 0.458
+  doubling_difficulty_growth_factor: 0.920
+
+  # Capability milestones
+  strat_ai_m2b: 2.0
+  ted_ai_m2b: 3.0
+
+  # =========================================================================
+  # GAP MODE PARAMETERS
+  # =========================================================================
+  include_gap: "no gap"
+  gap_years: 1.5
+
+# =============================================================================
+# COMPUTE GROWTH PARAMETERS
+# =============================================================================
+compute_growth:
+  constant_training_compute_growth_rate: 0.6
+  slowdown_year: 2028.0
+  post_slowdown_training_compute_growth_rate: 0.25
