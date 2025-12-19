@@ -18,6 +18,10 @@ settings:
   simulation_start_year: 2026
   simulation_end_year: 2040.0
   n_eval_points: 100
+  # ODE solver settings (tuned for speed, <1% final error)
+  ode_rtol: 0.002     # Relative tolerance
+  ode_atol: 0.00005   # Absolute tolerance
+  ode_max_step: 1.0   # Max step size in years
 
 # =============================================================================
 # SOFTWARE R&D PARAMETERS
@@ -62,7 +66,7 @@ software_r_and_d:
   # =========================================================================
   # r_software is CALIBRATED from software_progress_rate_at_reference_year - leave as null
   r_software: null
-  software_progress_rate_at_reference_year: 1.25
+  software_progress_rate_at_reference_year: 1.0  # Match reference model's DEFAULT_PARAMETERS
 
   # =========================================================================
   # AUTOMATION SCHEDULE PARAMETERS
@@ -71,7 +75,7 @@ software_r_and_d:
   # automation_anchors is CALIBRATED from swe_multiplier_at_present_day - leave as null
   automation_anchors: null
   automation_interp_type: "logistic"
-  automation_logistic_asymptote: 1.05
+  automation_logistic_asymptote: 1.1  # Match reference model's DEFAULT_PARAMETERS
   swe_multiplier_at_present_day: 1.6
 
   # Coding labor mode
@@ -215,3 +219,19 @@ black_project:
     mean_detection_time_for_100_workers: 6.95
     mean_detection_time_for_1000_workers: 3.42
     variance_of_detection_time_given_num_workers: 3.88
+    # Likelihood ratio threshold for detection (used to define detection_probability)
+    detection_threshold: 100.0
+
+# =============================================================================
+# PERCEPTIONS PARAMETERS
+#
+# Parameters for updating state perceptions about covert AI projects.
+# =============================================================================
+perceptions:
+  # Enable/disable perceptions updating
+  update_perceptions: true
+  # Prior probability that PRC has a covert AI project (US initial belief)
+  prior_probability_prc_has_covert_project: 0.3
+  # Probability bounds to prevent numerical issues
+  min_probability: 0.001
+  max_probability: 0.999

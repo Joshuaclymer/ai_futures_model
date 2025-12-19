@@ -211,6 +211,8 @@ class SoftwareRAndD(WorldUpdater):
         # Slopes are converted during calibration (from "per progress-year" to "per progress-unit")
         'ai_research_taste_slope',
         'coding_automation_efficiency_slope',
+        # progress_at_aa is calculated from horizon trajectory during calibration
+        'progress_at_aa',
     }
 
     @property
@@ -241,12 +243,12 @@ class SoftwareRAndD(WorldUpdater):
         # Use converted slopes (from "per progress-year" to "per progress-unit")
         kwargs['ai_research_taste_slope'] = cal.ai_research_taste_slope
         kwargs['coding_automation_efficiency_slope'] = cal.coding_automation_efficiency_slope
+        # Use calibrated progress_at_aa (calculated from horizon trajectory)
+        kwargs['progress_at_aa'] = cal.progress_at_aa
 
         params = TakeoffParameters(**kwargs)
 
         # Set up automation_anchors from calibration
-        progress_at_aa = r.progress_at_aa if r.progress_at_aa is not None else 10.0
-        params.progress_at_aa = progress_at_aa
         params.automation_anchors = cal.automation_anchors.copy()
 
         # Create the automation model
@@ -442,17 +444,12 @@ class SoftwareRAndD(WorldUpdater):
             dev.ai_software_progress.ai_research_taste = torch.tensor(ai_research_taste)
             dev.ai_software_progress.aggregate_research_taste = torch.tensor(aggregate_research_taste)
 
-            # Compute serial_coding_labor using the deprecated method
-            # Note: _compute_coding_labor may return 0 in optimal_ces mode due to initialization issues
-            # The deprecated method provides a reliable fallback
-            serial_coding_labor = compute_coding_labor(
-                automation_fraction,
-                inference_compute,
-                human_labor,
-                params.rho_coding_labor,
-                params.parallel_penalty,
-                params.coding_labor_normalization
-            )
+            # Compute serial_coding_labor using _compute_coding_labor which handles optimal_ces mode
+            # This matches how the reference model computes serial_coding_labor in metrics_computation.py:
+            # - optimal_ces mode: L_opt = automation_model.coding_labor_optimal_ces(H, C, logE, params)
+            #                     serial_coding_labor = (L_opt ** parallel_penalty) * normalization
+            # - simple_ces mode: uses compute_coding_labor() directly
+            serial_coding_labor = self._compute_coding_labor(progress, human_labor, inference_compute)
             dev.ai_software_progress.serial_coding_labor = torch.tensor(serial_coding_labor)
 
             # Compute coding_labor by reversing the transformation
@@ -511,7 +508,14 @@ class SoftwareRAndD(WorldUpdater):
             ai_sw_mult = self._interpolate_ai_sw_progress_mult_by_year(current_time)
             dev.ai_software_progress.ai_sw_progress_mult_ref_present_day = torch.tensor(ai_sw_mult)
 
-            # Store training_compute_growth_rate for use in computing software_efficiency at API layer
-            # Note: software_efficiency requires cumulative training_compute which is computed from trajectory
+            # Store training_compute_growth_rate for use in computing training_compute at API layer
+            dev.ai_software_progress.training_compute_growth_rate = torch.tensor(training_compute_growth_rate)
+
+            # Compute ai_research_taste_sd from ai_research_taste
+            # This is needed for computing milestones (SAR, SIAR, TED-AI, ASI)
+            ai_research_taste_sd = params.taste_distribution.get_sd_of_taste(ai_research_taste)
+            if not np.isfinite(ai_research_taste_sd):
+                ai_research_taste_sd = 0.0
+            dev.ai_software_progress.ai_research_taste_sd = torch.tensor(ai_research_taste_sd)
 
         return world

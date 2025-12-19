@@ -13,6 +13,7 @@ from typing import Dict, Optional
 from classes.world.tensor_dataclass import TensorDataclass
 from classes.world.entities import Coalition, Nation, AISoftwareDeveloper, AIBlackProject
 from classes.world.policies import AIPolicy
+from classes.world.perceptions import Perceptions
 
 
 @dataclass
@@ -37,6 +38,10 @@ class World(TensorDataclass):
     # === Black projects (covert compute infrastructure) ===
     black_projects: Dict[str, AIBlackProject] = field(default_factory=dict)
 
+    # === Entity perceptions (beliefs about other entities) ===
+    # Maps entity_id -> Perceptions
+    perceptions: Dict[str, Perceptions] = field(default_factory=dict)
+
     @classmethod
     def zeros(cls, template: 'World' = None) -> 'World':
         """
@@ -56,6 +61,7 @@ class World(TensorDataclass):
             ai_software_developers={},
             ai_policies={},
             black_projects={},
+            perceptions={},
         )
 
     def get_developer(self, developer_id: str) -> AISoftwareDeveloper:
@@ -73,3 +79,7 @@ class World(TensorDataclass):
     def get_black_project(self, project_id: str) -> Optional[AIBlackProject]:
         """Get a black project by ID."""
         return self.black_projects.get(project_id)
+
+    def get_perceptions(self, entity_id: str) -> Optional[Perceptions]:
+        """Get perceptions for an entity by ID."""
+        return self.perceptions.get(entity_id)

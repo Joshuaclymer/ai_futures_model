@@ -1,21 +1,14 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { BlackProjectClient } from '@/app/ai-black-projects/BlackProjectClient';
 
-// Dynamically import the heavy components
+// Dynamically import PlaygroundClient (heavy component for timelines)
 const PlaygroundClient = dynamic(() => import('@/components/PlaygroundClient'), {
   ssr: false,
   loading: () => <TabLoadingPlaceholder tab="timelines" />,
 });
-
-const BlackProjectClient = dynamic(
-  () => import('@/app/ai-black-projects/BlackProjectClient').then(mod => ({ default: mod.BlackProjectClient })),
-  {
-    ssr: false,
-    loading: () => <TabLoadingPlaceholder tab="black-projects" />,
-  }
-);
 
 type TabType = 'timelines' | 'black-projects';
 

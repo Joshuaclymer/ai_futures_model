@@ -20,34 +20,39 @@ class CombinedUpdater(WorldUpdater):
     - Collects contributions from all updaters for the ODE solver
     - Applies discrete changes at event times
     - Computes metrics after integration
+
+    Which updaters are enabled is controlled by flags in the parameter objects:
+    - black_project.properties.run_a_black_project: enables BlackProjectUpdater
+    - perceptions.update_perceptions: enables StatePerceptionsOfCovertComputeUpdater
     """
 
     def __init__(
         self,
         params: SimulationParameters,
         updaters: List[WorldUpdater] = None,
-        include_nation_compute: bool = False,
-        include_black_project: bool = False,
-        black_project_params: Optional['BlackProjectParameterSet'] = None,
     ):
         super().__init__()
         self.params = params
 
-        # If no updaters provided, create default set
+        # If no updaters provided, create default set based on params
         if updaters is None:
             from world_updaters.software_r_and_d import SoftwareRAndD
             from world_updaters.ai_software_developers import AISoftwareDeveloperUpdater
             updaters = [SoftwareRAndD(params), AISoftwareDeveloperUpdater(params)]
 
-            # Add nation compute updater if enabled
-            if include_nation_compute:
-                from world_updaters.nation_compute import NationComputeUpdater
-                updaters.append(NationComputeUpdater(params))
-
-            # Add black project updater if enabled
-            if include_black_project:
+            # Add black project updater if enabled in params
+            if (params.black_project is not None and
+                params.black_project.properties.run_a_black_project):
                 from world_updaters.black_project import BlackProjectUpdater
-                updaters.append(BlackProjectUpdater(params, black_project_params))
+                updaters.append(BlackProjectUpdater(params, params.black_project))
+
+            # Add perceptions updater if enabled in params
+            if (params.perceptions is not None and
+                params.perceptions.update_perceptions):
+                from world_updaters.state_perceptions_of_covert_compute import (
+                    StatePerceptionsOfCovertComputeUpdater
+                )
+                updaters.append(StatePerceptionsOfCovertComputeUpdater(params, params.perceptions))
 
         # Register updaters as submodules for proper parameter tracking
         self.updaters = nn.ModuleList(updaters)

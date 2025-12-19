@@ -17,31 +17,31 @@ from parameters.calibrate import calibrate_from_params
 def initialize_ai_software_progress(
     params: SimulationParameters,
     year: int,
-    initial_progress: float = 0.0,
+    initial_progress: float = None,
 ) -> AISoftwareProgress:
     """
     Initialize AI software progress state for a given year.
 
-    Progress starts at initial_progress (default 0.0).
-    Research stock is obtained from calibration which runs progress_model
-    from the simulation start year.
+    Progress and research_stock are obtained from calibration which runs progress_model
+    from 2012 to compute the trajectory, then interpolates to the simulation start year.
 
     Args:
         params: SimulationParameters containing model configuration
         year: The integer year to initialize for (e.g., 2024, 2026)
-        initial_progress: Starting progress value (default 0.0)
+        initial_progress: Starting progress value. If None, uses calibrated value.
 
     Returns:
         Initialized AISoftwareProgress instance
     """
-    # Get calibrated initial research_stock
-    # Pass the year as start_year so calibration runs from the correct starting point
+    # Get calibrated initial values
+    # The calibration runs from 2012 and interpolates to the start_year
     start_year = float(params.settings.simulation_start_year)
     calibrated = calibrate_from_params(params.software_r_and_d, start_year=start_year)
 
-    # Use the initial_research_stock from calibration
-    # This is computed by progress_model's calculate_initial_research_stock()
-    # based on RS(0) = (RS'(0))^2 / RS''(0)
+    # Use calibrated initial values
+    # These are interpolated from the progress_model trajectory at start_year
+    if initial_progress is None:
+        initial_progress = calibrated.initial_progress
     initial_research_stock = calibrated.initial_research_stock
 
     return AISoftwareProgress(

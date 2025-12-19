@@ -1,29 +1,23 @@
 import { Suspense } from 'react';
-import { cacheLife } from 'next/cache';
 import { loadBenchmarkData } from '@/utils/benchmarkLoader';
-import { fetchComputeData } from '@/lib/serverApi';
 import { DEFAULT_PARAMETERS } from '@/constants/parameters';
 import UnifiedAppClient from '@/components/UnifiedAppClient';
 
 const DEFAULT_SEED = 12345;
 
-export default async function BlackProjectsPage() {
-  'use cache';
-  cacheLife('hours');
-
+export default function BlackProjectsPage() {
+  // Don't do server-side data fetching for black projects page
+  // The black projects tab fetches its own data from a different API
   const benchmarkData = loadBenchmarkData();
   const parameters = { ...DEFAULT_PARAMETERS };
   const seed = DEFAULT_SEED;
-
-  // Only fetch compute data server-side - sample trajectories are loaded progressively on the client
-  const initialComputeData = await fetchComputeData(parameters);
 
   return (
     <Suspense fallback={null}>
       <UnifiedAppClient
         initialTab="black-projects"
         benchmarkData={benchmarkData}
-        initialComputeData={initialComputeData}
+        initialComputeData={null}
         initialParameters={parameters}
         initialSampleTrajectories={[]}
         initialSeed={seed}

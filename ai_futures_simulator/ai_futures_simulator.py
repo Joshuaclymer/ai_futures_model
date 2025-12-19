@@ -9,8 +9,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from torchdiffeq import odeint, odeint_event
-from typing import Dict, List
-from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
 from classes.world.world import World
 from classes.simulation_primitives import SimulationResult
@@ -19,6 +18,11 @@ from initialize_world_history import initialize_world_for_year
 from world_updaters.combined_updater import CombinedUpdater
 from world_updaters.software_r_and_d import SoftwareRAndD
 from world_updaters.ai_software_developers import AISoftwareDeveloperUpdater
+
+
+# ODE solver settings
+DEFAULT_ODE_RTOL = 0.002  # Relative tolerance
+DEFAULT_ODE_ATOL = 5e-5   # Absolute tolerance
 
 
 class AIFuturesSimulator(nn.Module):
@@ -47,6 +51,57 @@ class AIFuturesSimulator(nn.Module):
             updaters=[SoftwareRAndD(self._default_params), AISoftwareDeveloperUpdater(self._default_params)]
         )
 
+    def _discover_events(
+        self,
+        combined: CombinedUpdater,
+        initial_state: Tensor,
+        initial_template: World,
+        start_time: float,
+        end_time: float,
+        rtol: float,
+        atol: float,
+    ) -> List[Tuple[float, Tensor, World]]:
+        """
+        Discover discrete events dynamically using odeint_event.
+
+        Returns list of (time, state_tensor, world_template) tuples for each segment start.
+        """
+        segments = [(start_time, initial_state, initial_template)]
+
+        current_state = initial_state
+        current_time = start_time
+        current_template = initial_template
+
+        while current_time < end_time:
+            event_fn = combined.make_event_fn(end_time)
+            event_t, event_state = odeint_event(
+                combined,
+                current_state,
+                torch.tensor(current_time),
+                event_fn=event_fn,
+                method='dopri5',
+                rtol=rtol,
+                atol=atol
+            )
+
+            event_time = event_t.item()
+            current_time = event_time
+
+            if event_time < end_time:
+                world = World.from_state_tensor(event_state, current_template)
+                updated_world = combined.set_state_attributes(event_t, world)
+                if updated_world is not None:
+                    current_state = updated_world.to_state_tensor()
+                    current_template = updated_world
+                    combined.set_world_template(updated_world)
+                    segments.append((event_time, current_state, current_template))
+                else:
+                    current_state = event_state
+            else:
+                current_state = event_state
+
+        return segments
+
     def run_simulation(
         self,
         world_history: Dict[int, World] = None,
@@ -54,6 +109,10 @@ class AIFuturesSimulator(nn.Module):
     ) -> SimulationResult:
         """
         Run a single simulation trajectory.
+
+        Uses two-phase approach:
+        1. Discover discrete events dynamically using odeint_event
+        2. Collect trajectory at eval points using segment-wise integration
 
         Args:
             world_history: Dictionary mapping years to World states. If None, creates default.
@@ -67,7 +126,6 @@ class AIFuturesSimulator(nn.Module):
             params = self._default_params
 
         # Create a fresh combined updater if params differ from default
-        # This ensures the TakeoffParameters are rebuilt with the new values
         if params is not self._default_params:
             combined = CombinedUpdater(
                 params,
@@ -79,7 +137,6 @@ class AIFuturesSimulator(nn.Module):
         # Get initial world state for simulation start year
         start_year = params.settings.simulation_start_year
         if world_history is None:
-            # Only initialize the year we need, not all historical years
             initial_world = initialize_world_for_year(params, start_year)
         else:
             if start_year not in world_history:
@@ -89,68 +146,71 @@ class AIFuturesSimulator(nn.Module):
                 )
             initial_world = world_history[start_year]
 
-        # Set template for tensor reconstruction
         combined.set_world_template(initial_world)
 
-        # Time points to evaluate
         start_time = initial_world.current_time.item()
         end_time = params.settings.simulation_end_year
 
-        # Integrate with event detection for discrete state changes
-        current_state = initial_world.to_state_tensor()
-        current_time = start_time
-        current_template = initial_world
+        # Get ODE settings
+        settings = params.settings
+        rtol = getattr(settings, 'ode_rtol', DEFAULT_ODE_RTOL)
+        atol = getattr(settings, 'ode_atol', DEFAULT_ODE_ATOL)
 
-        while current_time < end_time:
-            event_fn = combined.make_event_fn(end_time)
-            event_t, event_state = odeint_event(
-                combined,
-                current_state,
-                torch.tensor(current_time),
-                event_fn=event_fn,
-                method='dopri5',
-                rtol=1e-5,
-                atol=1e-6
-            )
-
-            event_time = event_t.item()
-            current_time = event_time
-
-            # Check if a discrete state change triggered (not just end_time)
-            if event_time < end_time:
-                world = World.from_state_tensor(event_state, current_template)
-                updated_world = combined.set_state_attributes(event_t, world)
-                if updated_world is not None:
-                    current_state = updated_world.to_state_tensor()
-                    current_template = updated_world
-                    combined.set_world_template(updated_world)
-                else:
-                    current_state = event_state
-            else:
-                current_state = event_state
-
-        # Final integration pass to get states at evenly-spaced evaluation points
-        times = torch.linspace(start_time, end_time, params.settings.n_eval_points)
-        combined.set_world_template(initial_world)
-        state_trajectory = odeint(
-            combined,
-            initial_world.to_state_tensor(),
-            times,
-            method='dopri5',
-            rtol=1e-5,
-            atol=1e-6
+        # Phase 1: Discover events dynamically
+        segments = self._discover_events(
+            combined, initial_world.to_state_tensor(), initial_world,
+            start_time, end_time, rtol, atol
         )
 
-        # Reconstruct world states from tensors and compute metrics
+        # Phase 2: Collect trajectory at eval points using discovered segments
+        eval_times = torch.linspace(start_time, end_time, settings.n_eval_points)
         trajectory = []
-        for i, t in enumerate(times):
-            state_tensor = state_trajectory[i]
-            world = World.from_state_tensor(state_tensor, initial_world)
-            world = combined.set_metric_attributes(t, world)
-            trajectory.append(world)
+        eval_idx = 0
+
+        for seg_idx in range(len(segments)):
+            seg_start, seg_state, seg_template = segments[seg_idx]
+            seg_end = segments[seg_idx + 1][0] if seg_idx + 1 < len(segments) else end_time
+
+            combined.set_world_template(seg_template)
+
+            # Find eval points within this segment
+            segment_eval_times = []
+            segment_eval_indices = []
+            while eval_idx < len(eval_times):
+                t = eval_times[eval_idx].item()
+                if t > seg_end or (t == seg_end and seg_idx + 1 < len(segments)):
+                    break
+                if t >= seg_start:
+                    segment_eval_times.append(t)
+                    segment_eval_indices.append(eval_idx)
+                eval_idx += 1
+
+            if not segment_eval_times:
+                continue
+
+            # Build time list for integration
+            times_list = segment_eval_times.copy()
+            if times_list[0] > seg_start:
+                times_list = [seg_start] + times_list
+
+            times_tensor = torch.tensor(times_list)
+            states = odeint(
+                combined, seg_state, times_tensor,
+                method='dopri5', rtol=rtol, atol=atol
+            )
+
+            # Extract states at eval points
+            state_offset = 1 if times_list[0] == seg_start and segment_eval_times[0] > seg_start else 0
+            for i, eval_i in enumerate(segment_eval_indices):
+                state_tensor = states[i + state_offset]
+                t = eval_times[eval_i]
+
+                world = World.from_state_tensor(state_tensor, seg_template)
+                world = combined.set_metric_attributes(t, world)
+                trajectory.append(world)
 
         return SimulationResult(
-            times=times,
+            times=eval_times,
             trajectory=trajectory,
             params=params,
         )

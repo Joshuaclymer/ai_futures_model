@@ -16,6 +16,8 @@ from typing import Dict, Optional, Tuple
 from functools import lru_cache
 import hashlib
 import json
+import os
+from contextlib import contextmanager
 
 # Add new version of takeoff model to path (contains the progress_model package)
 # Path: ai_futures_simulator/ai_futures_simulator/parameters/calibrate.py
@@ -23,6 +25,17 @@ import json
 AI_FUTURES_CALCULATOR_PATH = Path(__file__).resolve().parent.parent.parent / "new_version_of_takeoff_model" / "ai-futures-calculator"
 if str(AI_FUTURES_CALCULATOR_PATH) not in sys.path:
     sys.path.insert(0, str(AI_FUTURES_CALCULATOR_PATH))
+
+
+@contextmanager
+def working_directory(path):
+    """Context manager to temporarily change working directory."""
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(old_cwd)
 
 import numpy as np
 import pandas as pd
@@ -102,6 +115,10 @@ class CalibratedParameters:
     ai_research_taste_slope: float
     coding_automation_efficiency_slope: float
 
+    # Calculated progress_at_aa (anchor point for ai_research_taste formula)
+    # This is computed from the horizon trajectory, not from config
+    progress_at_aa: float
+
     # Initial state at simulation start (2026)
     initial_progress: float
     initial_research_stock: float
@@ -180,20 +197,31 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     )
 
     # Run the old model's calibration by computing a trajectory
-    # Use the simulation start year for calibration - this is critical because
-    # r_software is calibrated based on the human-only trajectory from start_year
+    # IMPORTANT: Always start from 2012 (like the reference app) to ensure we have
+    # data before "present_day" (2025.6). This is required for computing metrics like
+    # ai_sw_progress_mult_ref_present_day which needs present_day_sw_progress_rate.
+    # The initial values at inputs.start_year are extracted later via interpolation.
+    #
+    # NOTE: We change to the ai-futures-calculator directory during calibration so that
+    # benchmark_results.yaml can be found (it's loaded via relative path from cwd).
+    calibration_start_year = min(2012.0, inputs.start_year)
     model = ProgressModel(params, time_series)
-    time_range = [inputs.start_year, 2050.0]
-    times, progress_values, research_stock_values = model.compute_progress_trajectory(
-        time_range, initial_progress=0.0
-    )
+    time_range = [calibration_start_year, 2050.0]
+    with working_directory(AI_FUTURES_CALCULATOR_PATH):
+        times, progress_values, research_stock_values = model.compute_progress_trajectory(
+            time_range, initial_progress=0.0
+        )
 
     # Extract calibrated parameters from the model
     calibrated_params = model.params
 
-    # Get initial state at simulation start (first point in trajectory)
-    initial_progress = float(progress_values[0])
-    initial_research_stock = float(research_stock_values[0])
+    # Get initial state at simulation start via interpolation
+    # (since we now start from 2012, we need to interpolate to inputs.start_year)
+    times_arr = np.array(times)
+    progress_arr = np.array(progress_values)
+    research_stock_arr = np.array(research_stock_values)
+    initial_progress = float(np.interp(inputs.start_year, times_arr, progress_arr))
+    initial_research_stock = float(np.interp(inputs.start_year, times_arr, research_stock_arr))
 
     # Get the horizon_trajectory function from the model (computed during trajectory)
     horizon_trajectory = getattr(model, 'horizon_trajectory', None)
@@ -242,6 +270,10 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
         except Exception as e:
             logger.warning(f"Failed to compute automation fractions: {e}")
 
+    # Get progress_at_aa (calculated from horizon trajectory during compute_progress_trajectory)
+    # Use 100.0 as fallback if not set
+    progress_at_aa = calibrated_params.progress_at_aa if calibrated_params.progress_at_aa is not None else 100.0
+
     result = CalibratedParameters(
         r_software=calibrated_params.r_software,
         rho_experiment_capacity=calibrated_params.rho_experiment_capacity,
@@ -252,6 +284,8 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
         # "per progress-year" to "per progress-unit"
         ai_research_taste_slope=calibrated_params.ai_research_taste_slope,
         coding_automation_efficiency_slope=calibrated_params.coding_automation_efficiency_slope,
+        # progress_at_aa is calculated from horizon trajectory (where horizon reaches AC threshold)
+        progress_at_aa=progress_at_aa,
         initial_progress=initial_progress,
         initial_research_stock=initial_research_stock,
         horizon_trajectory=horizon_trajectory,

@@ -37,7 +37,12 @@ class NamedCoalitions:
 
 @dataclass
 class Nation(Entity):
-    """A nation with compute stock tracking."""
+    """
+    A nation with compute stock tracking.
+
+    Use world_updaters.compute.nation_compute functions for derived values:
+    - get_nation_compute_stock_h100e(nation)
+    """
     leading_ai_software_developer_id: Optional[str] = None
 
     # Compute stock state (H100e TPP in log space for numerical stability)
@@ -48,11 +53,6 @@ class Nation(Entity):
 
     # Energy infrastructure
     total_energy_consumption_gw: float = 0.0
-
-    @property
-    def compute_stock_h100e(self) -> float:
-        """Get compute stock in H100e TPP."""
-        return float(torch.exp(self.log_compute_stock).item())
 
 
 class NamedNations:
@@ -99,6 +99,10 @@ class AIBlackProject(AISoftwareDeveloper):
     - BlackFabs: Covert semiconductor fabrication
     - BlackDatacenters: Covert power infrastructure
     - BlackCompute: Compute stock with attrition
+
+    Use world_updaters.compute.black_compute functions for derived values:
+    - get_black_project_total_labor(project)
+    - get_black_project_operational_compute(project)
     """
     parent_entity_id: Optional[str] = None
 
@@ -118,40 +122,28 @@ class AIBlackProject(AISoftwareDeveloper):
     ai_slowdown_start_year: float = 2030.0
 
     # Detection state
+    # Sampled at initialization from Gamma distribution based on labor
+    sampled_detection_time: float = float('inf')  # Years since ai_slowdown_start_year
+    is_detected: bool = False  # Set to True when current_time >= detection_time
     cumulative_likelihood_ratio: float = 1.0
+    # Continuous detection probability: P(detected by current time) = Gamma.cdf(t, k, θ)
+    # This is differentiable and can be used for backpropagation optimization
+    detection_probability: float = 0.0
 
-    @property
-    def total_labor(self) -> int:
-        """Total labor involved in the black project."""
-        labor = self.researcher_headcount
-        labor += self.human_datacenter_construction_labor
-        if self.datacenters is not None:
-            labor += int(self.datacenters.operating_labor)
-        if self.fab is not None and self.fab.is_operational:
-            labor += self.human_fab_operating_labor
-        else:
-            labor += self.human_fab_construction_labor
-        return labor
+    # Pre-computed labor by year (relative to ai_slowdown_start_year)
+    # Used for composite detection distribution - matches discrete model
+    labor_by_year: Optional[dict] = None
 
-    @property
-    def operational_compute_h100e(self) -> float:
-        """
-        Compute that can actually operate given datacenter capacity.
+    # Pre-computed likelihood ratios by year (relative to ai_slowdown_start_year)
+    # These are sampled once at initialization and reused
+    lr_by_year: Optional[dict] = None
 
-        Limited by min(compute_stock, datacenter_capacity / energy_per_h100e).
-        """
-        if self.compute_stock is None or self.datacenters is None:
-            return 0.0
+    # Sampled US intelligence estimates (sampled once at initialization)
+    # These drive the energy, satellite, and compute stock LR calculations
+    us_estimate_energy_gw: float = 0.0
+    us_estimate_satellite_capacity_gw: float = 0.0
+    us_estimate_compute_stock: float = 0.0
 
-        stock = self.compute_stock.compute_stock_h100e
-        capacity_gw = self.datacenters.total_capacity_gw
-
-        # Energy required per H100e (in GW)
-        # H100 is ~700W, so H100e TPP needs power proportional to efficiency
-        h100_power_gw = 700e-9  # 700W in GW
-        power_per_h100e_gw = h100_power_gw / self.compute_stock.energy_efficiency_relative_to_h100
-
-        # Maximum compute that can be powered
-        max_powered_compute = capacity_gw / power_per_h100e_gw
-
-        return min(stock, max_powered_compute)
+    # Parameters needed for LR calculations (stored from initialization)
+    total_prc_energy_gw: float = 0.0
+    diversion_proportion: float = 0.0

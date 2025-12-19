@@ -32,6 +32,7 @@ class Perceptions:
     probability_of_external_takeover: float = 0.0
 
     # Covert AI project assessments
+    probability_entity_has_covert_AI_project: Dict[str, float] = field(default_factory=dict) # entity_id -> probability
     distribution_over_entity_covert_compute: Dict[str, List[float]] = field(default_factory=dict)
     distribution_over_entity_covert_compute_production_capacity: Dict[str, List[float]] = field(
         default_factory=dict
@@ -39,4 +40,3 @@ class Perceptions:
     distribution_over_entity_covert_frontier_ai_researcher_headcount: Dict[str, List[float]] = (
         field(default_factory=dict)
     )
-    probability_entity_has_covert_AI_project: Dict[str, float] = field(default_factory=dict)

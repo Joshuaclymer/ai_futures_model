@@ -93,7 +93,14 @@ class UnmannedWeaponsFactory(TensorDataclass):
 
 @dataclass
 class BlackFabs(Fabs):
-    """Covert semiconductor fabrication facility for black projects."""
+    """
+    Covert semiconductor fabrication facility for black projects.
+
+    Use world_updaters.compute.black_compute functions for derived values:
+    - get_fab_operational_year(fab)
+    - get_fab_monthly_production_h100e(fab)
+    - get_fab_annual_production_h100e(fab)
+    """
 
     # Whether fab is operational (set by discrete event when construction completes)
     is_operational: bool = False
@@ -112,27 +119,17 @@ class BlackFabs(Fabs):
     lr_inventory: float = 1.0
     lr_procurement: float = 1.0
 
-    @property
-    def operational_year(self) -> float:
-        """Year when fab becomes operational."""
-        return self.construction_start_year + self.construction_duration
-
-    @property
-    def monthly_production_h100e(self) -> float:
-        """Monthly production rate in H100e when operational."""
-        if not self.is_operational:
-            return 0.0
-        return self.wafer_starts_per_month * self.chips_per_wafer * self.h100e_per_chip
-
-    @property
-    def annual_production_h100e(self) -> float:
-        """Annual production rate in H100e when operational."""
-        return self.monthly_production_h100e * 12.0
-
 
 @dataclass
 class BlackDatacenters(Datacenters):
-    """Covert datacenter infrastructure for black projects."""
+    """
+    Covert datacenter infrastructure for black projects.
+
+    Use world_updaters.compute.black_compute functions for derived values:
+    - get_datacenter_concealed_capacity_gw(dc)
+    - get_datacenter_total_capacity_gw(dc)
+    - get_datacenter_operating_labor(dc)
+    """
 
     # Concealed capacity (built for hiding) - continuous state
     log_concealed_capacity_gw: Tensor = field(
@@ -151,21 +148,6 @@ class BlackDatacenters(Datacenters):
     # Operating labor per GW
     operating_labor_per_gw: float = 100.0
 
-    @property
-    def concealed_capacity_gw(self) -> float:
-        """Get concealed capacity in GW."""
-        return float(torch.exp(self.log_concealed_capacity_gw).item())
-
-    @property
-    def total_capacity_gw(self) -> float:
-        """Total covert datacenter capacity (concealed + unconcealed)."""
-        return self.concealed_capacity_gw + self.unconcealed_capacity_gw
-
-    @property
-    def operating_labor(self) -> float:
-        """Operating labor required for current capacity."""
-        return self.total_capacity_gw * self.operating_labor_per_gw
-
 
 @dataclass
 class BlackCompute(Compute):
@@ -174,6 +156,10 @@ class BlackCompute(Compute):
 
     Models compute stock with continuous hazard-based attrition.
     Stock dynamics: d(S)/dt = production - hazard * S
+
+    Use world_updaters.compute.black_compute functions for derived values:
+    - get_compute_stock_h100e(compute)
+    - get_current_hazard_rate(compute)
     """
 
     # Log of compute stock for numerical stability
@@ -192,12 +178,3 @@ class BlackCompute(Compute):
 
     # Energy efficiency relative to H100 (for power calculations)
     energy_efficiency_relative_to_h100: float = 0.2
-
-    @property
-    def compute_stock_h100e(self) -> float:
-        """Get current compute stock in H100e TPP."""
-        return float(torch.exp(self.log_compute_stock).item())
-
-    def current_hazard_rate(self) -> float:
-        """Calculate current hazard rate based on average age."""
-        return self.initial_hazard_rate + self.hazard_rate_increase_per_year * self.average_age_years

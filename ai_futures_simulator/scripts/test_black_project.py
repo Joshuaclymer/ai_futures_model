@@ -25,7 +25,16 @@ from classes.world.assets import Compute
 from classes.world.software_progress import AISoftwareProgress
 from classes.world.policies import AIPolicy
 from parameters.simulation_parameters import ModelParameters
-from world_updaters.nation_compute import NationComputeUpdater, NationComputeConfig
+from world_updaters.compute import (
+    NationComputeUpdater,
+    NationComputeConfig,
+    get_nation_compute_stock_h100e,
+    get_compute_stock_h100e,
+    get_datacenter_concealed_capacity_gw,
+    get_datacenter_total_capacity_gw,
+    get_fab_operational_year,
+    get_fab_annual_production_h100e,
+)
 from world_updaters.black_project import BlackProjectUpdater, initialize_black_project
 from classes.simulation_primitives import StateDerivative
 
@@ -141,8 +150,8 @@ def test_nation_compute_growth():
 
     world, prc_stock = create_minimal_world(2030.0)
 
-    print(f"Initial PRC compute stock: {world.nations[NamedNations.PRC].compute_stock_h100e:.2f} H100e")
-    print(f"Initial USA compute stock: {world.nations[NamedNations.USA].compute_stock_h100e:.2f} H100e")
+    print(f"Initial PRC compute stock: {get_nation_compute_stock_h100e(world.nations[NamedNations.PRC]):.2f} H100e")
+    print(f"Initial USA compute stock: {get_nation_compute_stock_h100e(world.nations[NamedNations.USA]):.2f} H100e")
 
     # Create updater (using None for params since we don't need them for this test)
     class MockParams:
@@ -193,7 +202,7 @@ def test_black_project_initialization():
 
     print(f"Black project initialized:")
     print(f"  - AI slowdown start year: {project.ai_slowdown_start_year}")
-    print(f"  - Initial compute stock: {project.compute_stock.compute_stock_h100e:.2f} H100e")
+    print(f"  - Initial compute stock: {get_compute_stock_h100e(project.compute_stock):.2f} H100e")
     print(f"  - Diverted proportion: {params.properties.proportion_of_initial_compute_stock_to_divert}")
     print(f"  - Expected diverted: {prc_stock * params.properties.proportion_of_initial_compute_stock_to_divert:.2f} H100e")
 
@@ -202,15 +211,15 @@ def test_black_project_initialization():
         print(f"  - Fab process node: {project.fab.process_node_nm}nm")
         print(f"  - Fab construction start: {project.fab.construction_start_year}")
         print(f"  - Fab construction duration: {project.fab.construction_duration:.2f} years")
-        print(f"  - Fab operational year: {project.fab.operational_year:.2f}")
+        print(f"  - Fab operational year: {get_fab_operational_year(project.fab):.2f}")
         print(f"  - Fab is operational: {project.fab.is_operational}")
         assert not project.fab.is_operational, "Fab should not be operational at agreement year"
 
     # Check datacenters
     if project.datacenters is not None:
-        print(f"  - Datacenter concealed capacity: {project.datacenters.concealed_capacity_gw:.4f} GW")
+        print(f"  - Datacenter concealed capacity: {get_datacenter_concealed_capacity_gw(project.datacenters):.4f} GW")
         print(f"  - Datacenter unconcealed capacity: {project.datacenters.unconcealed_capacity_gw:.4f} GW")
-        print(f"  - Datacenter total capacity: {project.datacenters.total_capacity_gw:.4f} GW")
+        print(f"  - Datacenter total capacity: {get_datacenter_total_capacity_gw(project.datacenters):.4f} GW")
         print(f"  - Datacenter max capacity: {project.datacenters.max_total_capacity_gw:.2f} GW")
 
     print("PASSED: Black project initialization works correctly")
@@ -259,8 +268,9 @@ def test_black_project_dynamics():
         print("  - Compute stock decreasing (attrition only, no fab production yet)")
 
     # Test dynamics after fab becomes operational
-    print(f"\nAfter fab becomes operational ({project.fab.operational_year}):")
-    t_after = torch.tensor(project.fab.operational_year + 0.1)
+    fab_op_year = get_fab_operational_year(project.fab)
+    print(f"\nAfter fab becomes operational ({fab_op_year}):")
+    t_after = torch.tensor(fab_op_year + 0.1)
 
     # Apply discrete state change
     result = updater.set_state_attributes(t_after, world)
@@ -277,7 +287,7 @@ def test_black_project_dynamics():
 
     if world.black_projects['prc_black_project'].fab.is_operational:
         # With fab production, stock might be increasing
-        annual_production = world.black_projects['prc_black_project'].fab.annual_production_h100e
+        annual_production = get_fab_annual_production_h100e(world.black_projects['prc_black_project'].fab)
         print(f"  - Annual fab production: {annual_production:.2f} H100e")
 
     print("PASSED: Black project dynamics work correctly")
@@ -374,6 +384,53 @@ def test_state_tensor_roundtrip():
     print("PASSED: State tensor roundtrip works correctly")
 
 
+def test_detection_likelihood_ratio():
+    """Test that detection likelihood ratio is computed correctly."""
+    print("\n=== Testing Detection Likelihood Ratio ===")
+
+    world, prc_stock = create_minimal_world(2030.0)
+    params = get_black_project_params()
+    policy_params = get_policy_params()
+    compute_growth_params = get_compute_growth_params()
+    energy_consumption_params = get_energy_consumption_params()
+
+    # Initialize black project
+    project = initialize_black_project(
+        project_id="prc_black_project",
+        ai_slowdown_start_year=policy_params.ai_slowdown_start_year,
+        prc_compute_stock=prc_stock,
+        params=params,
+        compute_growth_params=compute_growth_params,
+        energy_consumption_params=energy_consumption_params,
+    )
+    world.black_projects["prc_black_project"] = project
+
+    print(f"  - Sampled detection time: {project.sampled_detection_time:.2f} years since start")
+    print(f"  - Is detected: {project.is_detected}")
+    print(f"  - Initial cumulative LR: {project.cumulative_likelihood_ratio:.4f}")
+
+    # Create updater
+    class MockParams:
+        pass
+    updater = BlackProjectUpdater(MockParams(), params)
+
+    # Test likelihood ratio at different times
+    for years_after in [0, 2, 5, 10]:
+        t = torch.tensor(policy_params.ai_slowdown_start_year + years_after)
+        world = updater.set_metric_attributes(t, world)
+        result = updater.set_state_attributes(t, world)
+        if result is not None:
+            world = result
+
+        project = world.black_projects["prc_black_project"]
+        print(f"  - At year {t.item():.0f} (t+{years_after}): LR={project.cumulative_likelihood_ratio:.4f}, detected={project.is_detected}")
+
+    # Verify LR changes over time (should decrease before detection, jump to high value after)
+    assert project.cumulative_likelihood_ratio > 0, "LR should be positive"
+
+    print("PASSED: Detection likelihood ratio works correctly")
+
+
 if __name__ == "__main__":
     print("=" * 60)
     print("BLACK PROJECT SIMULATION TESTS")
@@ -385,6 +442,7 @@ if __name__ == "__main__":
         test_black_project_dynamics()
         test_full_simulation_step()
         test_state_tensor_roundtrip()
+        test_detection_likelihood_ratio()
 
         print("\n" + "=" * 60)
         print("ALL TESTS PASSED!")

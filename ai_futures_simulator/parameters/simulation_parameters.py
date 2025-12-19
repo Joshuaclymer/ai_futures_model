@@ -34,6 +34,7 @@ from parameters.black_project_parameters import (
     BlackDatacenterParameters,
     DetectionParameters,
 )
+from parameters.perceptions_parameters import PerceptionsParameters
 
 
 @dataclass
@@ -42,6 +43,10 @@ class SimulationSettings:
     simulation_start_year: int
     simulation_end_year: float
     n_eval_points: int
+    # ODE solver settings (optional - defaults are set in ai_futures_simulator.py)
+    ode_rtol: float = 1e-3  # Relative tolerance
+    ode_atol: float = 1e-5  # Absolute tolerance
+    ode_max_step: float = 1.0  # Maximum step size in years
 
 
 # =============================================================================
@@ -70,6 +75,7 @@ class SimulationParameters:
     energy_consumption: EnergyConsumptionParameters
     policy: PolicyParameters
     black_project: Optional[BlackProjectParameterSet] = None
+    perceptions: Optional[PerceptionsParameters] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert parameters to a dictionary for serialization."""
@@ -88,6 +94,9 @@ class SimulationParameters:
                 "datacenter": self.black_project.datacenter_params.__dict__,
                 "detection": self.black_project.detection_params.__dict__,
             }
+        # Add perceptions parameters if present
+        if self.perceptions:
+            result["perceptions"] = self.perceptions.__dict__
         return result
 
     @property
@@ -148,6 +157,7 @@ class ModelParameters:
     energy_consumption: Dict[str, Any] = field(default_factory=dict)
     policy: Dict[str, Any] = field(default_factory=dict)
     black_project: Optional[Dict[str, Any]] = None
+    perceptions: Optional[Dict[str, Any]] = None
 
     # Correlation matrix specification (optional)
     correlation_matrix: Optional[Dict[str, Any]] = None
@@ -175,6 +185,7 @@ class ModelParameters:
             energy_consumption=config.get("energy_consumption", {}),
             policy=config.get("policy", {}),
             black_project=config.get("black_project"),
+            perceptions=config.get("perceptions"),
             correlation_matrix=config.get("correlation_matrix"),
             seed=config.get("seed", 42),
             initial_progress=config.get("initial_progress", 0.0),
@@ -260,6 +271,12 @@ class ModelParameters:
                 detection_params=DetectionParameters(**sampled_bp.get("detection", {})),
             )
 
+        # Build perceptions parameters if present
+        perceptions = None
+        if self.perceptions is not None:
+            sampled_perceptions = self._sample_nested_dict(self.perceptions, rng)
+            perceptions = PerceptionsParameters(**sampled_perceptions)
+
         return SimulationParameters(
             settings=settings,
             software_r_and_d=software_r_and_d,
@@ -267,6 +284,7 @@ class ModelParameters:
             energy_consumption=energy_consumption,
             policy=policy,
             black_project=black_project,
+            perceptions=perceptions,
         )
 
     def sample_many(

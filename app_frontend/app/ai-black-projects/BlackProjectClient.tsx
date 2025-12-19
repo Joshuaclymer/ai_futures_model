@@ -65,7 +65,7 @@ function Slider({
   );
 }
 
-// Collapsible section component
+// Collapsible section component - matching timelines page styling
 function CollapsibleSection({
   title,
   children,
@@ -76,9 +76,9 @@ function CollapsibleSection({
   defaultOpen?: boolean;
 }) {
   return (
-    <details className="bp-collapsible" open={defaultOpen}>
-      <summary>{title}</summary>
-      <div className="bp-collapsible-content">{children}</div>
+    <details className="mb-3 pt-1 rounded-none !m-0 !px-0 border-t border-b-0 border-l-0 border-r-0 border-gray-300" open={defaultOpen}>
+      <summary className="text-[11px] font-bold cursor-pointer py-0.5">{title}</summary>
+      <div className="mt-2">{children}</div>
     </details>
   );
 }
@@ -370,10 +370,10 @@ export function BlackProjectClient({ initialData, hideHeader = false }: BlackPro
 
           {/* Sidebar Content */}
           <div className="bp-sidebar-content">
-            {/* Status indicator - only show when loading or error */}
-            {(isLoading || error) && (
-              <div className={`bp-status ${error ? 'error' : 'info'} mb-2`}>
-                {isLoading ? 'Updating...' : error ? status : ''}
+            {/* Status indicator - only show errors */}
+            {error && (
+              <div className="bp-status error mb-2">
+                {status}
               </div>
             )}
 
@@ -577,132 +577,119 @@ export function BlackProjectClient({ initialData, hideHeader = false }: BlackPro
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto p-6 lg:ml-[260px]">
-          {isLoading && (
-            <div className="flex items-center justify-center py-20">
-              <div className="flex flex-col items-center gap-4">
-                <div className="bp-loading-spinner" />
-                <span className="text-sm text-gray-500">Running simulation...</span>
-              </div>
-            </div>
-          )}
-
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
               {error}
             </div>
           )}
 
-          {!isLoading && data && (
-            <div className="space-y-8">
-              {/* Title and description */}
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
-                  Dark compute model
-                </h1>
-                <p className="text-gray-600">
-                  This is a model of how much compute a covert AI project might operate if the PRC cheats an AI slowdown agreement.
-                  Predictions assume an agreement goes into force in{' '}
-                  <span className="font-semibold text-[#5E6FB8]">{parameters.agreementYear}</span>.
-                </p>
-              </div>
-
-              {/* Dashboard and top plots */}
-              <div className="flex flex-wrap gap-5">
-                {/* Dashboard */}
-                <div className="bp-dashboard w-60 flex-shrink-0">
-                  <div className="bp-plot-title">Median outcome</div>
-                  <div className="space-y-4 mt-4">
-                    <div className="bp-dashboard-item">
-                      <div className="bp-dashboard-value">{dashboardValues.medianH100Years}</div>
-                      <div className="bp-dashboard-label">Covert computation*</div>
-                    </div>
-                    <div className="bp-dashboard-item">
-                      <div className="bp-dashboard-value">{dashboardValues.medianTimeToDetection}</div>
-                      <div className="bp-dashboard-label">Time to detection*</div>
-                    </div>
-                    <div className="bp-dashboard-item">
-                      <div className="bp-dashboard-value">{dashboardValues.aiRdReduction}</div>
-                      <div className="bp-dashboard-label">Reduction in AI R&D computation of largest company*</div>
-                    </div>
-                    <div className="bp-dashboard-item">
-                      <div className="bp-dashboard-value">{dashboardValues.chipsProduced}</div>
-                      <div className="bp-dashboard-label">Chips covertly produced*</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Covert Compute CCDF */}
-                <div className="bp-plot-container flex-1 min-w-[300px]">
-                  <div className="bp-plot-title">Covert compute</div>
-                  <CCDFPlot
-                    data={data.black_project_model?.h100_years_before_detection?.ccdf}
-                    color={COLOR_PALETTE.chip_stock}
-                    xLabel="H100-years"
-                    yLabel="P(X > x)"
-                  />
-                </div>
-
-                {/* Time to Detection CCDF */}
-                <div className="bp-plot-container flex-1 min-w-[300px]">
-                  <div className="bp-plot-title">Time to detection (after which agreement ends)</div>
-                  <CCDFPlot
-                    data={data.black_project_model?.time_to_detection?.ccdf}
-                    color={COLOR_PALETTE.detection}
-                    xLabel="Years"
-                    yLabel="P(X > x)"
-                  />
-                </div>
-              </div>
-
-              {/* Second row of plots */}
-              <div className="flex flex-wrap gap-5">
-                {/* AI R&D Reduction CCDF */}
-                <div className="bp-plot-container flex-1 min-w-[300px]">
-                  <div className="bp-plot-title">Covert AI R&D computation relative to no slowdown*</div>
-                  <CCDFPlot
-                    data={data.black_project_model?.ai_rd_reduction?.ccdf}
-                    color={COLOR_PALETTE.fab}
-                    xLabel="Reduction"
-                    yLabel="P(X > x)"
-                    xAsPercent
-                  />
-                </div>
-
-                {/* Dark Compute Over Time */}
-                {data.black_project_model?.years && data.black_project_model?.total_dark_compute && (
-                  <div className="bp-plot-container flex-1 min-w-[300px]">
-                    <div className="bp-plot-title">Total dark compute over time</div>
-                    <TimeSeriesPlot
-                      years={data.black_project_model.years}
-                      median={data.black_project_model.total_dark_compute.median}
-                      p25={data.black_project_model.total_dark_compute.p25}
-                      p75={data.black_project_model.total_dark_compute.p75}
-                      color={COLOR_PALETTE.chip_stock}
-                      yLabel="H100-equivalents"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <p className="text-xs text-gray-500 italic mt-4">
-                *Unless otherwise specified, US intelligence &apos;detects&apos; a covert project after it receives &gt;4x update that the project exists, after which, USG exits the AI slowdown agreement.
+          <div className="space-y-8">
+            {/* Title and description */}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
+                Dark compute model
+              </h1>
+              <p className="text-gray-600">
+                This is a model of how much compute a covert AI project might operate if the PRC cheats an AI slowdown agreement.
+                Predictions assume an agreement goes into force in{' '}
+                <span className="font-semibold text-[#5E6FB8]">{parameters.agreementYear}</span>.
               </p>
+            </div>
 
-              {/* Debug data display */}
+            {/* Dashboard and top plots */}
+            <div className="flex flex-wrap gap-5">
+              {/* Dashboard */}
+              <div className="bp-dashboard w-60 flex-shrink-0">
+                <div className="bp-plot-title">Median outcome</div>
+                <div className="space-y-4 mt-4">
+                  <div className="bp-dashboard-item">
+                    <div className="bp-dashboard-value">{dashboardValues.medianH100Years}</div>
+                    <div className="bp-dashboard-label">Covert computation*</div>
+                  </div>
+                  <div className="bp-dashboard-item">
+                    <div className="bp-dashboard-value">{dashboardValues.medianTimeToDetection}</div>
+                    <div className="bp-dashboard-label">Time to detection*</div>
+                  </div>
+                  <div className="bp-dashboard-item">
+                    <div className="bp-dashboard-value">{dashboardValues.aiRdReduction}</div>
+                    <div className="bp-dashboard-label">Reduction in AI R&D computation of largest company*</div>
+                  </div>
+                  <div className="bp-dashboard-item">
+                    <div className="bp-dashboard-value">{dashboardValues.chipsProduced}</div>
+                    <div className="bp-dashboard-label">Chips covertly produced*</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Covert Compute CCDF */}
+              <div className="bp-plot-container flex-1 min-w-[300px]">
+                <div className="bp-plot-title">Covert compute</div>
+                <CCDFPlot
+                  data={data?.black_project_model?.h100_years_before_detection?.ccdf}
+                  color={COLOR_PALETTE.chip_stock}
+                  xLabel="H100-years"
+                  yLabel="P(X > x)"
+                  isLoading={isLoading}
+                />
+              </div>
+
+              {/* Time to Detection CCDF */}
+              <div className="bp-plot-container flex-1 min-w-[300px]">
+                <div className="bp-plot-title">Time to detection (after which agreement ends)</div>
+                <CCDFPlot
+                  data={data?.black_project_model?.time_to_detection?.ccdf}
+                  color={COLOR_PALETTE.detection}
+                  xLabel="Years"
+                  yLabel="P(X > x)"
+                  isLoading={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Second row of plots */}
+            <div className="flex flex-wrap gap-5">
+              {/* AI R&D Reduction CCDF */}
+              <div className="bp-plot-container flex-1 min-w-[300px]">
+                <div className="bp-plot-title">Covert AI R&D computation relative to no slowdown*</div>
+                <CCDFPlot
+                  data={data?.black_project_model?.ai_rd_reduction?.ccdf}
+                  color={COLOR_PALETTE.fab}
+                  xLabel="Reduction"
+                  yLabel="P(X > x)"
+                  xAsPercent
+                  isLoading={isLoading}
+                />
+              </div>
+
+              {/* Dark Compute Over Time */}
+              <div className="bp-plot-container flex-1 min-w-[300px]">
+                <div className="bp-plot-title">Total dark compute over time</div>
+                <TimeSeriesPlot
+                  years={data?.black_project_model?.years}
+                  median={data?.black_project_model?.total_dark_compute?.median}
+                  p25={data?.black_project_model?.total_dark_compute?.p25}
+                  p75={data?.black_project_model?.total_dark_compute?.p75}
+                  color={COLOR_PALETTE.chip_stock}
+                  yLabel="H100-equivalents"
+                  isLoading={isLoading}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500 italic mt-4">
+              *Unless otherwise specified, US intelligence &apos;detects&apos; a covert project after it receives &gt;4x update that the project exists, after which, USG exits the AI slowdown agreement.
+            </p>
+
+            {/* Debug data display */}
+            {data && (
               <details className="mt-8">
                 <summary className="cursor-pointer text-sm text-gray-500">View raw data</summary>
                 <pre className="mt-2 p-4 bg-gray-50 rounded text-xs overflow-auto max-h-96">
                   {JSON.stringify(data, null, 2).slice(0, 5000)}...
                 </pre>
               </details>
-            </div>
-          )}
-
-          {!isLoading && !data && !error && (
-            <div className="text-center py-20">
-              <p className="text-gray-500">Waiting for simulation data...</p>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
     </div>
@@ -716,9 +703,21 @@ interface CCDFPlotProps {
   xLabel: string;
   yLabel: string;
   xAsPercent?: boolean;
+  isLoading?: boolean;
 }
 
-function CCDFPlot({ data, color, xLabel, yLabel, xAsPercent }: CCDFPlotProps) {
+function CCDFPlot({ data, color, xLabel, yLabel, xAsPercent, isLoading }: CCDFPlotProps) {
+  if (isLoading) {
+    return (
+      <div className="bp-plot flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 border-3 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+          <span className="text-xs text-gray-400">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!data || data.length === 0) {
     return (
       <div className="bp-plot flex items-center justify-center text-gray-400 text-sm">
@@ -765,15 +764,35 @@ function CCDFPlot({ data, color, xLabel, yLabel, xAsPercent }: CCDFPlotProps) {
 
 // Time Series Plot component
 interface TimeSeriesPlotProps {
-  years: number[];
-  median: number[];
+  years?: number[];
+  median?: number[];
   p25?: number[];
   p75?: number[];
   color: string;
   yLabel: string;
+  isLoading?: boolean;
 }
 
-function TimeSeriesPlot({ years, median, p25, p75, color, yLabel }: TimeSeriesPlotProps) {
+function TimeSeriesPlot({ years, median, p25, p75, color, yLabel, isLoading }: TimeSeriesPlotProps) {
+  if (isLoading) {
+    return (
+      <div className="bp-plot flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 border-3 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+          <span className="text-xs text-gray-400">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!years || !median || years.length === 0) {
+    return (
+      <div className="bp-plot flex items-center justify-center text-gray-400 text-sm">
+        No data available
+      </div>
+    );
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const traces: any[] = [];
 

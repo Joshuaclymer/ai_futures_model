@@ -129,6 +129,10 @@ class DetectionParameters:
     mean_detection_time_for_1000_workers: float
     variance_of_detection_time_given_num_workers: float
 
+    # Likelihood ratio threshold for detection
+    # When cumulative_likelihood_ratio exceeds this, the project is considered detected
+    detection_threshold: float
+
 
 @dataclass
 class BlackProjectProperties:

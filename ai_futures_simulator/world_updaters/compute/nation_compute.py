@@ -7,12 +7,24 @@ Updates compute stock for nations (US, PRC, etc.) using continuous growth dynami
 import math
 import torch
 from torch import Tensor
-from typing import Dict
+from typing import Dict, TYPE_CHECKING
 
 from classes.world.world import World
 from classes.world.entities import NamedNations
 from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.simulation_parameters import SimulationParameters
+
+if TYPE_CHECKING:
+    from classes.world.entities import Nation
+
+
+# =============================================================================
+# NATION UTILITY FUNCTIONS
+# =============================================================================
+
+def get_nation_compute_stock_h100e(nation: "Nation") -> float:
+    """Get compute stock in H100e TPP for a nation."""
+    return float(torch.exp(nation.log_compute_stock).item())
 
 
 class NationComputeUpdater(WorldUpdater):

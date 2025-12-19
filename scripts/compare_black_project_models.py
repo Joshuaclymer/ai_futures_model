@@ -66,6 +66,12 @@ class ComparisonConfig:
     # Fab settings (disabled for simplicity in first comparison)
     build_fab: bool = False
 
+    # Detection parameters
+    researcher_headcount: int = 500
+    mean_detection_time_100_workers: float = 6.95
+    mean_detection_time_1000_workers: float = 3.42
+    variance_of_detection_time: float = 3.88
+
 
 def run_discrete_model(config: ComparisonConfig) -> dict:
     """Run the black_project_backend (discrete) model."""
@@ -86,7 +92,7 @@ def run_discrete_model(config: ComparisonConfig) -> dict:
         max_proportion_of_PRC_energy_consumption=config.max_proportion_prc_energy,
         fraction_of_datacenter_capacity_not_built_for_concealment_diverted_to_black_project_at_agreement_start=0.0,
         build_a_black_fab=config.build_fab,
-        researcher_headcount=500,
+        researcher_headcount=config.researcher_headcount,
     )
 
     bp_params = DiscreteBlackProjectParameters(
@@ -103,7 +109,11 @@ def run_discrete_model(config: ComparisonConfig) -> dict:
             relative_sigma_operating_labor_per_MW=0.0,  # Disable sampling
         ),
         black_fab_parameters=DiscreteBlackFabParameters(),
-        detection_parameters=DiscreteDetectionParameters(),
+        detection_parameters=DiscreteDetectionParameters(
+            mean_detection_time_for_100_workers=config.mean_detection_time_100_workers,
+            mean_detection_time_for_1000_workers=config.mean_detection_time_1000_workers,
+            variance_of_detection_time_given_num_workers=config.variance_of_detection_time,
+        ),
         exogenous_trends=DiscreteExogenousTrends(
             total_prc_compute_stock_in_2025=config.prc_compute_stock_at_agreement / (2.2 ** (config.agreement_year - 2025)),
             annual_growth_rate_of_prc_compute_stock_p10=2.2,  # Fixed growth rate
@@ -135,6 +145,7 @@ def run_discrete_model(config: ComparisonConfig) -> dict:
 
     compute_stock = []
     datacenter_capacity = []
+    cumulative_lr = []
 
     for year in years:
         # Surviving compute at this year
@@ -145,10 +156,19 @@ def run_discrete_model(config: ComparisonConfig) -> dict:
         dc_cap = project.black_datacenters.get_covert_GW_capacity_total(year)
         datacenter_capacity.append(dc_cap)
 
+        # Cumulative likelihood ratio (from fab if it exists, otherwise from datacenter workers)
+        if project.black_fab is not None:
+            lr = project.black_fab.cumulative_detection_likelihood_ratio(year)
+        else:
+            # Use datacenter worker-based detection
+            lr = project.black_datacenters.cumulative_lr_from_direct_observation(year)
+        cumulative_lr.append(lr)
+
     return {
         'years': years,
         'compute_stock': np.array(compute_stock),
         'datacenter_capacity': np.array(datacenter_capacity),
+        'cumulative_lr': np.array(cumulative_lr),
         'initial_compute': project.black_project_stock.initial_prc_black_project,
     }
 
@@ -346,6 +366,76 @@ def run_analytical_model(config: ComparisonConfig) -> dict:
     }
 
 
+def run_continuous_likelihood_ratio(config: ComparisonConfig, use_sampled_detection: bool = False) -> dict:
+    """
+    Compute likelihood ratio using the ai_futures_simulator's detection utilities.
+
+    Args:
+        config: Comparison configuration
+        use_sampled_detection: If True, sample a detection time and use binary detection.
+                              If False, use pure survival function (no detection event).
+    """
+    from scipy import stats
+
+    # Compute detection constants: mu(workers) = A / log10(workers)^B
+    x1, mu1 = 100, config.mean_detection_time_100_workers
+    x2, mu2 = 1000, config.mean_detection_time_1000_workers
+    B = np.log(mu1 / mu2) / np.log(np.log10(x2) / np.log10(x1))
+    A = mu1 * (np.log10(x1) ** B)
+
+    # Total labor (researchers + datacenter construction labor)
+    total_labor = config.researcher_headcount + config.datacenter_construction_labor
+
+    # Calculate mean detection time for this labor level
+    mu = A / (np.log10(total_labor) ** B)
+    k = mu / config.variance_of_detection_time  # shape parameter
+    theta = config.variance_of_detection_time  # scale parameter
+
+    # Sample detection time if requested
+    if use_sampled_detection:
+        sampled_detection_time = np.random.gamma(k, theta)
+    else:
+        sampled_detection_time = float('inf')  # Never detected
+
+    years = np.arange(
+        config.agreement_year,
+        config.agreement_year + config.num_years + config.time_step,
+        config.time_step
+    )
+
+    cumulative_lr = []
+    is_detected_list = []
+
+    for year in years:
+        years_since_start = year - config.agreement_year
+
+        # Check if detected
+        is_detected = years_since_start >= sampled_detection_time
+
+        if is_detected:
+            lr = 100.0  # Strong evidence project exists
+        elif years_since_start <= 0:
+            lr = 1.0  # Neutral at start
+        else:
+            # Survival function: P(T > t | project exists)
+            # LR = P(not detected | project) / P(not detected | no project)
+            #    = gamma.sf(t) / 1.0
+            lr = stats.gamma.sf(years_since_start, a=k, scale=theta)
+            lr = max(lr, 0.001)  # Floor
+
+        cumulative_lr.append(lr)
+        is_detected_list.append(is_detected)
+
+    return {
+        'years': years,
+        'cumulative_lr': np.array(cumulative_lr),
+        'is_detected': np.array(is_detected_list),
+        'sampled_detection_time': sampled_detection_time,
+        'total_labor': total_labor,
+        'mean_detection_time': mu,
+    }
+
+
 def compare_models():
     """Compare the two models and plot results."""
 
@@ -371,6 +461,14 @@ def compare_models():
 
     print("Computing analytical solution...")
     analytical_results = run_analytical_model(config)
+
+    print("Computing continuous likelihood ratio (no sampled detection)...")
+    continuous_lr_no_detection = run_continuous_likelihood_ratio(config, use_sampled_detection=False)
+
+    print("Computing continuous likelihood ratio (with sampled detection)...")
+    # Use same random seed as discrete model for fair comparison
+    np.random.seed(42)
+    continuous_lr_with_detection = run_continuous_likelihood_ratio(config, use_sampled_detection=True)
 
     # Print comparison
     print("\n" + "="*60)
@@ -410,6 +508,31 @@ def compare_models():
     print(f"\nExpected survival rate (analytical):")
     print(f"  exp(-H0*t - k*t^2/2) = {analytical_survival * 100:.2f}%")
 
+    # Likelihood ratio comparison
+    print(f"\n" + "="*60)
+    print("LIKELIHOOD RATIO COMPARISON")
+    print("="*60)
+
+    print(f"\nDetection parameters:")
+    print(f"  Total labor: {continuous_lr_no_detection['total_labor']}")
+    print(f"  Mean detection time: {continuous_lr_no_detection['mean_detection_time']:.2f} years")
+    print(f"  Sampled detection time (continuous): {continuous_lr_with_detection['sampled_detection_time']:.2f} years")
+
+    print(f"\nLikelihood ratio at selected years:")
+    for year_offset in [0, 2, 5, 7]:
+        year = config.agreement_year + year_offset
+        idx = int(year_offset / config.time_step)
+        if idx < len(discrete_results['cumulative_lr']):
+            discrete_lr = discrete_results['cumulative_lr'][idx]
+            continuous_lr_nd = continuous_lr_no_detection['cumulative_lr'][idx]
+            continuous_lr_wd = continuous_lr_with_detection['cumulative_lr'][idx]
+            is_detected = continuous_lr_with_detection['is_detected'][idx]
+
+            print(f"  Year {year:.0f} (t+{year_offset}):")
+            print(f"    Discrete:                   {discrete_lr:.4f}")
+            print(f"    Continuous (no detection):  {continuous_lr_nd:.4f}")
+            print(f"    Continuous (w/ detection):  {continuous_lr_wd:.4f} (detected={is_detected})")
+
     print(f"\n" + "="*60)
     print("BUG IDENTIFIED")
     print("="*60)
@@ -432,7 +555,7 @@ For the general case (with fab production):
 """)
 
     # Plot comparison
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
     # Compute stock over time
     ax1 = axes[0, 0]
@@ -493,6 +616,36 @@ For the general case (with fab production):
     ax4.set_title('Compute Stock (Log Scale)')
     ax4.legend()
     ax4.grid(True, alpha=0.3)
+
+    # Likelihood ratio over time
+    ax5 = axes[0, 2]
+    ax5.semilogy(discrete_results['years'], discrete_results['cumulative_lr'],
+                 'b-', linewidth=2, label='Discrete (backend)')
+    ax5.semilogy(continuous_lr_no_detection['years'], continuous_lr_no_detection['cumulative_lr'],
+                 'g--', linewidth=2, label='Continuous (survival fn)')
+    ax5.semilogy(continuous_lr_with_detection['years'], continuous_lr_with_detection['cumulative_lr'],
+                 'r-.', linewidth=2, label='Continuous (w/ detection)')
+    ax5.set_xlabel('Year')
+    ax5.set_ylabel('Cumulative Likelihood Ratio (log scale)')
+    ax5.set_title('Detection Likelihood Ratio')
+    ax5.legend()
+    ax5.grid(True, alpha=0.3)
+    ax5.axhline(y=1, color='k', linestyle=':', alpha=0.5, label='LR=1 (neutral)')
+
+    # Likelihood ratio difference
+    ax6 = axes[1, 2]
+    min_len = min(len(discrete_results['cumulative_lr']), len(continuous_lr_no_detection['cumulative_lr']))
+    # Use relative difference where both are > 0
+    mask = (discrete_results['cumulative_lr'][:min_len] > 0.001) & (continuous_lr_no_detection['cumulative_lr'][:min_len] > 0.001)
+    diff_lr = np.zeros(min_len)
+    diff_lr[mask] = (discrete_results['cumulative_lr'][:min_len][mask] - continuous_lr_no_detection['cumulative_lr'][:min_len][mask]) / discrete_results['cumulative_lr'][:min_len][mask] * 100
+    ax6.plot(discrete_results['years'][:min_len], diff_lr, 'g-', linewidth=2, label='Survival fn')
+    ax6.set_xlabel('Year')
+    ax6.set_ylabel('Relative Difference (%)')
+    ax6.set_title('LR Error: (Discrete - Continuous) / Discrete')
+    ax6.axhline(y=0, color='k', linestyle='--', alpha=0.5)
+    ax6.legend()
+    ax6.grid(True, alpha=0.3)
 
     plt.tight_layout()
     output_path = '/Users/joshuaclymer/github/ai_futures_simulator/scripts/black_project_comparison.png'

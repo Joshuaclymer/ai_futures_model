@@ -50,6 +50,7 @@ class AISoftwareProgress(TensorDataclass):
     software_efficiency: Optional[Tensor] = None  # progress - initial_progress - training_compute
     serial_coding_labor_multiplier: Optional[Tensor] = None  # serial_coding_labor / human_only_serial_coding_labor
     training_compute: Optional[Tensor] = None  # Cumulative training compute contribution
+    training_compute_growth_rate: Optional[Tensor] = None  # Input time series: training compute OOMs/year
 
 
 @dataclass
