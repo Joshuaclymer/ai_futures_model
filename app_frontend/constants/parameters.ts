@@ -45,7 +45,7 @@ export interface ParametersType {
     strat_ai_m2b: number;
     ted_ai_m2b: number;
     optimal_ces_eta_init: number;
-    constant_training_compute_growth_rate: number;
+    us_frontier_project_compute_growth_rate: number;
     slowdown_year: number;
     post_slowdown_training_compute_growth_rate: number;
 }

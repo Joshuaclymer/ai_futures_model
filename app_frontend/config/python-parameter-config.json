@@ -66,7 +66,7 @@
     "blacksite_can_stack_training_compute": false,
     "blacksite_can_stack_software_progress": false,
     "blacksite_start_time": 2030.0,
-    "constant_training_compute_growth_rate": 0.6,
+    "us_frontier_project_compute_growth_rate": 0.6,
     "slowdown_year": 2028.0,
     "post_slowdown_training_compute_growth_rate": 0.25
   },
@@ -259,7 +259,7 @@
       2025.0,
       2040.0
     ],
-    "constant_training_compute_growth_rate": [
+    "us_frontier_project_compute_growth_rate": [
       0.0,
       2.0
     ],
@@ -326,7 +326,7 @@
     "strat_ai_m2b": 2.0,
     "ted_ai_m2b": 3.0,
     "optimal_ces_eta_init": 0.05,
-    "constant_training_compute_growth_rate": 0.6,
+    "us_frontier_project_compute_growth_rate": 0.6,
     "slowdown_year": 2028.0,
     "post_slowdown_training_compute_growth_rate": 0.25
   },

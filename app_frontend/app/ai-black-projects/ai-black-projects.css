@@ -1,0 +1,404 @@
+/* Black Project specific styles */
+
+:root {
+  --bp-chip-stock: #5E6FB8;
+  --bp-fab: #E9A842;
+  --bp-datacenters: #4AA896;
+  --bp-detection: #7BA3C4;
+  --bp-survival: #E05A4F;
+  --bp-gray: #7F8C8D;
+  --bp-primary: #5E6FB8;
+  --bp-primary-hover: #4B5A93;
+}
+
+/* Sidebar styles - matching software progress model */
+.bp-sidebar {
+  width: 260px;
+  min-width: 240px;
+  background-color: var(--vivid-background, #fffff8);
+  padding: 0;
+  overflow-y: auto;
+  border-right: 1px solid rgba(209, 213, 219, 0.6);
+  flex-shrink: 0;
+  height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 64px;
+  left: 0;
+  z-index: 40;
+}
+
+@media (max-width: 1024px) {
+  .bp-sidebar {
+    width: 260px;
+  }
+}
+
+/* Sidebar header */
+.bp-sidebar-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(209, 213, 219, 0.6);
+  flex-shrink: 0;
+}
+
+.bp-sidebar-header h1 {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--primary, #333);
+  font-family: var(--font-et-book, serif);
+}
+
+/* Sidebar content */
+.bp-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px 16px 8px;
+}
+
+/* Section header with line */
+.bp-section-header {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.bp-section-header span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--primary, #333);
+  white-space: nowrap;
+  font-family: var(--font-system-mono, monospace);
+}
+
+.bp-section-header .bp-section-line {
+  flex: 1;
+  border-top: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+/* Collapsible sections using details/summary */
+.bp-collapsible {
+  margin-bottom: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #d1d5db;
+}
+
+.bp-collapsible summary {
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.bp-collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.bp-collapsible summary::before {
+  content: '▶';
+  font-size: 8px;
+  transition: transform 0.2s ease;
+  color: #666;
+}
+
+.bp-collapsible[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.bp-collapsible-content {
+  margin-top: 8px;
+  padding-left: 0;
+}
+
+/* Slider parameter group */
+.bp-slider-group {
+  margin-bottom: 8px;
+}
+
+.bp-slider-group label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--foreground, #333);
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+
+.bp-slider-group .bp-slider-value {
+  font-size: 10px;
+  color: #6b7280;
+  font-family: var(--font-system-mono, monospace);
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* Slider styling */
+.bp-slider {
+  width: 100%;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  appearance: none;
+  cursor: pointer;
+  accent-color: var(--bp-primary);
+}
+
+.bp-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--bp-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.bp-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--bp-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.bp-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Number input styling */
+.bp-number-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.bp-number-input:focus {
+  outline: none;
+  border-color: var(--bp-primary);
+  box-shadow: 0 0 0 2px rgba(94, 111, 184, 0.2);
+}
+
+/* Select styling - matching software progress model */
+.bp-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 11px;
+  box-sizing: border-box;
+  background: white;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  padding-right: 32px;
+}
+
+.bp-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Checkbox styling */
+.bp-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.bp-checkbox-group input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--bp-primary);
+  cursor: pointer;
+}
+
+.bp-checkbox-group label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--foreground, #333);
+  cursor: pointer;
+}
+
+/* Run button */
+.bp-run-button {
+  width: 100%;
+  padding: 8px 16px;
+  background-color: var(--bp-primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.bp-run-button:hover:not(:disabled) {
+  background-color: var(--bp-primary-hover);
+}
+
+.bp-run-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dashboard styles */
+.bp-dashboard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.bp-dashboard-item {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.bp-dashboard-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--bp-primary);
+  margin-bottom: 4px;
+}
+
+.bp-dashboard-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.3;
+}
+
+/* Plot container styles */
+.bp-plot-container {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bp-plot-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.bp-plot {
+  width: 100%;
+  height: 300px;
+}
+
+/* Breakdown section styles */
+.bp-breakdown-section {
+  margin-top: 50px;
+  margin-bottom: 50px;
+  padding: 30px 24px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.bp-breakdown-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.bp-breakdown-description {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+/* Loading spinner */
+.bp-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e0e0e0;
+  border-top-color: var(--bp-primary);
+  border-radius: 50%;
+  animation: bp-spin 1s linear infinite;
+}
+
+@keyframes bp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Status message styles */
+.bp-status {
+  padding: 6px 10px;
+  margin-top: 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.bp-status.info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.bp-status.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.bp-status.success {
+  background-color: rgba(94, 111, 184, 0.15);
+  color: var(--bp-primary);
+}
+
+/* Tooltip styles */
+.bp-tooltip {
+  position: fixed;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background-color: #fff;
+  color: #333;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  z-index: 10000;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  pointer-events: auto;
+}
+
+/* Plotly overrides for consistent styling */
+.js-plotly-plot .plotly .hoverlayer .hovertext path {
+  fill: white !important;
+  stroke: #cccccc !important;
+  stroke-width: 1px !important;
+}
+
+.js-plotly-plot .plotly .hoverlayer .hovertext text {
+  fill: #666666 !important;
+}

@@ -3,8 +3,10 @@
 import sys
 from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# Add ai_futures_simulator subdirectory to path for imports
+# Structure: ai_futures_simulator/app_backend/api_utils/parameters.py
+#            ai_futures_simulator/ai_futures_simulator/parameters/...
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator"))
 
 from parameters.simulation_parameters import (
     ModelParameters,
@@ -19,7 +21,7 @@ from parameters.energy_consumption_parameters import EnergyConsumptionParameters
 DEVELOPER_ID = "us_frontier_lab"
 
 # Default YAML config path
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "parameters" / "modal_parameters.yaml"
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "modal_parameters.yaml"
 
 # Cache the model parameters (loaded once at startup)
 _cached_model_params = None
@@ -129,7 +131,7 @@ def frontend_params_to_simulation_params(frontend_params: dict, time_range: list
     # Build compute growth parameters
     cg_defaults = default_sim_params.compute_growth
     compute_growth = ComputeParameters(
-        constant_training_compute_growth_rate=frontend_params.get('constant_training_compute_growth_rate', cg_defaults.constant_training_compute_growth_rate),
+        us_frontier_project_compute_growth_rate=frontend_params.get('us_frontier_project_compute_growth_rate', cg_defaults.us_frontier_project_compute_growth_rate),
         slowdown_year=frontend_params.get('slowdown_year', cg_defaults.slowdown_year),
         post_slowdown_training_compute_growth_rate=frontend_params.get('post_slowdown_training_compute_growth_rate', cg_defaults.post_slowdown_training_compute_growth_rate),
         initial_hazard_rate=frontend_params.get('initial_hazard_rate', cg_defaults.initial_hazard_rate),
@@ -142,9 +144,8 @@ def frontend_params_to_simulation_params(frontend_params: dict, time_range: list
         # PRC domestic production
         proportion_of_prc_chip_stock_produced_domestically_2026=cg_defaults.proportion_of_prc_chip_stock_produced_domestically_2026,
         proportion_of_prc_chip_stock_produced_domestically_2030=cg_defaults.proportion_of_prc_chip_stock_produced_domestically_2030,
-        # Largest AI project
-        largest_ai_project_h100e_in_2025=cg_defaults.largest_ai_project_h100e_in_2025,
-        largest_ai_project_growth_rate=cg_defaults.largest_ai_project_growth_rate,
+        # US frontier project
+        us_frontier_project_h100e_in_2025=cg_defaults.us_frontier_project_h100e_in_2025,
     )
 
     # Build energy consumption parameters (use defaults)

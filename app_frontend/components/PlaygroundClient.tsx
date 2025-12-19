@@ -38,6 +38,7 @@ interface PlaygroundClientProps {
   initialParameters: ParametersType;
   initialSampleTrajectories?: { trajectory: { year: number; horizonLength: number; effectiveCompute: number; automationFraction?: number; trainingCompute?: number; aiSwProgressMultRefPresentDay?: number }[]; params: Record<string, number | string | boolean> }[];
   initialSeed?: number;
+  hideHeader?: boolean;
 }
 
 interface SmallChartDef {
@@ -148,11 +149,12 @@ function SimpleCheckbox({
   );
 }
 
-export default function PlaygroundClient({ 
-  benchmarkData = [], 
-  initialComputeData, 
+export default function PlaygroundClient({
+  benchmarkData = [],
+  initialComputeData,
   initialParameters,
   initialSampleTrajectories = [],
+  hideHeader = false,
 }: PlaygroundClientProps) {
   const initialChartData = useMemo(() => processInitialData(initialComputeData), [initialComputeData]);
   const resolvedInitialParameters = useMemo(() => initialParameters ?? { ...DEFAULT_PARAMETERS }, [initialParameters]);
@@ -656,8 +658,28 @@ export default function PlaygroundClient({
 
   return (
     <ParameterHoverProvider>
+      {/* Fixed Header - only shown when not embedded */}
+      {!hideHeader && (
+        <header className="fixed top-0 left-0 right-0 z-50 flex flex-row items-center justify-between px-6 py-0 border-b border-gray-200 bg-white">
+          <nav className="flex flex-row">
+            <Link
+              href="/ai-timelines-and-takeoff"
+              className="px-4 py-4 text-sm font-medium text-gray-900 border-b-2 border-blue-500"
+            >
+              AI Timelines and Takeoff
+            </Link>
+            <Link
+              href="/ai-black-projects"
+              className="px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-b-2 border-transparent"
+            >
+              Black Projects
+            </Link>
+          </nav>
+        </header>
+      )}
+
       {/* Desktop-only warning */}
-      <div className="lg:hidden h-screen flex items-center justify-center bg-vivid-background p-8">
+      <div className={`lg:hidden h-screen flex items-center justify-center bg-vivid-background p-8 ${hideHeader ? '' : 'pt-20'}`}>
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Playground is Desktop Only</h1>
           <p className="text-gray-600 mb-6">The playground requires a larger screen for the best experience.</p>
@@ -666,7 +688,7 @@ export default function PlaygroundClient({
       </div>
 
       {/* Desktop layout using CSS Grid */}
-      {/* 
+      {/*
         Grid structure:
         +------------------+---------------------------+
         |   Sidebar with   | Chart | Chart | Chart     |
@@ -675,18 +697,19 @@ export default function PlaygroundClient({
         |   (row-span-2)   |    All Small Charts       |
         +------------------+---------------------------+
       */}
-      <div 
-        className="hidden lg:grid h-screen bg-vivid-background overflow-hidden"
+      <div
+        className="hidden lg:grid bg-vivid-background overflow-hidden"
         style={{
           gridTemplateColumns: '260px 1fr',
           gridTemplateRows: 'minmax(300px, 1fr) 1fr',
+          height: hideHeader ? '100vh' : 'calc(100vh - 57px)',
+          marginTop: hideHeader ? '0' : '57px',
         }}
       >
         {/* Sidebar - spans all rows */}
         <aside className="row-span-2 border-r border-gray-200/60 bg-vivid-background flex flex-col overflow-hidden">
           <div className="px-3 py-2 border-b border-gray-200/60 shrink-0">
-            <Link href="/" className="text-[10px] text-gray-500 hover:text-gray-700 mb-1 block font-system-mono">← Back</Link>
-            <h1 className="text-sm font-bold text-primary font-et-book">Playground</h1>
+            <h1 className="text-sm font-bold text-primary font-et-book">Parameters</h1>
           </div>
           
           {/* Model Diagram */}

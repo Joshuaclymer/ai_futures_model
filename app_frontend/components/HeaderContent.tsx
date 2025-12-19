@@ -19,8 +19,8 @@ export const HeaderContent = ({ variant, className = '', onOpenAdvancedParams }:
         <Link href="/forecast" className="font-system-mono text-xs whitespace-nowrap">
           Forecast
         </Link>
-        <Link href="/playground" className="font-system-mono text-xs whitespace-nowrap hidden lg:inline">
-          Playground
+        <Link href="/ai-timelines-and-takeoff" className="font-system-mono text-xs whitespace-nowrap hidden lg:inline">
+          AI Timelines and Takeoff
         </Link>
       </nav>
     </div>

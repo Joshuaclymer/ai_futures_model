@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "clean": "rm -rf .next",
-    "flask-dev": "pip3 install -r requirements.txt && python3 api_new.py",
+    "flask-dev": "cd ../app_backend && python3 api.py",
     "next-dev": "next dev",
     "dev": "concurrently \"npm run next-dev\" \"npm run flask-dev\"",
     "mermaid": "npx tsx scripts/generateMermaidFlowchart/generateMermaidFlowchart.ts",

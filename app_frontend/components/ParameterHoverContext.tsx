@@ -79,7 +79,7 @@ export const PARAMETER_TO_SVG_NODES: Record<string, string[]> = {
 // Rationales for parameter default values
 export const PARAMETER_RATIONALES: Record<string, string> = {
   // Input parameters
-  constant_training_compute_growth_rate: 'Recent compute scaling trends.',
+  us_frontier_project_compute_growth_rate: 'Recent compute scaling trends.',
   slowdown_year: 'Investment and fab capacity constraints.',
   post_slowdown_training_compute_growth_rate: 'Investment and fab capacity constraints.',
 

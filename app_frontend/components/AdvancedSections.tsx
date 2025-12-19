@@ -231,9 +231,9 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                     <div className="mt-2">
                         <SliderGrid>
                             <Slider
-                                paramName="constant_training_compute_growth_rate"
-                                label="Pre-Slowdown Training Compute Growth Rate"
-                                description="Annual growth rate of training compute before the slowdown year (OOMs/year)"
+                                paramName="us_frontier_project_compute_growth_rate"
+                                label="US Frontier Project Compute Growth Rate"
+                                description="Annual growth rate of US frontier project compute before the slowdown year (OOMs/year)"
                                 step={0.01}
                                 fallbackMin={0.0}
                                 fallbackMax={2.0}
