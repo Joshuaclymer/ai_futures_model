@@ -9,22 +9,19 @@ import torch
 from torch import Tensor
 from dataclasses import dataclass, field
 from typing import Optional, List
-
 from classes.world.tensor_dataclass import TensorDataclass
-from classes.world.assets import Compute, Fabs, Datacenters, BlackFabs, BlackDatacenters, BlackCompute
+from classes.world.assets import Assets, Compute, Fabs, Datacenters, BlackFabs, BlackDatacenters, BlackCompute
 from classes.world.software_progress import AISoftwareProgress
 
-
 @dataclass
-class Entity(TensorDataclass):
-    """Base class for all entities (Coalition, Nation, Organization, etc)."""
-    id: str
+class Entity(TensorDataclass): # Can be a Coalition or State, Organization, legal person, etc
+    id : str
 
 
 @dataclass
 class Coalition(Entity):
     """A coalition of nations."""
-    member_nation_ids: List[str]
+    member_nation_ids: List[str] = field(metadata={'is_state': True})
 
 
 class NamedCoalitions:
@@ -34,7 +31,6 @@ class NamedCoalitions:
     SLOWDOWN_COOPERATORS = "Slowdown_Cooperators"
     SLOWDOWN_HOLDOUTS = "Slowdown_Holdouts"
 
-
 @dataclass
 class Nation(Entity):
     """
@@ -43,16 +39,16 @@ class Nation(Entity):
     Use world_updaters.compute.nation_compute functions for derived values:
     - get_nation_compute_stock_h100e(nation)
     """
-    leading_ai_software_developer_id: Optional[str] = None
+    # State: these are the minimal core properties that can be used to update metrics
+    ai_software_developers: List["AISoftwareDeveloper"] = field(metadata={'is_state': True})
+    fabs: Fabs = field(metadata={'is_state': True})
+    compute_stock: Compute = field(metadata={'is_state': True}) # Note, this includes chips that cannot be powered bc there is not enough datacenter capacity
+    datacenters : Datacenters = field(metadata={'is_state': True})
+    total_energy_consumption_gw: float = field(metadata={'is_state': True}) # Includes all energy, not just AI!
 
-    # Compute stock state (H100e TPP in log space for numerical stability)
-    log_compute_stock: Tensor = field(default_factory=lambda: torch.tensor(0.0), metadata={'is_state': True})
-
-    # Compute stock growth rate (for nations like PRC with independent growth)
-    compute_growth_rate: float = 0.0  # Multiplier per year (e.g., 2.2 means 2.2x per year)
-
-    # Energy infrastructure
-    total_energy_consumption_gw: float = 0.0
+    # Metrics: these are metrics derived from core properties
+    leading_ai_software_developer: "AISoftwareDeveloper"
+    operating_compute_tpp_h100e: float # This only includes compute that is actually being powered by datacenters
 
 
 class NamedNations:
@@ -64,12 +60,11 @@ class NamedNations:
 @dataclass
 class ComputeAllocation:
     """How compute is allocated across different uses."""
-    fraction_for_ai_r_and_d_inference: float
-    fraction_for_ai_r_and_d_training: float
-    fraction_for_external_deployment: float
-    fraction_for_alignment_research: float
-    fraction_for_frontier_training: float
-
+    fraction_for_ai_r_and_d_inference: float = field(metadata={'is_state': True})
+    fraction_for_ai_r_and_d_training: float = field(metadata={'is_state': True})
+    fraction_for_external_deployment: float = field(metadata={'is_state': True})
+    fraction_for_alignment_research: float = field(metadata={'is_state': True})
+    fraction_for_frontier_training: float = field(metadata={'is_state': True})
 
 @dataclass
 class AISoftwareDeveloper(Entity):
@@ -79,71 +74,51 @@ class AISoftwareDeveloper(Entity):
     Contains nested state (via ai_software_progress) that gets integrated.
     State fields have metadata={'is_state': True}.
     """
-    is_primarily_controlled_by_misaligned_AI: bool
-    compute: Compute
-    compute_allocation: ComputeAllocation
-    ai_software_progress: AISoftwareProgress
-    human_ai_capability_researchers: int
-    log_compute: Tensor = field(metadata={'is_state': True})
-    log_researchers: Tensor = field(metadata={'is_state': True})
-    # Experiment compute (for R&D experiments) - separate from inference compute
-    experiment_compute: float = 0.0
+    # State: these are the minimal core properties that can be used to update metrics
+    operating_compute: List[Compute] = field(metadata={'is_state': True})
+    compute_allocation: ComputeAllocation = field(metadata={'is_state': True})
+    human_ai_capability_researchers: float = field(metadata={'is_state': True})
+    ai_software_progress: AISoftwareProgress = field(metadata={'is_state': True})
 
+    # Metrics (computed from state)
+    ai_r_and_d_inference_compute_tpp_h100e: float = field(init=False)
+    ai_r_and_d_training_compute_tpp_h100e: float = field(init=False)
+    external_deployment_compute_tpp_h100e: float = field(init=False)
+    alignment_research_compute_tpp_h100e: float = field(init=False)
+    frontier_training_compute_tpp_h100e: float = field(init=False)
 
 @dataclass
 class AIBlackProject(AISoftwareDeveloper):
-    """
-    A covert AI development project with integrated infrastructure.
+    # State: All black project properties at any given point in time 
+    parent_nation: Nation = field(metadata={'is_state': True})
+    preparation_start_year : float = field(metadata={'is_state': True})
 
-    Extends AISoftwareDeveloper with:
-    - BlackFabs: Covert semiconductor fabrication
-    - BlackDatacenters: Covert power infrastructure
-    - BlackCompute: Compute stock with attrition
+    ## Fab
+    fab_process_node_nm: float = field(metadata={'is_state': True})
+    fab_number_of_lithography_scanners: float = field(metadata={'is_state': True})
+    fab_construction_labor: float = field(metadata={'is_state': True})
+    fab_operating_labor: float = field(metadata={'is_state': True})
+    fab_chips_per_wafer: float = field(metadata={'is_state': True})
 
-    Use world_updaters.compute.black_compute functions for derived values:
-    - get_black_project_total_labor(project)
-    - get_black_project_operational_compute(project)
-    """
-    parent_entity_id: Optional[str] = None
+    ## Datacenters
+    unconcealed_datacenter_capacity_diverted_gw : float = field(metadata={'is_state': True})
+    concealed_datacenter_capacity_construction_labor: float = field(metadata={'is_state': True})
+    concealed_max_total_capacity_gw: float = field(metadata={'is_state': True})
 
-    # Labor allocation
-    human_datacenter_construction_labor: int = 0
-    human_datacenter_operating_labor: int = 0
-    human_fab_construction_labor: int = 0
-    human_fab_operating_labor: int = 0
-    researcher_headcount: int = 500
+    # Metrics
 
-    # Infrastructure state
-    fab: Optional[BlackFabs] = None
-    datacenters: Optional[BlackDatacenters] = None
-    compute_stock: Optional[BlackCompute] = None
-
-    # AI slowdown start year (when black project starts due to international agreements)
-    ai_slowdown_start_year: float = 2030.0
-
-    # Detection state
-    # Sampled at initialization from Gamma distribution based on labor
-    sampled_detection_time: float = float('inf')  # Years since ai_slowdown_start_year
-    is_detected: bool = False  # Set to True when current_time >= detection_time
-    cumulative_likelihood_ratio: float = 1.0
-    # Continuous detection probability: P(detected by current time) = Gamma.cdf(t, k, θ)
-    # This is differentiable and can be used for backpropagation optimization
-    detection_probability: float = 0.0
-
-    # Pre-computed labor by year (relative to ai_slowdown_start_year)
-    # Used for composite detection distribution - matches discrete model
-    labor_by_year: Optional[dict] = None
-
-    # Pre-computed likelihood ratios by year (relative to ai_slowdown_start_year)
-    # These are sampled once at initialization and reused
-    lr_by_year: Optional[dict] = None
-
-    # Sampled US intelligence estimates (sampled once at initialization)
-    # These drive the energy, satellite, and compute stock LR calculations
-    us_estimate_energy_gw: float = 0.0
-    us_estimate_satellite_capacity_gw: float = 0.0
-    us_estimate_compute_stock: float = 0.0
-
-    # Parameters needed for LR calculations (stored from initialization)
-    total_prc_energy_gw: float = 0.0
-    diversion_proportion: float = 0.0
+    ## Fab
+    fab: Fabs
+    fab_construction_duration: float = field(init=False)
+    fab_is_operational: bool = field(init=False)
+    fab_wafer_starts_per_month: float = field(init=False)
+    fab_h100e_per_chip: float = field(init=False)
+    fab_watts_per_chip: float = field(init=False)
+    
+    ## Datacenters
+    datacenters: Datacenters = field(init=False)
+    datacenters_operating_labor_per_gw: float = field(init=False) # Used to determine detection evidence
+    
+    ## Compute
+    compute_stock: Compute = field(init=False)
+    operating_compute_tpp_h100e: float = field(init=False) # includes compute that is both functional and operating in datacenters

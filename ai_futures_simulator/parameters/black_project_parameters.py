@@ -9,10 +9,11 @@ These dataclasses define the structure only.
 
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List, Tuple
+from classes.world.entities import BlackProjectProperties
 from enum import Enum
 
 
-class ProcessNode(Enum):
+class ProcessNodes:
     """Semiconductor process nodes available for covert fab."""
     nm130 = "130nm"
     nm28 = "28nm"
@@ -128,7 +129,7 @@ class DetectionParameters:
 
 
 @dataclass
-class BlackProjectProperties:
+class PRCBlackProjectParameters:
     """
     User-configurable properties for the black project scenario.
 
@@ -136,15 +137,20 @@ class BlackProjectProperties:
     defined in policy_parameters.py as ai_slowdown_start_year. This represents
     when international agreements take effect and covert development begins.
     """
-
-    # Enable/disable
     run_a_black_project: bool
+    black_project_properties : BlackProjectProperties
 
+@dataclass
+class BlackProjectProperties:
+    """
+    Properties of a black project
+    (separated into a separate class see we can specify black project properties in /parameters)
+    """
     # Initial compute diversion
     proportion_of_initial_compute_stock_to_divert: float
 
     # Datacenter configuration
-    datacenter_construction_labor: int
+    datacenter_construction_labor: float
     years_before_agreement_year_prc_starts_building_black_datacenters: float
     max_proportion_of_PRC_energy_consumption: float
     fraction_of_datacenter_capacity_not_built_for_concealment_diverted_to_black_project_at_agreement_start: float
@@ -158,7 +164,6 @@ class BlackProjectProperties:
 
     # Workforce
     researcher_headcount: int
-
 
 @dataclass
 class BlackProjectParameterSet:

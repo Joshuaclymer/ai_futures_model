@@ -39,18 +39,16 @@ class AISoftwareProgress(TensorDataclass):
     ai_research_taste_sd: Tensor
     aggregate_research_taste: Tensor
     horizon_length: Optional[Tensor] = None
-
-    # === Input time series (interpolated from CSV data) ===
-    human_labor: Optional[Tensor] = None
-    inference_compute: Optional[Tensor] = None
-    experiment_compute: Optional[Tensor] = None
-
-    # === Additional computed metrics ===
     experiment_capacity: Optional[Tensor] = None  # research_effort / aggregate_research_taste
     software_efficiency: Optional[Tensor] = None  # progress - initial_progress - training_compute
     serial_coding_labor_multiplier: Optional[Tensor] = None  # serial_coding_labor / human_only_serial_coding_labor
     training_compute: Optional[Tensor] = None  # Cumulative training compute contribution
     training_compute_growth_rate: Optional[Tensor] = None  # Input time series: training compute OOMs/year
+
+    # # === Input time series (interpolated from CSV data) ===  #TODO: Use the attributes of the software developer instead
+    # human_labor: Optional[Tensor] = None
+    # inference_compute: Optional[Tensor] = None
+    # experiment_compute: Optional[Tensor] = None
 
 
 @dataclass
