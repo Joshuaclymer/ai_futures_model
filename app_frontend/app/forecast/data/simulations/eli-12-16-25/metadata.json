@@ -1,0 +1,16 @@
+{
+  "id": "eli-12-16-25",
+  "forecaster": "Eli",
+  "date": "12-16-25",
+  "customIdentifier": null,
+  "sourceRunDir": "outputs/results_20251216_024237/eli/20251216_024237",
+  "modelVersion": null,
+  "exportedAt": "2025-12-16T05:42:12.110892",
+  "numSamples": 10000,
+  "presentDay": 2025.6,
+  "timeRange": [
+    2012.0,
+    2200.0
+  ],
+  "seed": 42
+}

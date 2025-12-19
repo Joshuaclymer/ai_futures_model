@@ -3,6 +3,12 @@ Simulation parameters for the AI Futures Simulator.
 
 SimulationParameters contains simulation config and nested parameter groups.
 ModelParameters defines distributions for Monte Carlo sampling loaded from YAML.
+
+Parameter definitions are in separate files for clarity:
+- software_r_and_d_parameters.py: AI R&D model parameters
+- compute_growth_parameters.py: Compute growth dynamics
+- policy_parameters.py: AI governance and slowdown policies
+- black_project_parameters.py: Covert compute infrastructure
 """
 
 import numpy as np
@@ -16,112 +22,18 @@ from parameters.sample_from_distribution import (
     sample_from_distribution_with_quantile,
 )
 
-
-# =============================================================================
-# PARAMETER GROUPS
-# =============================================================================
-
-@dataclass
-class ComputeGrowthParameters:
-    """Parameters for training compute growth dynamics."""
-    constant_training_compute_growth_rate: float  # OOMs/year before slowdown
-    slowdown_year: float
-    post_slowdown_training_compute_growth_rate: float  # OOMs/year after slowdown
-
-
-@dataclass
-class SoftwareRAndDParameters:
-    """
-    All parameters for AI Software R&D / takeoff model.
-
-    Parameters are organized into logical groups matching the model structure.
-    """
-
-    # =========================================================================
-    # MODE FLAGS
-    # =========================================================================
-    human_only: bool
-
-    # =========================================================================
-    # PRODUCTION FUNCTION PARAMETERS (CES)
-    # =========================================================================
-    rho_coding_labor: float
-    coding_labor_normalization: float
-
-    # Experiment capacity CES
-    direct_input_exp_cap_ces_params: bool
-    rho_experiment_capacity: float
-    alpha_experiment_capacity: float
-    experiment_compute_exponent: float
-
-    # Experiment capacity asymptotes
-    inf_labor_asymptote: float
-    inf_compute_asymptote: float
-    labor_anchor_exp_cap: float
-    compute_anchor_exp_cap: Optional[float]
-    inv_compute_anchor_exp_cap: float
-
-    # Parallel penalty
-    parallel_penalty: float
-
-    # =========================================================================
-    # SOFTWARE PROGRESS PARAMETERS
-    # =========================================================================
-    r_software: float
-    software_progress_rate_at_reference_year: float
-
-    # =========================================================================
-    # AUTOMATION SCHEDULE PARAMETERS
-    # =========================================================================
-    automation_fraction_at_coding_automation_anchor: float
-    automation_anchors: Optional[Dict[float, float]]
-    automation_interp_type: str
-    automation_logistic_asymptote: float
-    swe_multiplier_at_present_day: float
-
-    # Coding labor mode
-    coding_labor_mode: str
-    coding_automation_efficiency_slope: float
-    optimal_ces_eta_init: float
-    optimal_ces_grid_size: int
-    optimal_ces_frontier_tail_eps: float
-    optimal_ces_frontier_cap: float
-    max_serial_coding_labor_multiplier: float
-
-    # =========================================================================
-    # AI RESEARCH TASTE PARAMETERS
-    # =========================================================================
-    ai_research_taste_at_coding_automation_anchor_sd: float
-    ai_research_taste_slope: float
-    taste_schedule_type: str
-    median_to_top_taste_multiplier: float
-    top_percentile: float
-    taste_limit: float
-    taste_limit_smoothing: float
-
-    # =========================================================================
-    # HORIZON / MILESTONE PARAMETERS
-    # =========================================================================
-    progress_at_aa: Optional[float]
-    ac_time_horizon_minutes: float
-    pre_gap_ac_time_horizon: float
-    horizon_extrapolation_type: str
-
-    # Manual horizon fitting
-    present_day: float
-    present_horizon: float
-    present_doubling_time: float
-    doubling_difficulty_growth_factor: float
-
-    # Milestone multipliers
-    strat_ai_m2b: float
-    ted_ai_m2b: float
-
-    # =========================================================================
-    # GAP MODE PARAMETERS
-    # =========================================================================
-    include_gap: Union[str, bool]
-    gap_years: float
+# Import parameter classes from dedicated files
+from parameters.software_r_and_d_parameters import SoftwareRAndDParameters
+from parameters.compute_parameters import ComputeParameters
+from parameters.policy_parameters import PolicyParameters
+from parameters.energy_consumption_parameters import EnergyConsumptionParameters
+from parameters.black_project_parameters import (
+    BlackProjectParameterSet,
+    BlackProjectProperties,
+    BlackFabParameters,
+    BlackDatacenterParameters,
+    DetectionParameters,
+)
 
 
 @dataclass
@@ -143,27 +55,50 @@ class SimulationParameters:
 
     Contains:
     - Simulation settings (start year, end year, eval points)
-    - Model parameters (SoftwareRAndDParameters, ComputeGrowthParameters)
+    - Model parameters for each component:
+      - software_r_and_d: AI R&D dynamics
+      - compute_growth: Training compute growth
+      - energy_consumption: Energy efficiency and consumption
+      - policy: AI governance and slowdown policies
+      - black_project: Covert compute infrastructure (optional)
 
     Note: simulation_start_year must be a discrete year in the historical data (2012-2026).
     """
     settings: SimulationSettings
     software_r_and_d: SoftwareRAndDParameters
-    compute_growth: ComputeGrowthParameters
+    compute_growth: ComputeParameters
+    energy_consumption: EnergyConsumptionParameters
+    policy: PolicyParameters
+    black_project: Optional[BlackProjectParameterSet] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert parameters to a dictionary for serialization."""
-        return {
+        result = {
             "settings": self.settings.__dict__,
             "software_r_and_d": self.software_r_and_d.__dict__,
             "compute_growth": self.compute_growth.__dict__,
+            "energy_consumption": self.energy_consumption.__dict__,
+            "policy": self.policy.__dict__,
         }
+        # Add black project parameters if present
+        if self.black_project:
+            result["black_project"] = {
+                "properties": self.black_project.properties.__dict__,
+                "fab": self.black_project.fab_params.__dict__,
+                "datacenter": self.black_project.datacenter_params.__dict__,
+                "detection": self.black_project.detection_params.__dict__,
+            }
+        return result
+
+    @property
+    def ai_slowdown_start_year(self) -> float:
+        """Convenience accessor for the AI slowdown start year."""
+        return self.policy.ai_slowdown_start_year
 
 
 # =============================================================================
 # MODEL PARAMETERS (Distribution-based for Monte Carlo)
 # =============================================================================
-
 
 
 @dataclass
@@ -193,12 +128,26 @@ class ModelParameters:
             dist: normal
             ci80: [0.55, 0.65]
           slowdown_year: 2028.0
+
+        policy:
+          ai_slowdown_start_year: 2030.0
+
+        black_project:
+          properties:
+            run_a_black_project: true
+            ...
+          fab:
+            h100_sized_chips_per_wafer: 28.0
+            ...
     """
 
     # Nested parameter specifications
     settings: Dict[str, Any] = field(default_factory=dict)
     software_r_and_d: Dict[str, Any] = field(default_factory=dict)
     compute_growth: Dict[str, Any] = field(default_factory=dict)
+    energy_consumption: Dict[str, Any] = field(default_factory=dict)
+    policy: Dict[str, Any] = field(default_factory=dict)
+    black_project: Optional[Dict[str, Any]] = None
 
     # Correlation matrix specification (optional)
     correlation_matrix: Optional[Dict[str, Any]] = None
@@ -223,10 +172,39 @@ class ModelParameters:
             settings=config.get("settings", {}),
             software_r_and_d=config.get("software_r_and_d", {}),
             compute_growth=config.get("compute_growth", {}),
+            energy_consumption=config.get("energy_consumption", {}),
+            policy=config.get("policy", {}),
+            black_project=config.get("black_project"),
             correlation_matrix=config.get("correlation_matrix"),
             seed=config.get("seed", 42),
             initial_progress=config.get("initial_progress", 0.0),
         )
+
+    def _sample_nested_dict(
+        self,
+        config: Dict[str, Any],
+        rng: np.random.Generator
+    ) -> Dict[str, Any]:
+        """Sample values from a nested dict, handling distributions at any level."""
+        result = {}
+        for key, value in config.items():
+            if isinstance(value, dict):
+                # Check if this dict is a distribution spec
+                if "dist" in value:
+                    result[key] = sample_from_distribution(value, rng, key)
+                else:
+                    # Recurse into nested dict
+                    result[key] = self._sample_nested_dict(value, rng)
+            elif isinstance(value, list):
+                # Handle lists (e.g., localization curves) - pass through as-is
+                # Convert to list of tuples if it's a list of lists (for localization)
+                if value and isinstance(value[0], list):
+                    result[key] = [tuple(item) for item in value]
+                else:
+                    result[key] = value
+            else:
+                result[key] = value
+        return result
 
     def sample(self, rng: Optional[np.random.Generator] = None) -> SimulationParameters:
         """
@@ -256,15 +234,39 @@ class ModelParameters:
         for param_name, dist_spec in self.compute_growth.items():
             sampled_compute[param_name] = sample_from_distribution(dist_spec, rng, param_name)
 
+        # Sample energy_consumption parameters
+        sampled_energy = {}
+        for param_name, dist_spec in self.energy_consumption.items():
+            sampled_energy[param_name] = sample_from_distribution(dist_spec, rng, param_name)
+
+        # Sample policy parameters
+        sampled_policy = self._sample_nested_dict(self.policy, rng)
+
         # Build parameter objects
         settings = SimulationSettings(**sampled_settings)
         software_r_and_d = SoftwareRAndDParameters(**sampled_r_and_d)
-        compute_growth = ComputeGrowthParameters(**sampled_compute)
+        compute_growth = ComputeParameters(**sampled_compute)
+        energy_consumption = EnergyConsumptionParameters(**sampled_energy)
+        policy = PolicyParameters(**sampled_policy)
+
+        # Build black project parameters if present
+        black_project = None
+        if self.black_project is not None:
+            sampled_bp = self._sample_nested_dict(self.black_project, rng)
+            black_project = BlackProjectParameterSet(
+                properties=BlackProjectProperties(**sampled_bp.get("properties", {})),
+                fab_params=BlackFabParameters(**sampled_bp.get("fab", {})),
+                datacenter_params=BlackDatacenterParameters(**sampled_bp.get("datacenter", {})),
+                detection_params=DetectionParameters(**sampled_bp.get("detection", {})),
+            )
 
         return SimulationParameters(
             settings=settings,
             software_r_and_d=software_r_and_d,
             compute_growth=compute_growth,
+            energy_consumption=energy_consumption,
+            policy=policy,
+            black_project=black_project,
         )
 
     def sample_many(

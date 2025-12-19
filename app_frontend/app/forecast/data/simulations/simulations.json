@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "defaultSimulation": "eli-12-17-25",
+  "simulations": [
+    {
+      "id": "eli-12-12-25",
+      "label": "eli - 12-12-25",
+      "forecaster": "eli",
+      "date": "12-12-25",
+      "customIdentifier": null,
+      "dataPath": "simulations/eli-12-12-25",
+      "numSamples": 1000,
+      "modelVersion": null
+    },
+    {
+      "id": "daniel-12-12-25",
+      "label": "daniel - 12-12-25",
+      "forecaster": "daniel",
+      "date": "12-12-25",
+      "customIdentifier": null,
+      "dataPath": "simulations/daniel-12-12-25",
+      "numSamples": 100,
+      "modelVersion": null
+    },
+    {
+      "id": "eli-11-17-25-old",
+      "label": "eli - 11-17-25 (old)",
+      "forecaster": "eli",
+      "date": "11-17-25",
+      "customIdentifier": "old",
+      "dataPath": "simulations/eli-11-17-25-old",
+      "numSamples": 10000,
+      "modelVersion": null
+    },
+    {
+      "id": "daniel-12-13-25",
+      "label": "daniel - 12-13-25",
+      "forecaster": "daniel",
+      "date": "12-13-25",
+      "customIdentifier": null,
+      "dataPath": "simulations/daniel-12-13-25",
+      "numSamples": 5000,
+      "modelVersion": null
+    },
+    {
+      "id": "eli-12-16-25",
+      "label": "Eli - 12-16-25",
+      "forecaster": "Eli",
+      "date": "12-16-25",
+      "customIdentifier": null,
+      "dataPath": "simulations/eli-12-16-25",
+      "numSamples": 10000,
+      "modelVersion": null
+    },
+    {
+      "id": "daniel-12-16-25",
+      "label": "Daniel - 12-16-25",
+      "forecaster": "Daniel",
+      "date": "12-16-25",
+      "customIdentifier": null,
+      "dataPath": "simulations/daniel-12-16-25",
+      "numSamples": 10000,
+      "modelVersion": null
+    },
+    {
+      "id": "eli-12-17-25",
+      "label": "Eli - 12-17-25",
+      "forecaster": "Eli",
+      "date": "12-17-25",
+      "customIdentifier": null,
+      "dataPath": "simulations/eli-12-17-25",
+      "numSamples": 10000,
+      "modelVersion": null
+    },
+    {
+      "id": "daniel-12-17-25",
+      "label": "Daniel - 12-17-25",
+      "forecaster": "Daniel",
+      "date": "12-17-25",
+      "customIdentifier": null,
+      "dataPath": "simulations/daniel-12-17-25",
+      "numSamples": 10000,
+      "modelVersion": null
+    }
+  ]
+}

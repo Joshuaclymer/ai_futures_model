@@ -1,0 +1,212 @@
+/* Black Project specific styles */
+
+:root {
+  --bp-chip-stock: #5E6FB8;
+  --bp-fab: #E9A842;
+  --bp-datacenters: #4AA896;
+  --bp-detection: #7BA3C4;
+  --bp-survival: #E05A4F;
+  --bp-gray: #7F8C8D;
+  --bp-primary: #5E6FB8;
+  --bp-primary-hover: #4B5A93;
+}
+
+/* Sidebar styles */
+.bp-sidebar {
+  width: 280px;
+  min-width: 240px;
+  background-color: #f5f5f5;
+  padding: 20px;
+  overflow-y: auto;
+  border-right: 1px solid #ddd;
+  flex-shrink: 0;
+  height: calc(100vh - 64px);
+}
+
+@media (max-width: 1024px) {
+  .bp-sidebar {
+    width: 240px;
+  }
+}
+
+.bp-sidebar h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: #555;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 5px;
+}
+
+.bp-param-group {
+  margin-bottom: 12px;
+}
+
+.bp-param-group label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: #666;
+  line-height: 1.3;
+}
+
+.bp-param-group input,
+.bp-param-group select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.bp-param-group input:focus,
+.bp-param-group select:focus {
+  outline: none;
+  border-color: var(--bp-primary);
+  box-shadow: 0 0 0 2px rgba(94, 111, 184, 0.2);
+}
+
+/* Dashboard styles */
+.bp-dashboard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.bp-dashboard-item {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.bp-dashboard-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--bp-primary);
+  margin-bottom: 4px;
+}
+
+.bp-dashboard-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.3;
+}
+
+/* Plot container styles */
+.bp-plot-container {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bp-plot-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.bp-plot {
+  width: 100%;
+  height: 300px;
+}
+
+/* Breakdown section styles */
+.bp-breakdown-section {
+  margin-top: 50px;
+  margin-bottom: 50px;
+  padding: 30px 24px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.bp-breakdown-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.bp-breakdown-description {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+/* Loading spinner */
+.bp-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e0e0e0;
+  border-top-color: var(--bp-primary);
+  border-radius: 50%;
+  animation: bp-spin 1s linear infinite;
+}
+
+@keyframes bp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Status message styles */
+.bp-status {
+  padding: 8px 12px;
+  margin-top: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.bp-status.info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.bp-status.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.bp-status.success {
+  background-color: rgba(94, 111, 184, 0.15);
+  color: var(--bp-primary);
+}
+
+/* Tooltip styles */
+.bp-tooltip {
+  position: fixed;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background-color: #fff;
+  color: #333;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  z-index: 10000;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  pointer-events: auto;
+}
+
+/* Plotly overrides for consistent styling */
+.js-plotly-plot .plotly .hoverlayer .hovertext path {
+  fill: white !important;
+  stroke: #cccccc !important;
+  stroke-width: 1px !important;
+}
+
+.js-plotly-plot .plotly .hoverlayer .hovertext text {
+  fill: #666666 !important;
+}

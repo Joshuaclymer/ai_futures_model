@@ -17,10 +17,10 @@ from functools import lru_cache
 import hashlib
 import json
 
-# Add ai_takeoff_model to path
-AI_TAKEOFF_MODEL_PATH = Path(__file__).resolve().parents[1] / "old" / "update_model_state" / "update_ai_software_r_and_d" / "ai_takeoff_model"
-if str(AI_TAKEOFF_MODEL_PATH) not in sys.path:
-    sys.path.insert(0, str(AI_TAKEOFF_MODEL_PATH))
+# Add new version of takeoff model to path (contains the progress_model package)
+AI_FUTURES_CALCULATOR_PATH = Path(__file__).resolve().parent.parent / "new_version_of_takeoff_model" / "ai-futures-calculator"
+if str(AI_FUTURES_CALCULATOR_PATH) not in sys.path:
+    sys.path.insert(0, str(AI_FUTURES_CALCULATOR_PATH))
 
 import numpy as np
 import pandas as pd
@@ -59,6 +59,9 @@ class CalibrationInputs:
     rho_coding_labor: float
     coding_labor_normalization: float
 
+    # Simulation start year (affects r_software calibration)
+    start_year: float = 2024.0
+
     def to_cache_key(self) -> str:
         """Generate a cache key from the inputs."""
         data = {
@@ -73,6 +76,7 @@ class CalibrationInputs:
             'parallel_penalty': self.parallel_penalty,
             'rho_coding_labor': self.rho_coding_labor,
             'coding_labor_norm': self.coding_labor_normalization,
+            'start_year': self.start_year,
         }
         json_str = json.dumps(data, sort_keys=True)
         return hashlib.md5(json_str.encode()).hexdigest()
@@ -100,6 +104,18 @@ class CalibratedParameters:
     initial_progress: float
     initial_research_stock: float
 
+    # Horizon trajectory function: progress -> horizon_length (minutes)
+    # This is a callable that maps progress to horizon length
+    horizon_trajectory: Optional[callable] = None
+
+    # Year-based trajectories from ProgressModel (for interpolation)
+    # These allow the ODE simulator to use ProgressModel's computed values by year
+    trajectory_years: Optional[np.ndarray] = None
+    trajectory_progress: Optional[np.ndarray] = None
+    trajectory_horizon_lengths: Optional[np.ndarray] = None
+    trajectory_automation_fractions: Optional[np.ndarray] = None
+    trajectory_ai_sw_progress_mult: Optional[np.ndarray] = None  # AI software progress multiplier ref present day
+
 
 # Cache for calibration results
 _calibration_cache: Dict[str, CalibratedParameters] = {}
@@ -107,7 +123,7 @@ _calibration_cache: Dict[str, CalibratedParameters] = {}
 
 def _load_historical_time_series() -> TimeSeriesData:
     """Load the historical time series data used for calibration."""
-    csv_path = AI_TAKEOFF_MODEL_PATH / "inputs" / "new_simulator_default.csv"
+    csv_path = AI_FUTURES_CALCULATOR_PATH / "input_data.csv"
     df = pd.read_csv(csv_path)
     return TimeSeriesData(
         time=df['time'].values,
@@ -145,11 +161,13 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     time_series = _load_historical_time_series()
 
     # Create TakeoffParameters with anchor values
+    # Use 100.0 as default for progress_at_aa if None (consistent with app's progress_model.py)
+    progress_at_aa_value = inputs.progress_at_aa if inputs.progress_at_aa is not None else 100.0
     params = TakeoffParameters(
         software_progress_rate_at_reference_year=inputs.software_progress_rate_at_reference_year,
         swe_multiplier_at_present_day=inputs.swe_multiplier_at_present_day,
         present_day=inputs.present_day,
-        progress_at_aa=inputs.progress_at_aa,
+        progress_at_aa=progress_at_aa_value,
         inf_labor_asymptote=inputs.inf_labor_asymptote,
         inf_compute_asymptote=inputs.inf_compute_asymptote,
         labor_anchor_exp_cap=inputs.labor_anchor_exp_cap,
@@ -160,8 +178,10 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     )
 
     # Run the old model's calibration by computing a trajectory
+    # Use the simulation start year for calibration - this is critical because
+    # r_software is calibrated based on the human-only trajectory from start_year
     model = ProgressModel(params, time_series)
-    time_range = [2012.0, 2050.0]
+    time_range = [inputs.start_year, 2050.0]
     times, progress_values, research_stock_values = model.compute_progress_trajectory(
         time_range, initial_progress=0.0
     )
@@ -169,10 +189,30 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     # Extract calibrated parameters from the model
     calibrated_params = model.params
 
-    # Get initial state at 2026
-    idx_2026 = np.argmin(np.abs(times - 2026.0))
-    initial_progress = float(progress_values[idx_2026])
-    initial_research_stock = float(research_stock_values[idx_2026])
+    # Get initial state at simulation start (first point in trajectory)
+    initial_progress = float(progress_values[0])
+    initial_research_stock = float(research_stock_values[0])
+
+    # Get the horizon_trajectory function from the model (computed during trajectory)
+    horizon_trajectory = getattr(model, 'horizon_trajectory', None)
+
+    # Extract year-based trajectories for interpolation
+    # This allows the ODE simulator to use ProgressModel's horizon and automation values
+    trajectory_years = np.array(times)
+    trajectory_progress = np.array(progress_values)
+
+    # Get horizon_lengths, automation_fractions, and ai_sw_progress_mult from model.results
+    trajectory_horizon_lengths = None
+    trajectory_automation_fractions = None
+    trajectory_ai_sw_progress_mult = None
+    if hasattr(model, 'results') and model.results:
+        results = model.results
+        if 'horizon_lengths' in results:
+            trajectory_horizon_lengths = np.array(results['horizon_lengths'])
+        if 'automation_fraction' in results:
+            trajectory_automation_fractions = np.array(results['automation_fraction'])
+        if 'ai_sw_progress_mult_ref_present_day' in results:
+            trajectory_ai_sw_progress_mult = np.array(results['ai_sw_progress_mult_ref_present_day'])
 
     result = CalibratedParameters(
         r_software=calibrated_params.r_software,
@@ -186,6 +226,13 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
         coding_automation_efficiency_slope=calibrated_params.coding_automation_efficiency_slope,
         initial_progress=initial_progress,
         initial_research_stock=initial_research_stock,
+        horizon_trajectory=horizon_trajectory,
+        # Year-based trajectories for interpolation
+        trajectory_years=trajectory_years,
+        trajectory_progress=trajectory_progress,
+        trajectory_horizon_lengths=trajectory_horizon_lengths,
+        trajectory_automation_fractions=trajectory_automation_fractions,
+        trajectory_ai_sw_progress_mult=trajectory_ai_sw_progress_mult,
     )
 
     # Cache the result
@@ -194,12 +241,13 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     return result
 
 
-def calibrate_from_params(software_r_and_d) -> CalibratedParameters:
+def calibrate_from_params(software_r_and_d, start_year: float = 2024.0) -> CalibratedParameters:
     """
     Convenience function to calibrate from a SoftwareRAndDParameters object.
 
     Args:
         software_r_and_d: SoftwareRAndDParameters from simulation_parameters.py
+        start_year: The simulation start year (affects r_software calibration)
 
     Returns:
         CalibratedParameters with the computed values
@@ -210,7 +258,7 @@ def calibrate_from_params(software_r_and_d) -> CalibratedParameters:
         software_progress_rate_at_reference_year=r.software_progress_rate_at_reference_year,
         swe_multiplier_at_present_day=r.swe_multiplier_at_present_day,
         present_day=r.present_day,
-        progress_at_aa=r.progress_at_aa if r.progress_at_aa is not None else 10.0,
+        progress_at_aa=r.progress_at_aa if r.progress_at_aa is not None else 100.0,
         inf_labor_asymptote=r.inf_labor_asymptote,
         inf_compute_asymptote=r.inf_compute_asymptote,
         labor_anchor_exp_cap=r.labor_anchor_exp_cap,
@@ -218,6 +266,7 @@ def calibrate_from_params(software_r_and_d) -> CalibratedParameters:
         parallel_penalty=r.parallel_penalty,
         rho_coding_labor=r.rho_coding_labor,
         coding_labor_normalization=r.coding_labor_normalization,
+        start_year=start_year,
     )
 
     return calibrate(inputs)
@@ -230,7 +279,9 @@ def clear_cache():
 
 if __name__ == "__main__":
     # Test the calibration
-    from simulation_parameters import ModelParameters
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from parameters.simulation_parameters import ModelParameters
 
     config_path = Path(__file__).parent / "modal_parameters.yaml"
     model_params = ModelParameters.from_yaml(config_path)
