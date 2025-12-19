@@ -621,12 +621,14 @@ def compute_cumulative_likelihood_ratio(
     """
     Compute the cumulative detection likelihood ratio for a black project.
 
-    Combines three independent intelligence sources:
-    1. LR_inventory: Evidence from missing domestic equipment (constant)
-    2. LR_procurement: Evidence from foreign equipment purchases (constant)
-    3. LR_other: Evidence from HUMINT/SIGINT/IMINT based on workers and time
+    Combines all independent intelligence sources (matches discrete model):
+    1. LR_initial: Evidence from PRC compute stock accounting (constant, sampled at init)
+    2. LR_sme: Evidence from fab (inventory + procurement) - constants
+    3. LR_satellite: Evidence from satellite detection of diverted datacenters (constant, sampled at init)
+    4. LR_energy: Evidence from energy consumption accounting (time-varying, depends on covert DC capacity)
+    5. LR_other: Evidence from worker detection (time-varying, uses pre-computed LRs)
 
-    cumulative_LR = LR_inventory × LR_procurement × LR_other
+    cumulative_LR = LR_initial × LR_sme × LR_satellite × LR_energy × LR_other
 
     Args:
         project: AIBlackProject instance
@@ -638,32 +640,88 @@ def compute_cumulative_likelihood_ratio(
     Returns:
         Cumulative likelihood ratio
     """
-    # Get constant LRs from fab (if it exists)
-    lr_inventory = 1.0
-    lr_procurement = 1.0
-    if project.fab is not None:
-        lr_inventory = project.fab.lr_inventory
-        lr_procurement = project.fab.lr_procurement
-
-    # Compute time-varying LR_other
     years_since_start = current_time - project.ai_slowdown_start_year
 
-    # Get current labor
-    labor = get_black_project_total_labor(project)
+    # --- LR_initial: PRC compute stock accounting ---
+    # This is computed from the sampled US estimate at initialization
+    lr_initial = 1.0
+    if hasattr(project, 'us_estimate_compute_stock') and project.us_estimate_compute_stock > 0:
+        from parameters.black_project_parameters import DetectionParameters
+        # We need the median error - get it from the stored values or use a default
+        # The reported PRC stock is (1 - diversion_proportion) * total
+        reported_compute_stock = project.compute.total_tpp_h100e * (1 - project.diversion_proportion) / project.diversion_proportion if project.diversion_proportion > 0 else project.compute.total_tpp_h100e
+        lr_initial = compute_lr_from_prc_compute_accounting(
+            reported_compute_stock=reported_compute_stock,
+            diversion_proportion=project.diversion_proportion,
+            us_estimate_compute=project.us_estimate_compute_stock,
+            median_error=0.1  # Default, should match detection_params
+        )
 
-    # Check if detected
+    # --- LR_sme: Fab inventory + procurement ---
+    lr_sme = 1.0
+    if project.fab is not None:
+        lr_inventory = getattr(project.fab, 'lr_inventory', 1.0)
+        lr_procurement = getattr(project.fab, 'lr_procurement', 1.0)
+        lr_sme = lr_inventory * lr_procurement
+
+    # --- LR_satellite: Satellite detection of diverted capacity ---
+    lr_satellite = 1.0
+    if hasattr(project, 'us_estimate_satellite_capacity_gw') and project.datacenters is not None:
+        # Diverted capacity is the unconcealed capacity
+        diverted_capacity = project.datacenters.unconcealed_capacity_gw
+        # Total unconcealed capacity before diversion (energy consumption of PRC stock)
+        # The discrete model uses: energy_consumption_of_prc_stock_at_agreement_start
+        # which is the initial energy requirement
+        h100_power_gw = 700e-9  # 700W in GW
+        energy_efficiency = getattr(project.compute_stock, 'energy_efficiency_relative_to_h100', 1.0)
+        initial_compute = project.compute.total_tpp_h100e / project.diversion_proportion if project.diversion_proportion > 0 else project.compute.total_tpp_h100e
+        total_unconcealed = initial_compute * h100_power_gw / energy_efficiency
+
+        if diverted_capacity > 1e-10:
+            lr_satellite = compute_lr_from_satellite_detection(
+                diverted_capacity_gw=diverted_capacity,
+                total_unconcealed_capacity_gw=total_unconcealed,
+                us_estimate_capacity=project.us_estimate_satellite_capacity_gw,
+                median_error=0.1  # Default, should match detection_params
+            )
+
+    # --- LR_energy: Energy consumption accounting ---
+    lr_energy = 1.0
+    if hasattr(project, 'us_estimate_energy_gw') and project.datacenters is not None:
+        # Covert energy is the total datacenter capacity (grows over time)
+        covert_energy = get_datacenter_total_capacity_gw(project.datacenters)
+        if covert_energy > 1e-10 and project.total_prc_energy_gw > 1e-10:
+            lr_energy = compute_lr_from_reported_energy_consumption(
+                total_prc_energy_gw=project.total_prc_energy_gw,
+                covert_energy_gw=covert_energy,
+                us_estimate_energy=project.us_estimate_energy_gw,
+                median_error=0.1  # Default, should match detection_params
+            )
+
+    # --- LR_other: Worker detection (uses pre-computed LRs or computes on-the-fly) ---
+    lr_other = 1.0
     is_detected = getattr(project, 'is_detected', False)
 
-    lr_other = compute_lr_other(
-        years_since_start=years_since_start,
-        labor=labor,
-        mean_detection_time_100_workers=mean_detection_time_100_workers,
-        mean_detection_time_1000_workers=mean_detection_time_1000_workers,
-        variance_theta=variance_theta,
-        is_detected=is_detected
-    )
+    if is_detected:
+        lr_other = 100.0
+    elif hasattr(project, 'lr_by_year') and project.lr_by_year:
+        # Use pre-computed LR values (matches discrete model)
+        # Find the closest year in lr_by_year
+        relative_year = round(years_since_start)  # Round to nearest integer year
+        lr_other = project.lr_by_year.get(relative_year, 1.0)
+    else:
+        # Fall back to on-the-fly computation
+        labor = get_black_project_total_labor(project)
+        lr_other = compute_lr_other(
+            years_since_start=years_since_start,
+            labor=labor,
+            mean_detection_time_100_workers=mean_detection_time_100_workers,
+            mean_detection_time_1000_workers=mean_detection_time_1000_workers,
+            variance_theta=variance_theta,
+            is_detected=is_detected
+        )
 
-    return lr_inventory * lr_procurement * lr_other
+    return lr_initial * lr_sme * lr_satellite * lr_energy * lr_other
 
 
 def compute_detection_probability(

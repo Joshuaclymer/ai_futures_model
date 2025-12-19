@@ -261,3 +261,52 @@ correlation_matrix:
     # inf_compute_asymptote
     - [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.50,  1.00]
   correlation_type: "spearman"
+
+# =========================================================================
+# BLACK PROJECT PARAMETERS
+# =========================================================================
+# Parameters for covert compute infrastructure with lognormal uncertainty.
+# These replace the relative_sigma parameters that were previously defined
+# separately in modal_parameters.yaml.
+black_project:
+  fab:
+    # Labor productivity: wafers produced per worker per month
+    # Uncertainty reflects variation in workforce efficiency and training
+    wafers_per_month_per_worker:
+      dist: lognormal
+      ci80: [11.1, 54.5]
+
+    # Scanner productivity: wafers produced per lithography scanner per month
+    # Uncertainty reflects equipment utilization and maintenance variation
+    wafers_per_month_per_lithography_scanner:
+      dist: lognormal
+      ci80: [774, 1292]
+
+    # Construction time for small fab (5k wafers/month capacity)
+    # Uncertainty reflects project management and supply chain variation
+    construction_time_for_5k_wafers_per_month:
+      dist: lognormal
+      ci80: [1.16, 1.70]
+
+    # Construction time for large fab (100k wafers/month capacity)
+    construction_time_for_100k_wafers_per_month:
+      dist: lognormal
+      ci80: [1.99, 2.92]
+
+    # PRC lithography scanner production in first year
+    # Uncertainty reflects manufacturing ramp-up challenges
+    prc_lithography_scanners_produced_in_first_year:
+      dist: lognormal
+      ci80: [13.6, 29.4]
+
+    # Additional PRC lithography scanners produced per year after first year
+    prc_additional_lithography_scanners_produced_per_year:
+      dist: lognormal
+      ci80: [10.9, 23.5]
+
+  datacenter:
+    # Datacenter construction productivity: MW of capacity per worker per year
+    # Uncertainty reflects construction efficiency and learning curve variation
+    MW_per_construction_worker_per_year:
+      dist: lognormal
+      ci80: [0.68, 1.47]

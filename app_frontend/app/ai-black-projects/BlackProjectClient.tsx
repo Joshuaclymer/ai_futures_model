@@ -5,6 +5,15 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import './ai-black-projects.css';
 
+// Import section components
+import {
+  DetectionSection,
+  CovertFabSection,
+  DatacenterSection,
+  InitialStockSection,
+} from '@/components/black-project';
+import { BlackProjectData } from '@/types/blackProject';
+
 // Dynamically import Plotly to avoid SSR issues
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
@@ -198,17 +207,36 @@ export function BlackProjectClient({ initialData, hideHeader = false }: BlackPro
 
     const loadDefaultData = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:5001/get_default_results');
+        // Run a quick simulation with default parameters
+        const response = await fetch('http://127.0.0.1:5329/api/run-black-project-simulation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            parameters: {},
+            num_simulations: 50,  // Fewer for initial load
+            time_range: [
+              defaultParameters.agreementYear,
+              defaultParameters.agreementYear + defaultParameters.numYearsToSimulate,
+            ],
+          }),
+        });
         if (response.ok) {
           const result = await response.json();
-          setData(result);
+          if (result.success) {
+            setData(result);
+          } else {
+            setError(result.error || 'Simulation failed');
+            setStatus('Simulation failed');
+          }
         } else {
-          setError('No cache available');
-          setStatus('No cache available');
+          setError('Backend unavailable');
+          setStatus('Backend unavailable');
         }
       } catch (err) {
         console.error('Failed to load default data:', err);
-        setError('Backend unavailable');
+        setError('Backend unavailable - start the ai_futures_simulator backend on port 5329');
         setStatus('Backend unavailable');
       } finally {
         setIsLoading(false);
@@ -224,29 +252,34 @@ export function BlackProjectClient({ initialData, hideHeader = false }: BlackPro
     setStatus('');
 
     try {
-      const response = await fetch('http://127.0.0.1:5001/run_simulation', {
+      // Use the new ai_futures_simulator backend API
+      const response = await fetch('http://127.0.0.1:5329/api/run-black-project-simulation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          'simulation_settings.agreement_start_year': parameters.agreementYear,
-          'simulation_settings.num_years_to_simulate': parameters.numYearsToSimulate,
-          'simulation_settings.time_step_years': parameters.timeStepYears,
-          'simulation_settings.num_simulations': parameters.numSimulations,
-          'black_project_properties.proportion_of_initial_compute_stock_to_divert': parameters.proportionOfInitialChipStockToDivert,
-          'black_project_properties.datacenter_construction_labor': parameters.datacenterConstructionLabor,
-          'black_project_properties.years_before_agreement_year_prc_starts_building_black_datacenters': parameters.yearsBeforeAgreementYearPRCStartsBuildingBlackDatacenters,
-          'black_project_properties.build_a_black_fab': parameters.buildCovertFab,
-          'black_project_properties.black_fab_operating_labor': parameters.operatingLabor,
-          'black_project_properties.black_fab_construction_labor': parameters.constructionLabor,
-          'black_project_properties.black_fab_process_node': parameters.processNode,
-          'black_project_properties.black_fab_proportion_of_prc_lithography_scanners_devoted': parameters.scannerProportion,
-          'black_project_properties.researcher_headcount': parameters.researcherHeadcount,
-          'black_project_parameters.p_project_exists': parameters.pProjectExists,
-          'black_project_parameters.detection_parameters.mean_detection_time_for_100_workers': parameters.meanDetectionTime100,
-          'black_project_parameters.detection_parameters.mean_detection_time_for_1000_workers': parameters.meanDetectionTime1000,
-          'black_project_parameters.detection_parameters.variance_of_detection_time_given_num_workers': parameters.varianceDetectionTime,
+          parameters: {
+            // These will be used to configure the black project
+            proportion_of_initial_compute_stock_to_divert: parameters.proportionOfInitialChipStockToDivert,
+            datacenter_construction_labor: parameters.datacenterConstructionLabor,
+            years_before_agreement_year_prc_starts_building_black_datacenters: parameters.yearsBeforeAgreementYearPRCStartsBuildingBlackDatacenters,
+            build_a_black_fab: parameters.buildCovertFab,
+            black_fab_operating_labor: parameters.operatingLabor,
+            black_fab_construction_labor: parameters.constructionLabor,
+            black_fab_process_node: parameters.processNode,
+            black_fab_proportion_of_prc_lithography_scanners_devoted: parameters.scannerProportion,
+            researcher_headcount: parameters.researcherHeadcount,
+            p_project_exists: parameters.pProjectExists,
+            mean_detection_time_for_100_workers: parameters.meanDetectionTime100,
+            mean_detection_time_for_1000_workers: parameters.meanDetectionTime1000,
+            variance_of_detection_time_given_num_workers: parameters.varianceDetectionTime,
+          },
+          num_simulations: parameters.numSimulations,
+          time_range: [
+            parameters.agreementYear,
+            parameters.agreementYear + parameters.numYearsToSimulate,
+          ],
         }),
       });
 
@@ -255,6 +288,9 @@ export function BlackProjectClient({ initialData, hideHeader = false }: BlackPro
       }
 
       const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Unknown simulation error');
+      }
       setData(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -679,6 +715,34 @@ export function BlackProjectClient({ initialData, hideHeader = false }: BlackPro
             <p className="text-xs text-gray-500 italic mt-4">
               *Unless otherwise specified, US intelligence &apos;detects&apos; a covert project after it receives &gt;4x update that the project exists, after which, USG exits the AI slowdown agreement.
             </p>
+
+            {/* Divider */}
+            <hr className="my-8 border-gray-200" />
+
+            {/* Detection Section */}
+            <DetectionSection data={data as unknown as BlackProjectData} isLoading={isLoading} />
+
+            {/* Divider */}
+            <hr className="my-8 border-gray-200" />
+
+            {/* Covert Fab Section */}
+            <CovertFabSection data={data as unknown as BlackProjectData} isLoading={isLoading} />
+
+            {/* Divider */}
+            <hr className="my-8 border-gray-200" />
+
+            {/* Datacenter Section */}
+            <DatacenterSection data={data as unknown as BlackProjectData} isLoading={isLoading} />
+
+            {/* Divider */}
+            <hr className="my-8 border-gray-200" />
+
+            {/* Initial Stock Section */}
+            <InitialStockSection
+              data={data as unknown as BlackProjectData}
+              isLoading={isLoading}
+              diversionProportion={parameters.proportionOfInitialChipStockToDivert}
+            />
 
             {/* Debug data display */}
             {data && (

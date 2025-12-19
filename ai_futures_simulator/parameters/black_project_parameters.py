@@ -80,12 +80,6 @@ class BlackFabParameters:
     prc_lithography_scanners_produced_in_first_year: float
     prc_additional_lithography_scanners_produced_per_year: float
 
-    # Uncertainty parameters (log-normal relative sigma)
-    labor_productivity_relative_sigma: float
-    scanner_productivity_relative_sigma: float
-    construction_time_relative_sigma: float
-    prc_scanner_production_relative_sigma: float
-
     # PRC localization probability curves: List of (year, cumulative_probability) tuples
     localization_130nm: List[Tuple[float, float]]
     localization_28nm: List[Tuple[float, float]]
@@ -108,7 +102,6 @@ class BlackDatacenterParameters:
 
     # Construction productivity
     MW_per_construction_worker_per_year: float
-    relative_sigma_mw_per_construction_worker_per_year: float
 
     # Operating requirements
     operating_labor_per_MW: float

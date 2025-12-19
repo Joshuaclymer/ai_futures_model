@@ -194,10 +194,6 @@ black_project:
     watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: -0.33
     prc_lithography_scanners_produced_in_first_year: 20.0
     prc_additional_lithography_scanners_produced_per_year: 16.0
-    labor_productivity_relative_sigma: 0.62
-    scanner_productivity_relative_sigma: 0.20
-    construction_time_relative_sigma: 0.15
-    prc_scanner_production_relative_sigma: 0.30
     # PRC localization probability curves: [year, probability] pairs
     localization_130nm: [[2025.0, 0.80], [2031.0, 0.80]]
     localization_28nm: [[2025.0, 0.0], [2031.0, 0.25]]
@@ -207,7 +203,6 @@ black_project:
   # Covert datacenter parameters
   datacenter:
     MW_per_construction_worker_per_year: 1.0
-    relative_sigma_mw_per_construction_worker_per_year: 0.3
     operating_labor_per_MW: 0.1
 
   # Detection/likelihood ratio parameters
