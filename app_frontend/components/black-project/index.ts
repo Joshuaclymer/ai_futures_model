@@ -1,9 +1,7 @@
-// Chart components
-export { PlotlyChart } from './charts/PlotlyChart';
-export { CCDFChart } from './charts/CCDFChart';
-export { TimeSeriesChart } from './charts/TimeSeriesChart';
+/**
+ * Black project section components.
+ */
 
-// Section components
 export { DetectionSection } from './DetectionSection';
 export { CovertFabSection } from './CovertFabSection';
 export { DatacenterSection } from './DatacenterSection';

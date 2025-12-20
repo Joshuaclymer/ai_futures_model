@@ -10,7 +10,7 @@ from torch import Tensor
 from dataclasses import dataclass, field
 from typing import Optional, List
 from classes.world.tensor_dataclass import TensorDataclass
-from classes.world.assets import Assets, Compute, Fabs, Datacenters, BlackFabs, BlackDatacenters, BlackCompute
+from classes.world.assets import Assets, Compute, Fabs, Datacenters
 from classes.world.software_progress import AISoftwareProgress
 
 @dataclass
@@ -122,3 +122,30 @@ class AIBlackProject(AISoftwareDeveloper):
     ## Compute
     compute_stock: Compute = field(init=False)
     operating_compute_tpp_h100e: float = field(init=False) # includes compute that is both functional and operating in datacenters
+
+    ## Time series metrics (computed per simulation for frontend plots)
+    years: List[float] = field(init=False)  # Simulation years
+    cumulative_h100_years: List[float] = field(init=False)  # Cumulative covert computation
+    operational_compute_h100e_by_year: List[float] = field(init=False)
+    survival_rate_by_year: List[float] = field(init=False)
+    datacenter_capacity_gw_by_year: List[float] = field(init=False)
+    total_black_compute_by_year: List[float] = field(init=False)  # Total covert chip stock (surviving)
+    initial_black_compute_by_year: List[float] = field(init=False)  # Initial diverted compute (surviving)
+    fab_flow_by_year: List[float] = field(init=False)  # Fab cumulative production
+
+    ## LR components (for detection breakdown)
+    lr_prc_accounting: float = field(init=False)  # From chip stock discrepancy
+    lr_sme_inventory: float = field(init=False)  # From SME diversion
+    lr_satellite_datacenter: float = field(init=False)  # From satellite imagery
+    lr_reported_energy_by_year: List[float] = field(init=False)  # Energy consumption LR over time
+    lr_other_intel_by_year: List[float] = field(init=False)  # Direct evidence (workers, etc) over time
+    cumulative_lr_by_year: List[float] = field(init=False)  # Combined LR over time
+    posterior_prob_by_year: List[float] = field(init=False)  # P(project exists) over time
+
+    ## Fab production metrics
+    fab_cumulative_production_h100e_by_year: List[float] = field(init=False)
+    fab_architecture_efficiency_by_year: List[float] = field(init=False)
+    fab_transistor_density_relative_to_h100: float = field(init=False)
+
+    ## Detection outcomes (per threshold)
+    sampled_detection_time: float = field(init=False)  # Sampled from composite distribution

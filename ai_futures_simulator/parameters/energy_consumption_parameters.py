@@ -11,20 +11,15 @@ from dataclasses import dataclass
 
 
 @dataclass
+class ExogenousEnergyTrends:
+    state_of_the_art_energy_efficiency_improvement_per_year: float
+
+@dataclass
+class PRCEnergyConsumptionParameters:
+    energy_efficiency_of_compute_stock_relative_to_state_of_the_art: float
+    total_prc_energy_consumption_gw: float
+
+@dataclass
 class EnergyConsumptionParameters:
-    """
-    Parameters for energy consumption and efficiency.
-
-    Models energy requirements for AI compute infrastructure including
-    efficiency relative to state-of-the-art and total available capacity.
-    """
-
-    # Energy efficiency
-    energy_efficiency_of_prc_stock_relative_to_state_of_the_art: float
-    architecture_efficiency_improvement_per_year: float
-
-    # Energy consumption capacity
-    total_GW_of_PRC_energy_consumption: float
-
-    # Largest AI project energy efficiency
-    largest_ai_project_energy_efficiency_improvement_per_year: float
+    exogenous_trends : ExogenousEnergyTrends
+    prc_energy_consumption : PRCEnergyConsumptionParameters

@@ -6,7 +6,7 @@ ModelParameters defines distributions for Monte Carlo sampling loaded from YAML.
 
 Parameter definitions are in separate files for clarity:
 - software_r_and_d_parameters.py: AI R&D model parameters
-- compute_growth_parameters.py: Compute growth dynamics
+- compute_parameters.py: Compute growth dynamics
 - policy_parameters.py: AI governance and slowdown policies
 - black_project_parameters.py: Covert compute infrastructure
 """
@@ -24,17 +24,27 @@ from parameters.sample_from_distribution import (
 
 # Import parameter classes from dedicated files
 from parameters.software_r_and_d_parameters import SoftwareRAndDParameters
-from parameters.compute_parameters import ComputeParameters
-from parameters.policy_parameters import PolicyParameters
-from parameters.energy_consumption_parameters import EnergyConsumptionParameters
-from parameters.black_project_parameters import (
-    BlackProjectParameterSet,
-    BlackProjectProperties,
-    BlackFabParameters,
-    BlackDatacenterParameters,
-    DetectionParameters,
+from parameters.compute_parameters import (
+    ComputeParameters,
+    ExogenousComputeTrends,
+    SurvivalRateParameters,
+    USComputeParameters,
+    PRCComputeParameters,
 )
-from parameters.perceptions_parameters import PerceptionsParameters
+from parameters.policy_parameters import PolicyParameters
+from parameters.energy_consumption_parameters import (
+    EnergyConsumptionParameters,
+    ExogenousEnergyTrends,
+    PRCEnergyConsumptionParameters,
+)
+from parameters.black_project_parameters import (
+    BlackProjectParameters,
+    BlackProjectProperties,
+)
+from parameters.perceptions_parameters import (
+    PerceptionsParameters,
+    BlackProjectPerceptionsParameters,
+)
 
 
 @dataclass
@@ -62,19 +72,20 @@ class SimulationParameters:
     - Simulation settings (start year, end year, eval points)
     - Model parameters for each component:
       - software_r_and_d: AI R&D dynamics
-      - compute_growth: Training compute growth
+      - compute: Compute growth (exogenous trends, survival rates, US/PRC compute)
       - energy_consumption: Energy efficiency and consumption
       - policy: AI governance and slowdown policies
       - black_project: Covert compute infrastructure (optional)
+      - perceptions: Detection/perception parameters (optional)
 
     Note: simulation_start_year must be a discrete year in the historical data (2012-2026).
     """
     settings: SimulationSettings
     software_r_and_d: SoftwareRAndDParameters
-    compute_growth: ComputeParameters
+    compute: ComputeParameters
     energy_consumption: EnergyConsumptionParameters
     policy: PolicyParameters
-    black_project: Optional[BlackProjectParameterSet] = None
+    black_project: Optional[BlackProjectParameters] = None
     perceptions: Optional[PerceptionsParameters] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -82,21 +93,35 @@ class SimulationParameters:
         result = {
             "settings": self.settings.__dict__,
             "software_r_and_d": self.software_r_and_d.__dict__,
-            "compute_growth": self.compute_growth.__dict__,
-            "energy_consumption": self.energy_consumption.__dict__,
+            "compute": {
+                "exogenous_trends": self.compute.exogenous_trends.__dict__,
+                "survival_rate_parameters": self.compute.survival_rate_parameters.__dict__,
+                "us_compute": self.compute.USComputeParameters.__dict__,
+                "prc_compute": self.compute.PRCComputeParameters.__dict__,
+            },
+            "energy_consumption": {
+                "exogenous_trends": self.energy_consumption.exogenous_trends.__dict__,
+                "prc_energy_consumption": self.energy_consumption.prc_energy_consumption.__dict__,
+            },
             "policy": self.policy.__dict__,
         }
         # Add black project parameters if present
         if self.black_project:
             result["black_project"] = {
-                "properties": self.black_project.properties.__dict__,
-                "fab": self.black_project.fab_params.__dict__,
-                "datacenter": self.black_project.datacenter_params.__dict__,
-                "detection": self.black_project.detection_params.__dict__,
+                "run_a_black_project": self.black_project.run_a_black_project,
+                "start_black_project_how_many_years_before_agreement_year": self.black_project.start_black_project_how_many_years_before_agreement_year,
+                "properties": self.black_project.black_project_properties.__dict__,
+                "fab_wafers_per_month_per_operating_worker": self.black_project.fab_wafers_per_month_per_operating_worker,
+                "fab_wafers_per_month_per_construction_worker_under_standard_timeline": self.black_project.fab_wafers_per_month_per_construction_worker_under_standard_timeline,
+                "datacenter_mw_per_year_per_construction_worker": self.black_project.datacenter_mw_per_year_per_construction_worker,
+                "datacenter_mw_per_operating_worker": self.black_project.datacenter_mw_per_operating_worker,
             }
         # Add perceptions parameters if present
         if self.perceptions:
-            result["perceptions"] = self.perceptions.__dict__
+            result["perceptions"] = {
+                "update_perceptions": self.perceptions.update_perceptions,
+                "black_project_perception_parameters": self.perceptions.black_project_perception_parameters.__dict__,
+            }
         return result
 
     @property
@@ -132,28 +157,31 @@ class ModelParameters:
             values: [-5, -2, -1]
             p: [0.25, 0.5, 0.25]
 
-        compute_growth:
-          us_frontier_project_compute_annual_multiplier:
-            dist: normal
-            ci80: [3.55, 4.47]
-          slowdown_year: 2028.0
+        compute:
+          exogenous_trends:
+            transistor_density_scaling_exponent: 1.49
+          survival_rate_parameters:
+            initial_annual_hazard_rate: 0.05
+          us_compute:
+            us_frontier_project_compute_tpp_h100e_in_2025: 120325.0
+          prc_compute:
+            total_prc_compute_tpp_h100e_in_2025: 100000.0
 
         policy:
           ai_slowdown_start_year: 2030.0
 
         black_project:
+          run_a_black_project: true
+          start_black_project_how_many_years_before_agreement_year: 1.0
           properties:
-            run_a_black_project: true
-            ...
-          fab:
-            h100_sized_chips_per_wafer: 28.0
+            datacenter_construction_labor: 10000
             ...
     """
 
     # Nested parameter specifications
     settings: Dict[str, Any] = field(default_factory=dict)
     software_r_and_d: Dict[str, Any] = field(default_factory=dict)
-    compute_growth: Dict[str, Any] = field(default_factory=dict)
+    compute: Dict[str, Any] = field(default_factory=dict)
     energy_consumption: Dict[str, Any] = field(default_factory=dict)
     policy: Dict[str, Any] = field(default_factory=dict)
     black_project: Optional[Dict[str, Any]] = None
@@ -181,7 +209,7 @@ class ModelParameters:
         return cls(
             settings=config.get("settings", {}),
             software_r_and_d=config.get("software_r_and_d", {}),
-            compute_growth=config.get("compute_growth", {}),
+            compute=config.get("compute", {}),
             energy_consumption=config.get("energy_consumption", {}),
             policy=config.get("policy", {}),
             black_project=config.get("black_project"),
@@ -240,15 +268,11 @@ class ModelParameters:
         for param_name, dist_spec in self.software_r_and_d.items():
             sampled_r_and_d[param_name] = sample_from_distribution(dist_spec, rng, param_name)
 
-        # Sample compute_growth parameters
-        sampled_compute = {}
-        for param_name, dist_spec in self.compute_growth.items():
-            sampled_compute[param_name] = sample_from_distribution(dist_spec, rng, param_name)
+        # Sample compute parameters (nested structure)
+        sampled_compute = self._sample_nested_dict(self.compute, rng)
 
-        # Sample energy_consumption parameters
-        sampled_energy = {}
-        for param_name, dist_spec in self.energy_consumption.items():
-            sampled_energy[param_name] = sample_from_distribution(dist_spec, rng, param_name)
+        # Sample energy_consumption parameters (nested structure)
+        sampled_energy = self._sample_nested_dict(self.energy_consumption, rng)
 
         # Sample policy parameters
         sampled_policy = self._sample_nested_dict(self.policy, rng)
@@ -256,31 +280,52 @@ class ModelParameters:
         # Build parameter objects
         settings = SimulationSettings(**sampled_settings)
         software_r_and_d = SoftwareRAndDParameters(**sampled_r_and_d)
-        compute_growth = ComputeParameters(**sampled_compute)
-        energy_consumption = EnergyConsumptionParameters(**sampled_energy)
+
+        # Build nested compute parameters
+        compute = ComputeParameters(
+            exogenous_trends=ExogenousComputeTrends(**sampled_compute.get("exogenous_trends", {})),
+            survival_rate_parameters=SurvivalRateParameters(**sampled_compute.get("survival_rate_parameters", {})),
+            USComputeParameters=USComputeParameters(**sampled_compute.get("us_compute", {})),
+            PRCComputeParameters=PRCComputeParameters(**sampled_compute.get("prc_compute", {})),
+        )
+
+        # Build nested energy consumption parameters
+        energy_consumption = EnergyConsumptionParameters(
+            exogenous_trends=ExogenousEnergyTrends(**sampled_energy.get("exogenous_trends", {})),
+            prc_energy_consumption=PRCEnergyConsumptionParameters(**sampled_energy.get("prc_energy_consumption", {})),
+        )
+
         policy = PolicyParameters(**sampled_policy)
 
         # Build black project parameters if present
         black_project = None
         if self.black_project is not None:
             sampled_bp = self._sample_nested_dict(self.black_project, rng)
-            black_project = BlackProjectParameterSet(
-                properties=BlackProjectProperties(**sampled_bp.get("properties", {})),
-                fab_params=BlackFabParameters(**sampled_bp.get("fab", {})),
-                datacenter_params=BlackDatacenterParameters(**sampled_bp.get("datacenter", {})),
-                detection_params=DetectionParameters(**sampled_bp.get("detection", {})),
+            black_project = BlackProjectParameters(
+                run_a_black_project=sampled_bp.get("run_a_black_project", True),
+                start_black_project_how_many_years_before_agreement_year=sampled_bp.get("start_black_project_how_many_years_before_agreement_year", 1.0),
+                black_project_properties=BlackProjectProperties(**sampled_bp.get("properties", {})),
+                fab_wafers_per_month_per_operating_worker=sampled_bp.get("fab_wafers_per_month_per_operating_worker", 24.64),
+                fab_wafers_per_month_per_construction_worker_under_standard_timeline=sampled_bp.get("fab_wafers_per_month_per_construction_worker_under_standard_timeline", 14.1),
+                datacenter_mw_per_year_per_construction_worker=sampled_bp.get("datacenter_mw_per_year_per_construction_worker", 1.0),
+                datacenter_mw_per_operating_worker=sampled_bp.get("datacenter_mw_per_operating_worker", 10.0),
             )
 
         # Build perceptions parameters if present
         perceptions = None
         if self.perceptions is not None:
             sampled_perceptions = self._sample_nested_dict(self.perceptions, rng)
-            perceptions = PerceptionsParameters(**sampled_perceptions)
+            perceptions = PerceptionsParameters(
+                update_perceptions=sampled_perceptions.get("update_perceptions", True),
+                black_project_perception_parameters=BlackProjectPerceptionsParameters(
+                    **sampled_perceptions.get("black_project_perception_parameters", {})
+                ),
+            )
 
         return SimulationParameters(
             settings=settings,
             software_r_and_d=software_r_and_d,
-            compute_growth=compute_growth,
+            compute=compute,
             energy_consumption=energy_consumption,
             policy=policy,
             black_project=black_project,

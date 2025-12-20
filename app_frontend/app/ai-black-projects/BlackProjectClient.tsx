@@ -406,13 +406,6 @@ export function BlackProjectClient({ initialData, hideHeader = false }: BlackPro
 
           {/* Sidebar Content */}
           <div className="bp-sidebar-content">
-            {/* Status indicator - only show errors */}
-            {error && (
-              <div className="bp-status error mb-2">
-                {status}
-              </div>
-            )}
-
             {/* Key Parameters Section */}
             <div className="mt-4 mb-2">
               <div className="bp-section-header">

@@ -125,34 +125,61 @@ software_r_and_d:
   gap_years: 1.5
 
 # =============================================================================
-# COMPUTE GROWTH PARAMETERS
+# COMPUTE PARAMETERS
 # =============================================================================
-compute_growth:
-  # US frontier project compute
-  us_frontier_project_compute_growth_rate: 0.6  # OOMs/year (~4x per year)
-  us_frontier_project_h100e_in_2025: 120325.0
-  slowdown_year: 2028.0
-  post_slowdown_training_compute_growth_rate: 0.25
+compute:
+  # Exogenous technology trends
+  exogenous_trends:
+    transistor_density_scaling_exponent: 1.49
+    state_of_the_art_architecture_efficiency_improvement_per_year: 1.23
+    # Energy efficiency parameters (Dennard scaling)
+    transistor_density_at_end_of_dennard_scaling_m_per_mm2: 10.0
+    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: -1.0
+    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: -0.33
+
   # Chip survival/attrition parameters
-  initial_hazard_rate: 0.05  # Per year
-  hazard_rate_increase_per_year: 0.02  # Per year^2
-  # PRC compute stock
-  total_prc_compute_stock_in_2025: 100000.0
-  annual_growth_rate_of_prc_compute_stock_p10: 1.3
-  annual_growth_rate_of_prc_compute_stock_p50: 2.2
-  annual_growth_rate_of_prc_compute_stock_p90: 3.0
-  # PRC domestic production capability
-  proportion_of_prc_chip_stock_produced_domestically_2026: 0.10
-  proportion_of_prc_chip_stock_produced_domestically_2030: 0.40
+  survival_rate_parameters:
+    initial_annual_hazard_rate: 0.05  # Per year
+    annual_hazard_rate_increase_per_year: 0.02  # Per year^2
+
+  # US compute parameters
+  us_compute:
+    us_frontier_project_compute_tpp_h100e_in_2025: 120325.0
+    us_frontier_project_compute_annual_growth_rate: 4.0  # ~4x per year
+
+  # PRC compute parameters
+  prc_compute:
+    total_prc_compute_tpp_h100e_in_2025: 100000.0
+    annual_growth_rate_of_prc_compute_stock: 2.2
+    prc_architecture_efficiency_relative_to_state_of_the_art: 1.0
+    # Domestic production capability
+    proportion_of_prc_chip_stock_produced_domestically_2026: 0.10
+    proportion_of_prc_chip_stock_produced_domestically_2030: 0.40
+    # PRC lithography scanner production
+    prc_lithography_scanners_produced_in_first_year: 20.0
+    prc_additional_lithography_scanners_produced_per_year: 16.0
+    # PRC localization probabilities (by process node and year)
+    p_localization_28nm_2025: 0.0
+    p_localization_14nm_2025: 0.0
+    p_localization_7nm_2025: 0.0
+    p_localization_28nm_2030: 0.25
+    p_localization_14nm_2030: 0.10
+    p_localization_7nm_2030: 0.06
+    # Fab production parameters
+    h100_sized_chips_per_wafer: 28.0
+    wafers_per_month_per_lithography_scanner: 1000.0
+    construction_time_for_5k_wafers_per_month: 1.4
+    construction_time_for_100k_wafers_per_month: 2.41
 
 # =============================================================================
 # ENERGY CONSUMPTION PARAMETERS
 # =============================================================================
 energy_consumption:
-  energy_efficiency_of_prc_stock_relative_to_state_of_the_art: 0.20
-  architecture_efficiency_improvement_per_year: 1.23
-  total_GW_of_PRC_energy_consumption: 1100.0
-  largest_ai_project_energy_efficiency_improvement_per_year: 1.26
+  exogenous_trends:
+    state_of_the_art_energy_efficiency_improvement_per_year: 1.26
+  prc_energy_consumption:
+    energy_efficiency_of_compute_stock_relative_to_state_of_the_art: 0.20
+    total_prc_energy_consumption_gw: 1100.0
 
 # =============================================================================
 # POLICY PARAMETERS
@@ -164,58 +191,30 @@ policy:
 # BLACK PROJECT PARAMETERS
 # =============================================================================
 black_project:
+  run_a_black_project: true
+  start_black_project_how_many_years_before_agreement_year: 1.0
+
   # User-configurable project properties
   properties:
-    run_a_black_project: true
-    proportion_of_initial_compute_stock_to_divert: 0.05
+    # Labor allocation
     datacenter_construction_labor: 10000
-    years_before_agreement_year_prc_starts_building_black_datacenters: 1.0
-    max_proportion_of_PRC_energy_consumption: 0.05
-    fraction_of_datacenter_capacity_not_built_for_concealment_diverted_to_black_project_at_agreement_start: 0.5
-    build_a_black_fab: true
     black_fab_construction_labor: 250
     black_fab_operating_labor: 550
-    black_fab_process_node: "best_indigenous_gte_28nm"
-    black_fab_proportion_of_prc_lithography_scanners_devoted: 0.10
-    researcher_headcount: 500
+    ai_researcher_headcount: 500
+    # Diverted resources
+    fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05
+    fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 0.5
+    fraction_of_lithography_scanners_to_divert_at_black_project_start: 0.10
+    max_fraction_of_total_national_energy_consumption: 0.05
+    # Fab configuration
+    build_a_black_fab: true
+    black_fab_max_process_node: 28.0
 
-  # Covert fab parameters
-  fab:
-    h100_sized_chips_per_wafer: 28.0
-    wafers_per_month_per_worker: 24.64
-    wafers_per_month_per_lithography_scanner: 1000.0
-    construction_time_for_5k_wafers_per_month: 1.4
-    construction_time_for_100k_wafers_per_month: 2.41
-    construction_workers_per_1000_wafers_per_month: 14.1
-    transistor_density_scaling_exponent: 1.49
-    architecture_efficiency_improvement_per_year: 1.23
-    transistor_density_at_end_of_dennard_scaling_m_per_mm2: 10.0
-    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: -1.0
-    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: -0.33
-    prc_lithography_scanners_produced_in_first_year: 20.0
-    prc_additional_lithography_scanners_produced_per_year: 16.0
-    # PRC localization probability curves: [year, probability] pairs
-    localization_130nm: [[2025.0, 0.80], [2031.0, 0.80]]
-    localization_28nm: [[2025.0, 0.0], [2031.0, 0.25]]
-    localization_14nm: [[2025.0, 0.0], [2031.0, 0.10]]
-    localization_7nm: [[2025.0, 0.0], [2031.0, 0.06]]
-
-  # Covert datacenter parameters
-  datacenter:
-    MW_per_construction_worker_per_year: 1.0
-    operating_labor_per_MW: 0.1
-
-  # Detection/likelihood ratio parameters
-  detection:
-    us_intelligence_median_error_in_estimate_of_prc_compute_stock: 0.07
-    us_intelligence_median_error_in_estimate_of_prc_fab_stock: 0.07
-    us_intelligence_median_error_in_energy_consumption_estimate_of_prc_datacenter_capacity: 0.07
-    us_intelligence_median_error_in_satellite_estimate_of_prc_datacenter_capacity: 0.01
-    mean_detection_time_for_100_workers: 6.95
-    mean_detection_time_for_1000_workers: 3.42
-    variance_of_detection_time_given_num_workers: 3.88
-    # Likelihood ratio threshold for detection (used to define detection_probability)
-    detection_threshold: 100.0
+  # Worker-to-capacity conversion parameters
+  fab_wafers_per_month_per_operating_worker: 24.64
+  fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
+  datacenter_mw_per_year_per_construction_worker: 1.0
+  datacenter_mw_per_operating_worker: 10.0
 
 # =============================================================================
 # PERCEPTIONS PARAMETERS
@@ -225,8 +224,18 @@ black_project:
 perceptions:
   # Enable/disable perceptions updating
   update_perceptions: true
-  # Prior probability that PRC has a covert AI project (US initial belief)
-  prior_probability_prc_has_covert_project: 0.3
-  # Probability bounds to prevent numerical issues
-  min_probability: 0.001
-  max_probability: 0.999
+
+  # Black project detection parameters
+  black_project_perception_parameters:
+    # US intelligence estimation error (median absolute relative error)
+    intelligence_median_error_in_estimate_of_compute_stock: 0.07
+    intelligence_median_error_in_estimate_of_fab_stock: 0.07
+    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.07
+    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.01
+    # Worker detection model (Gamma distribution parameters)
+    mean_detection_time_for_100_workers: 6.95
+    mean_detection_time_for_1000_workers: 3.42
+    variance_of_detection_time_given_num_workers: 3.88
+    # Likelihood ratio thresholds for detection
+    detection_threshold: 100.0
+    detection_thresholds: [1, 2, 4]

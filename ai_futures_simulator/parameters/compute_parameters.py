@@ -1,50 +1,60 @@
 """
 Compute parameters for modeling AI training compute dynamics.
 
-Contains parameters for training compute growth rates, slowdown scenarios,
-and chip survival/attrition rates.
-
-NOTE: Default values are NOT stored here. All defaults are in modal_parameters.yaml.
 """
 
 from dataclasses import dataclass
 
+@dataclass
+class ExogenousComputeTrends:
+    transistor_density_scaling_exponent: float # with respect to process node
+    state_of_the_art_architecture_efficiency_improvement_per_year: float
+
+    # Energy efficiency parameters (Dennard scaling)
+    transistor_density_at_end_of_dennard_scaling_m_per_mm2: float
+    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: float
+    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: float
 
 @dataclass
-class ComputeParameters:
-    """
-    Parameters for training compute dynamics.
+class USComputeParameters:
+    us_frontier_project_compute_tpp_h100e_in_2025: float
+    us_frontier_project_compute_annual_growth_rate: float # annual multiplier
 
-    Models exponential growth in training compute with optional slowdown.
-    Growth is measured in orders of magnitude (OOMs) per year.
-    Also includes chip survival/attrition parameters.
-    """
+@dataclass
+class PRCComputeParameters:
+    total_prc_compute_tpp_h100e_in_2025: float
+    annual_growth_rate_of_prc_compute_stock: float
+    prc_architecture_efficiency_relative_to_state_of_the_art : float # This should be 1.0
 
-    # US frontier project compute growth rate (OOMs/year)
-    # Historical rate has been ~0.5-0.7 OOMs/year (~3.2-5x per year)
-    us_frontier_project_compute_growth_rate: float
-
-    # Year when slowdown begins (if any)
-    slowdown_year: float
-
-    # Post-slowdown growth rate (OOMs/year)
-    # Could be lower due to energy/chip constraints, policy, etc.
-    post_slowdown_training_compute_growth_rate: float
-
-    # Chip survival/attrition parameters
-    # Hazard rate model: H(t) = initial + increase * t
-    initial_hazard_rate: float  # Per year (median estimate)
-    hazard_rate_increase_per_year: float  # Per year^2 (median estimate)
-
-    # PRC compute stock
-    total_prc_compute_stock_in_2025: float
-    annual_growth_rate_of_prc_compute_stock_p10: float
-    annual_growth_rate_of_prc_compute_stock_p50: float
-    annual_growth_rate_of_prc_compute_stock_p90: float
-
-    # PRC domestic production capability
     proportion_of_prc_chip_stock_produced_domestically_2026: float
     proportion_of_prc_chip_stock_produced_domestically_2030: float
 
-    # US frontier project initial compute (H100-equivalents in 2025)
-    us_frontier_project_h100e_in_2025: float
+    # PRC lithography scanner production
+    prc_lithography_scanners_produced_in_first_year: float
+    prc_additional_lithography_scanners_produced_per_year: float
+
+    # PRC localization probability curves: List of (year, cumulative_probability) tuples
+    p_localization_28nm_2025: float
+    p_localization_14nm_2025: float
+    p_localization_7nm_2025: float
+    p_localization_28nm_2030: float
+    p_localization_14nm_2030: float
+    p_localization_7nm_2030: float
+
+    # Fab production
+    h100_sized_chips_per_wafer: float
+    wafers_per_month_per_lithography_scanner: float
+    construction_time_for_5k_wafers_per_month: float
+    construction_time_for_100k_wafers_per_month: float
+
+@dataclass
+class SurvivalRateParameters:
+    initial_annual_hazard_rate: float  # Per year (median estimate)
+    annual_hazard_rate_increase_per_year: float  # Per year^2 (median estimate)
+
+@dataclass
+class ComputeParameters:
+    exogenous_trends: ExogenousComputeTrends
+    survival_rate_parameters : SurvivalRateParameters
+    USComputeParameters: USComputeParameters
+    PRCComputeParameters: PRCComputeParameters

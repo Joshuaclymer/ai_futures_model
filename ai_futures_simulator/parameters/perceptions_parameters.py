@@ -22,13 +22,25 @@ class PerceptionsParameters:
 
     # Enable/disable perceptions updating
     update_perceptions: bool
+    black_project_perception_parameters : "BlackProjectPerceptionsParameters"
 
-    # Prior probability that PRC has a covert AI project
-    # This is the US's initial belief before observing any evidence
-    prior_probability_prc_has_covert_project: float
+@dataclass
+class BlackProjectPerceptionsParameters:
+    """Parameters for likelihood ratio calculations."""
 
-    # Minimum probability floor (prevents P from going to exactly 0)
-    min_probability: float = 0.001
+    # US intelligence estimation error (median absolute relative error)
+    intelligence_median_error_in_estimate_of_compute_stock: float
+    intelligence_median_error_in_estimate_of_fab_stock: float
+    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: float
+    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: float
 
-    # Maximum probability ceiling (prevents P from going to exactly 1)
-    max_probability: float = 0.999
+    # Worker detection model (Gamma distribution parameters)
+    mean_detection_time_for_100_workers: float
+    mean_detection_time_for_1000_workers: float
+    variance_of_detection_time_given_num_workers: float
+
+    # Likelihood ratio threshold for detection
+    # When cumulative_likelihood_ratio exceeds this, the project is considered detected
+    detection_threshold: float
+    # Multiple detection thresholds for CCDF plots (1x, 2x, 4x update in odds)
+    detection_thresholds: list[float]
