@@ -292,16 +292,17 @@ compute:
       dist: lognormal
       ci80: [10.9, 23.5]
 
-# =========================================================================
-# BLACK PROJECT PARAMETERS WITH UNCERTAINTY
-# =========================================================================
-black_project:
-  # Labor productivity: wafers produced per operating worker per month
-  fab_wafers_per_month_per_operating_worker:
-    dist: lognormal
-    ci80: [11.1, 54.5]
+    # Labor productivity: wafers produced per operating worker per month (for black projects)
+    fab_wafers_per_month_per_operating_worker:
+      dist: lognormal
+      ci80: [11.1, 54.5]
 
-  # Datacenter construction productivity: MW of capacity per worker per year
-  datacenter_mw_per_year_per_construction_worker:
-    dist: lognormal
-    ci80: [0.68, 1.47]
+# =========================================================================
+# DATACENTER AND ENERGY PARAMETERS WITH UNCERTAINTY
+# =========================================================================
+datacenter_and_energy:
+  prc_energy_consumption:
+    # Datacenter construction productivity: MW of capacity per worker per year
+    data_center_mw_per_year_per_construction_worker:
+      dist: lognormal
+      ci80: [0.68, 1.47]

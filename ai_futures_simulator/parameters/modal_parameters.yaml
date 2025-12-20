@@ -136,6 +136,7 @@ compute:
     transistor_density_at_end_of_dennard_scaling_m_per_mm2: 10.0
     watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: -1.0
     watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: -0.33
+    state_of_the_art_energy_efficiency_improvement_per_year: 1.26
 
   # Chip survival/attrition parameters
   survival_rate_parameters:
@@ -159,9 +160,6 @@ compute:
     prc_lithography_scanners_produced_in_first_year: 20.0
     prc_additional_lithography_scanners_produced_per_year: 16.0
     # PRC localization probabilities (by process node and year)
-    p_localization_28nm_2025: 0.0
-    p_localization_14nm_2025: 0.0
-    p_localization_7nm_2025: 0.0
     p_localization_28nm_2030: 0.25
     p_localization_14nm_2030: 0.10
     p_localization_7nm_2030: 0.06
@@ -170,16 +168,20 @@ compute:
     wafers_per_month_per_lithography_scanner: 1000.0
     construction_time_for_5k_wafers_per_month: 1.4
     construction_time_for_100k_wafers_per_month: 2.41
+    # Worker-to-capacity conversion parameters (for black projects)
+    fab_wafers_per_month_per_operating_worker: 24.64
+    fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
 
 # =============================================================================
-# ENERGY CONSUMPTION PARAMETERS
+# DATACENTER AND ENERGY PARAMETERS
 # =============================================================================
-energy_consumption:
-  exogenous_trends:
-    state_of_the_art_energy_efficiency_improvement_per_year: 1.26
+datacenter_and_energy:
   prc_energy_consumption:
     energy_efficiency_of_compute_stock_relative_to_state_of_the_art: 0.20
     total_prc_energy_consumption_gw: 1100.0
+    # Datacenter worker-to-capacity conversion parameters (for black projects)
+    data_center_mw_per_year_per_construction_worker: 1.0
+    data_center_mw_per_operating_worker: 10.0
 
 # =============================================================================
 # POLICY PARAMETERS
@@ -192,15 +194,16 @@ policy:
 # =============================================================================
 black_project:
   run_a_black_project: true
-  start_black_project_how_many_years_before_agreement_year: 1.0
+  black_project_start_year: 2029.0
 
   # User-configurable project properties
   properties:
-    # Labor allocation
-    datacenter_construction_labor: 10000
-    black_fab_construction_labor: 250
-    black_fab_operating_labor: 550
-    ai_researcher_headcount: 500
+    # Labor allocation (total labor and fractions)
+    total_labor: 11300
+    fraction_of_labor_devoted_to_datacenter_construction: 0.885  # 10000/11300
+    fraction_of_labor_devoted_to_black_fab_construction: 0.022   # 250/11300
+    fraction_of_labor_devoted_to_black_fab_operation: 0.049      # 550/11300
+    fraction_of_labor_devoted_to_ai_research: 0.044              # 500/11300
     # Diverted resources
     fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05
     fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 0.5
@@ -209,12 +212,6 @@ black_project:
     # Fab configuration
     build_a_black_fab: true
     black_fab_max_process_node: 28.0
-
-  # Worker-to-capacity conversion parameters
-  fab_wafers_per_month_per_operating_worker: 24.64
-  fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
-  datacenter_mw_per_year_per_construction_worker: 1.0
-  datacenter_mw_per_operating_worker: 10.0
 
 # =============================================================================
 # PERCEPTIONS PARAMETERS

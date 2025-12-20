@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "screenshot": {
+      "command": "node",
+      "args": ["/Users/joshuaclymer/github/ai_futures_simulator/mcp-screenshot-server/index.js"]
+    }
+  }
+}

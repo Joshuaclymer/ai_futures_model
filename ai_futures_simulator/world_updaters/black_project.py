@@ -22,7 +22,7 @@ from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.simulation_parameters import SimulationParameters
 from parameters.black_project_parameters import BlackProjectParameters, BlackProjectProperties
 from parameters.compute_parameters import ComputeParameters, PRCComputeParameters, ExogenousComputeTrends, SurvivalRateParameters
-from parameters.energy_consumption_parameters import EnergyConsumptionParameters, PRCEnergyConsumptionParameters
+from parameters.data_center_and_energy_parameters import DataCenterAndEnergyParameters, PRCDataCenterAndEnergyParameters
 from parameters.perceptions_parameters import BlackProjectPerceptionsParameters
 from parameters.policy_parameters import PolicyParameters
 from world_updaters.compute.black_compute import (
@@ -67,7 +67,7 @@ class BlackProjectUpdater(WorldUpdater):
         params: SimulationParameters,
         black_project_params: BlackProjectParameters,
         compute_params: ComputeParameters,
-        energy_params: EnergyConsumptionParameters,
+        energy_params: DataCenterAndEnergyParameters,
     ):
         super().__init__()
         self.params = params
@@ -118,8 +118,8 @@ class BlackProjectUpdater(WorldUpdater):
         - operating_compute_tpp_h100e
         """
         current_time = t.item() if isinstance(t, Tensor) else float(t)
-        bp_params = self.black_project_params
         prc_compute = self.compute_params.PRCComputeParameters
+        prc_energy = self.energy_params.prc_energy_consumption
         survival_params = self.compute_params.survival_rate_parameters
 
         for _, project in world.black_projects.items():
@@ -130,7 +130,7 @@ class BlackProjectUpdater(WorldUpdater):
             project.fab_wafer_starts_per_month = calculate_fab_wafer_starts_per_month(
                 fab_operating_labor=project.fab_operating_labor,
                 fab_number_of_lithography_scanners=project.fab_number_of_lithography_scanners,
-                wafers_per_month_per_operating_worker=bp_params.fab_wafers_per_month_per_operating_worker,
+                wafers_per_month_per_operating_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
                 wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
             )
 
@@ -158,7 +158,7 @@ class BlackProjectUpdater(WorldUpdater):
 
             # --- Datacenter metrics ---
             # Get datacenter construction rate from labor
-            gw_per_worker_per_year = bp_params.datacenter_mw_per_year_per_construction_worker / 1000.0
+            gw_per_worker_per_year = prc_energy.data_center_mw_per_year_per_construction_worker / 1000.0
             construction_rate = gw_per_worker_per_year * project.concealed_datacenter_capacity_construction_labor
 
             # Calculate concealed capacity (linear growth)
@@ -179,7 +179,7 @@ class BlackProjectUpdater(WorldUpdater):
             object.__setattr__(project.datacenters, 'data_center_capacity_gw', total_capacity_gw)
 
             # Operating labor per GW
-            project.datacenters_operating_labor_per_gw = bp_params.datacenter_mw_per_operating_worker * 1000.0
+            project.datacenters_operating_labor_per_gw = prc_energy.data_center_mw_per_operating_worker * 1000.0
 
             # --- Compute stock metrics ---
             # Get initial compute stock from parent nation
@@ -231,7 +231,7 @@ def initialize_black_project(
     parent_nation: Nation,
     black_project_params: BlackProjectParameters,
     compute_params: ComputeParameters,
-    energy_params: EnergyConsumptionParameters,
+    energy_params: DataCenterAndEnergyParameters,
     perception_params: BlackProjectPerceptionsParameters,
     policy_params: PolicyParameters,
     initial_prc_compute_stock: float,
@@ -259,9 +259,15 @@ def initialize_black_project(
     prc_energy = energy_params.prc_energy_consumption
     exogenous_trends = compute_params.exogenous_trends
 
-    # Calculate preparation start year from policy
-    ai_slowdown_year = policy_params.ai_slowdown_start_year
-    preparation_start_year = ai_slowdown_year - black_project_params.start_black_project_how_many_years_before_agreement_year
+    # Get preparation start year directly from parameter
+    preparation_start_year = black_project_params.black_project_start_year
+
+    # Calculate labor values from total_labor and fractions
+    total_labor = props.total_labor
+    datacenter_construction_labor = total_labor * props.fraction_of_labor_devoted_to_datacenter_construction
+    black_fab_construction_labor = total_labor * props.fraction_of_labor_devoted_to_black_fab_construction
+    black_fab_operating_labor = total_labor * props.fraction_of_labor_devoted_to_black_fab_operation
+    ai_researcher_headcount = total_labor * props.fraction_of_labor_devoted_to_ai_research
 
     # --- Calculate derived values from parameters ---
 
@@ -287,23 +293,19 @@ def initialize_black_project(
     )
 
     # Construction rate for datacenters
-    gw_per_worker_per_year = black_project_params.datacenter_mw_per_year_per_construction_worker / 1000.0
-    construction_rate = gw_per_worker_per_year * props.datacenter_construction_labor
+    gw_per_worker_per_year = prc_energy.data_center_mw_per_year_per_construction_worker / 1000.0
+    construction_rate = gw_per_worker_per_year * datacenter_construction_labor
 
-    # Calculate initial concealed capacity (built before agreement start)
-    years_of_prep_construction = black_project_params.start_black_project_how_many_years_before_agreement_year
-    initial_concealed = min(
-        construction_rate * years_of_prep_construction,
-        max(0, max_capacity_gw - unconcealed_capacity_gw)
-    )
+    # Initial concealed capacity is 0 at project start
+    initial_concealed = 0.0
     initial_total_capacity = initial_concealed + unconcealed_capacity_gw
 
     # Fab construction duration
     target_wafer_starts = (
-        black_project_params.fab_wafers_per_month_per_operating_worker * props.black_fab_operating_labor * 0.5
+        prc_compute.fab_wafers_per_month_per_operating_worker * black_fab_operating_labor * 0.5
     )
     fab_construction_duration = calculate_fab_construction_duration(
-        fab_construction_labor=props.black_fab_construction_labor,
+        fab_construction_labor=black_fab_construction_labor,
         target_wafer_starts_per_month=target_wafer_starts,
         prc_compute_params=prc_compute,
     )
@@ -327,23 +329,23 @@ def initialize_black_project(
         relative_year = int(year - preparation_start_year)
 
         # Calculate total labor at this year
-        labor_at_year = props.datacenter_construction_labor
-        labor_at_year += props.ai_researcher_headcount
+        labor_at_year = datacenter_construction_labor
+        labor_at_year += ai_researcher_headcount
 
         # Datacenter operating labor (grows with capacity)
         years_since_prep_start = year - preparation_start_year
         concealed_at_year = min(
-            construction_rate * (years_of_prep_construction + years_since_prep_start),
+            construction_rate * years_since_prep_start,
             max(0, max_capacity_gw - unconcealed_capacity_gw)
         )
         total_capacity_at_year = concealed_at_year + unconcealed_capacity_gw
-        operating_labor = total_capacity_at_year * black_project_params.datacenter_mw_per_operating_worker * 1000.0
+        operating_labor = total_capacity_at_year * prc_energy.data_center_mw_per_operating_worker * 1000.0
         labor_at_year += int(operating_labor)
 
         # Fab labor
         if props.build_a_black_fab:
-            labor_at_year += props.black_fab_construction_labor
-            labor_at_year += props.black_fab_operating_labor
+            labor_at_year += black_fab_construction_labor
+            labor_at_year += black_fab_operating_labor
 
         labor_by_relative_year[relative_year] = int(labor_at_year)
 
@@ -416,7 +418,7 @@ def initialize_black_project(
         # AISoftwareDeveloper fields (state)
         operating_compute=[initial_compute],
         compute_allocation=compute_allocation,
-        human_ai_capability_researchers=float(props.ai_researcher_headcount),
+        human_ai_capability_researchers=float(ai_researcher_headcount),
         ai_software_progress=ai_software_progress,
 
         # AIBlackProject state fields
@@ -426,13 +428,13 @@ def initialize_black_project(
         # Fab state
         fab_process_node_nm=process_node_nm,
         fab_number_of_lithography_scanners=float(num_scanners),
-        fab_construction_labor=float(props.black_fab_construction_labor),
-        fab_operating_labor=float(props.black_fab_operating_labor),
+        fab_construction_labor=float(black_fab_construction_labor),
+        fab_operating_labor=float(black_fab_operating_labor),
         fab_chips_per_wafer=float(prc_compute.h100_sized_chips_per_wafer),
 
         # Datacenter state
         unconcealed_datacenter_capacity_diverted_gw=unconcealed_capacity_gw,
-        concealed_datacenter_capacity_construction_labor=float(props.datacenter_construction_labor),
+        concealed_datacenter_capacity_construction_labor=float(datacenter_construction_labor),
         concealed_max_total_capacity_gw=max_capacity_gw,
 
         # Fab (constructor param, not init=False)
@@ -459,7 +461,7 @@ def initialize_black_project(
     # Datacenter metrics
     datacenters = Datacenters(data_center_capacity_gw=initial_total_capacity)
     object.__setattr__(project, 'datacenters', datacenters)
-    object.__setattr__(project, 'datacenters_operating_labor_per_gw', black_project_params.datacenter_mw_per_operating_worker * 1000.0)
+    object.__setattr__(project, 'datacenters_operating_labor_per_gw', prc_energy.data_center_mw_per_operating_worker * 1000.0)
 
     # Compute stock metrics
     compute_stock = Compute(
@@ -484,7 +486,7 @@ def initialize_black_project(
 def get_detection_info_for_simulation(
     project: AIBlackProject,
     black_project_params: BlackProjectParameters,
-    energy_params: EnergyConsumptionParameters,
+    energy_params: DataCenterAndEnergyParameters,
     perception_params: BlackProjectPerceptionsParameters,
     initial_prc_compute_stock: float,
     simulation_years: list,
@@ -511,7 +513,7 @@ def get_detection_info_for_simulation(
 
     # Calculate labor by year
     labor_by_relative_year = {}
-    gw_per_worker_per_year = black_project_params.datacenter_mw_per_year_per_construction_worker / 1000.0
+    gw_per_worker_per_year = prc_energy.data_center_mw_per_year_per_construction_worker / 1000.0
     construction_rate = gw_per_worker_per_year * project.concealed_datacenter_capacity_construction_labor
 
     for year in simulation_years:

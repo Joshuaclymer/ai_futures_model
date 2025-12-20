@@ -14,6 +14,7 @@ class ExogenousComputeTrends:
     transistor_density_at_end_of_dennard_scaling_m_per_mm2: float
     watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: float
     watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: float
+    state_of_the_art_energy_efficiency_improvement_per_year: float
 
 @dataclass
 class USComputeParameters:
@@ -34,9 +35,6 @@ class PRCComputeParameters:
     prc_additional_lithography_scanners_produced_per_year: float
 
     # PRC localization probability curves: List of (year, cumulative_probability) tuples
-    p_localization_28nm_2025: float
-    p_localization_14nm_2025: float
-    p_localization_7nm_2025: float
     p_localization_28nm_2030: float
     p_localization_14nm_2030: float
     p_localization_7nm_2030: float
@@ -46,6 +44,10 @@ class PRCComputeParameters:
     wafers_per_month_per_lithography_scanner: float
     construction_time_for_5k_wafers_per_month: float
     construction_time_for_100k_wafers_per_month: float
+    
+    # Converting between number of workers and fab capacity (for black projects)
+    fab_wafers_per_month_per_operating_worker: float
+    fab_wafers_per_month_per_construction_worker_under_standard_timeline: float
 
 @dataclass
 class SurvivalRateParameters:

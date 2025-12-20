@@ -113,6 +113,13 @@ export interface BlackDatacenters {
   prc_capacity_at_agreement_year_gw: number;
   prc_capacity_at_agreement_year_samples: number[];
   fraction_diverted: number;
+
+  // Min[] formula parameters
+  total_prc_energy_gw?: number;
+  max_proportion_energy?: number;
+  construction_workers?: number;
+  mw_per_worker_per_year?: number;
+  datacenter_start_year?: number;
 }
 
 // Black fab data

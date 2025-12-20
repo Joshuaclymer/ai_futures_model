@@ -1,5 +1,0 @@
-milestone_name,num_achieved,num_not_achieved,total_rollouts,achievement_rate_pct,mode,p10,p50,p90
-AC,100,0,100,100.00,2029.1818,2027.6610,2030.2322,2036.2013
-AI2027-SC,87,13,100,87.00,2030.0162,2028.1001,2032.5401,2200.0000
-SAR-level-experiment-selection-skill,100,0,100,100.00,2029.7661,2027.8577,2031.2845,2045.1394
-SIAR-level-experiment-selection-skill,99,1,100,99.00,2030.0157,2028.1210,2031.9791,2058.5061

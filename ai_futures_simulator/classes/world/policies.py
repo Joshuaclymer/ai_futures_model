@@ -69,7 +69,7 @@ class VerificationMechanismIDs:
 @dataclass
 class VerificationCapacity:
     """Verification capacity of an entity."""
-    national_intelligence_spend_USD: float = 0.0
-    verification_installer_headcount: int = 0
-    site_inspector_headcount: int = 0
-    workload_auditor_headcount: int = 0
+    national_intelligence_spend_USD: float
+    verification_installer_headcount: int
+    site_inspector_headcount: int
+    workload_auditor_headcount: int

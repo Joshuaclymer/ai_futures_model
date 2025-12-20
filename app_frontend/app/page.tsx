@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import ProgressChartServer from '@/components/ProgressChartServer';
+import ProgressChartServer from '@/app/ai-timelines-and-takeoff/components/ProgressChartServer';
 
 // Suspense with null fallback satisfies Next.js 16's requirement that async
 // operations be wrapped in Suspense, while showing no loading state.

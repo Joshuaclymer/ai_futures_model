@@ -32,10 +32,9 @@ from parameters.compute_parameters import (
     PRCComputeParameters,
 )
 from parameters.policy_parameters import PolicyParameters
-from parameters.energy_consumption_parameters import (
-    EnergyConsumptionParameters,
-    ExogenousEnergyTrends,
-    PRCEnergyConsumptionParameters,
+from parameters.data_center_and_energy_parameters import (
+    DataCenterAndEnergyParameters,
+    PRCDataCenterAndEnergyParameters,
 )
 from parameters.black_project_parameters import (
     BlackProjectParameters,
@@ -73,7 +72,7 @@ class SimulationParameters:
     - Model parameters for each component:
       - software_r_and_d: AI R&D dynamics
       - compute: Compute growth (exogenous trends, survival rates, US/PRC compute)
-      - energy_consumption: Energy efficiency and consumption
+      - datacenter_and_energy: Datacenter capacity and energy consumption
       - policy: AI governance and slowdown policies
       - black_project: Covert compute infrastructure (optional)
       - perceptions: Detection/perception parameters (optional)
@@ -83,7 +82,7 @@ class SimulationParameters:
     settings: SimulationSettings
     software_r_and_d: SoftwareRAndDParameters
     compute: ComputeParameters
-    energy_consumption: EnergyConsumptionParameters
+    datacenter_and_energy: DataCenterAndEnergyParameters
     policy: PolicyParameters
     black_project: Optional[BlackProjectParameters] = None
     perceptions: Optional[PerceptionsParameters] = None
@@ -99,9 +98,8 @@ class SimulationParameters:
                 "us_compute": self.compute.USComputeParameters.__dict__,
                 "prc_compute": self.compute.PRCComputeParameters.__dict__,
             },
-            "energy_consumption": {
-                "exogenous_trends": self.energy_consumption.exogenous_trends.__dict__,
-                "prc_energy_consumption": self.energy_consumption.prc_energy_consumption.__dict__,
+            "datacenter_and_energy": {
+                "prc_energy_consumption": self.datacenter_and_energy.prc_energy_consumption.__dict__,
             },
             "policy": self.policy.__dict__,
         }
@@ -109,12 +107,8 @@ class SimulationParameters:
         if self.black_project:
             result["black_project"] = {
                 "run_a_black_project": self.black_project.run_a_black_project,
-                "start_black_project_how_many_years_before_agreement_year": self.black_project.start_black_project_how_many_years_before_agreement_year,
+                "black_project_start_year": self.black_project.black_project_start_year,
                 "properties": self.black_project.black_project_properties.__dict__,
-                "fab_wafers_per_month_per_operating_worker": self.black_project.fab_wafers_per_month_per_operating_worker,
-                "fab_wafers_per_month_per_construction_worker_under_standard_timeline": self.black_project.fab_wafers_per_month_per_construction_worker_under_standard_timeline,
-                "datacenter_mw_per_year_per_construction_worker": self.black_project.datacenter_mw_per_year_per_construction_worker,
-                "datacenter_mw_per_operating_worker": self.black_project.datacenter_mw_per_operating_worker,
             }
         # Add perceptions parameters if present
         if self.perceptions:
@@ -172,9 +166,9 @@ class ModelParameters:
 
         black_project:
           run_a_black_project: true
-          start_black_project_how_many_years_before_agreement_year: 1.0
+          black_project_start_year: 2030.0
           properties:
-            datacenter_construction_labor: 10000
+            total_labor: 10000
             ...
     """
 
@@ -182,7 +176,7 @@ class ModelParameters:
     settings: Dict[str, Any] = field(default_factory=dict)
     software_r_and_d: Dict[str, Any] = field(default_factory=dict)
     compute: Dict[str, Any] = field(default_factory=dict)
-    energy_consumption: Dict[str, Any] = field(default_factory=dict)
+    datacenter_and_energy: Dict[str, Any] = field(default_factory=dict)
     policy: Dict[str, Any] = field(default_factory=dict)
     black_project: Optional[Dict[str, Any]] = None
     perceptions: Optional[Dict[str, Any]] = None
@@ -210,7 +204,7 @@ class ModelParameters:
             settings=config.get("settings", {}),
             software_r_and_d=config.get("software_r_and_d", {}),
             compute=config.get("compute", {}),
-            energy_consumption=config.get("energy_consumption", {}),
+            datacenter_and_energy=config.get("datacenter_and_energy", {}),
             policy=config.get("policy", {}),
             black_project=config.get("black_project"),
             perceptions=config.get("perceptions"),
@@ -271,8 +265,8 @@ class ModelParameters:
         # Sample compute parameters (nested structure)
         sampled_compute = self._sample_nested_dict(self.compute, rng)
 
-        # Sample energy_consumption parameters (nested structure)
-        sampled_energy = self._sample_nested_dict(self.energy_consumption, rng)
+        # Sample datacenter_and_energy parameters (nested structure)
+        sampled_dc_energy = self._sample_nested_dict(self.datacenter_and_energy, rng)
 
         # Sample policy parameters
         sampled_policy = self._sample_nested_dict(self.policy, rng)
@@ -289,10 +283,9 @@ class ModelParameters:
             PRCComputeParameters=PRCComputeParameters(**sampled_compute.get("prc_compute", {})),
         )
 
-        # Build nested energy consumption parameters
-        energy_consumption = EnergyConsumptionParameters(
-            exogenous_trends=ExogenousEnergyTrends(**sampled_energy.get("exogenous_trends", {})),
-            prc_energy_consumption=PRCEnergyConsumptionParameters(**sampled_energy.get("prc_energy_consumption", {})),
+        # Build nested datacenter and energy parameters
+        datacenter_and_energy = DataCenterAndEnergyParameters(
+            prc_energy_consumption=PRCDataCenterAndEnergyParameters(**sampled_dc_energy.get("prc_energy_consumption", {})),
         )
 
         policy = PolicyParameters(**sampled_policy)
@@ -303,12 +296,8 @@ class ModelParameters:
             sampled_bp = self._sample_nested_dict(self.black_project, rng)
             black_project = BlackProjectParameters(
                 run_a_black_project=sampled_bp.get("run_a_black_project", True),
-                start_black_project_how_many_years_before_agreement_year=sampled_bp.get("start_black_project_how_many_years_before_agreement_year", 1.0),
+                black_project_start_year=sampled_bp.get("black_project_start_year", 2030.0),
                 black_project_properties=BlackProjectProperties(**sampled_bp.get("properties", {})),
-                fab_wafers_per_month_per_operating_worker=sampled_bp.get("fab_wafers_per_month_per_operating_worker", 24.64),
-                fab_wafers_per_month_per_construction_worker_under_standard_timeline=sampled_bp.get("fab_wafers_per_month_per_construction_worker_under_standard_timeline", 14.1),
-                datacenter_mw_per_year_per_construction_worker=sampled_bp.get("datacenter_mw_per_year_per_construction_worker", 1.0),
-                datacenter_mw_per_operating_worker=sampled_bp.get("datacenter_mw_per_operating_worker", 10.0),
             )
 
         # Build perceptions parameters if present
@@ -326,7 +315,7 @@ class ModelParameters:
             settings=settings,
             software_r_and_d=software_r_and_d,
             compute=compute,
-            energy_consumption=energy_consumption,
+            datacenter_and_energy=datacenter_and_energy,
             policy=policy,
             black_project=black_project,
             perceptions=perceptions,

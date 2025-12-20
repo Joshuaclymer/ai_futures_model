@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "ai_futur
 from parameters.simulation_parameters import ModelParameters
 from parameters.black_project_parameters import BlackProjectParameters, BlackProjectProperties
 from parameters.compute_parameters import ComputeParameters, PRCComputeParameters
-from parameters.energy_consumption_parameters import EnergyConsumptionParameters, PRCEnergyConsumptionParameters
+from parameters.data_center_and_energy_parameters import DataCenterAndEnergyParameters, PRCDataCenterAndEnergyParameters
 from parameters.perceptions_parameters import BlackProjectPerceptionsParameters
 from parameters.policy_parameters import PolicyParameters
 from world_updaters.black_project import initialize_black_project
@@ -79,7 +79,7 @@ def sample_prc_compute_stock(
 
 def create_dummy_prc_nation(
     compute_stock_h100e: float,
-    prc_energy_params: PRCEnergyConsumptionParameters,
+    prc_energy_params: PRCDataCenterAndEnergyParameters,
     total_energy_gw: float,
 ) -> Nation:
     """Create a minimal PRC Nation for black project initialization."""
@@ -169,7 +169,7 @@ def run_single_simulation(
     end_year: float,
     black_project_params: BlackProjectParameters,
     compute_params: ComputeParameters,
-    energy_params: EnergyConsumptionParameters,
+    energy_params: DataCenterAndEnergyParameters,
     perception_params: BlackProjectPerceptionsParameters,
     policy_params: PolicyParameters,
     dt: float = 0.1,
@@ -233,7 +233,7 @@ def run_single_simulation(
     watts_per_h100e = H100_POWER_W / energy_efficiency
 
     # Get datacenter construction rate
-    gw_per_worker_per_year = black_project_params.datacenter_mw_per_year_per_construction_worker / 1000.0
+    gw_per_worker_per_year = prc_energy.data_center_mw_per_year_per_construction_worker / 1000.0
     construction_rate = gw_per_worker_per_year * project.concealed_datacenter_capacity_construction_labor
 
     # Detection tracking
@@ -392,7 +392,7 @@ def run_black_project_simulations(
                 continue
 
             compute_params = sim_params.compute
-            energy_params = sim_params.energy_consumption
+            energy_params = sim_params.datacenter_and_energy
             perception_params = sim_params.perceptions.black_project_perception_parameters
             policy_params = sim_params.policy
 

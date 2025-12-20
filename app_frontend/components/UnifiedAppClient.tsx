@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { BlackProjectClient } from '@/app/ai-black-projects/BlackProjectClient';
 
 // Dynamically import PlaygroundClient (heavy component for timelines)
-const PlaygroundClient = dynamic(() => import('@/components/PlaygroundClient'), {
+const PlaygroundClient = dynamic(() => import('@/app/ai-timelines-and-takeoff/PlaygroundClient'), {
   ssr: false,
   loading: () => <TabLoadingPlaceholder tab="timelines" />,
 });

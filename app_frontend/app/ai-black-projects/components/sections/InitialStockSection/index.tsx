@@ -1,0 +1,628 @@
+'use client';
+
+import { useMemo } from 'react';
+import { BlackProjectData, COLOR_PALETTE } from '@/types/blackProject';
+import { PlotlyChart } from '../../charts';
+import { InitialStockDummyData } from './DUMMY_DATA';
+
+interface InitialStockSectionProps {
+  data: BlackProjectData | null;
+  isLoading?: boolean;
+  diversionProportion?: number;
+  agreementYear?: number;
+}
+
+// Helper to convert hex to rgba
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// Helper to format H100e values
+function formatH100e(value: number): string {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}M H100e`;
+  } else if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(0)}K H100e`;
+  }
+  return `${value.toFixed(0)} H100e`;
+}
+
+// Helper to format energy values
+function formatEnergy(energyGW: number): string {
+  if (energyGW >= 1) {
+    return `${energyGW.toFixed(1)} GW`;
+  } else if (energyGW >= 0.001) {
+    return `${(energyGW * 1000).toFixed(0)} MW`;
+  }
+  return `${(energyGW * 1000).toFixed(1)} MW`;
+}
+
+// Create histogram trace with probability normalization
+function createHistogramTrace(
+  samples: number[],
+  color: string,
+  nbins: number = 30
+): Plotly.Data | null {
+  if (!samples || samples.length === 0) return null;
+
+  return {
+    x: samples,
+    type: 'histogram',
+    nbinsx: nbins,
+    histnorm: 'probability',
+    marker: {
+      color: hexToRgba(color, 0.7),
+      line: { color: color, width: 1 },
+    },
+    hovertemplate: 'Value: %{x:.2s}<br>Probability: %{y:.3f}<extra></extra>',
+  } as Plotly.Data;
+}
+
+export function InitialStockSection({
+  data,
+  isLoading,
+  diversionProportion = 0.1,
+  agreementYear = 2027
+}: InitialStockSectionProps) {
+  // Constants
+  const H100_POWER_WATTS = 700;
+  const H100_POWER_KW = H100_POWER_WATTS / 1000;
+  const prcEfficiencyRelativeToSOTA = 0.20;
+
+  // Use API data from data.initial_stock
+  // The dummy API endpoint at /api/black-project-dummy provides this data
+  const initialStock: InitialStockDummyData | null = useMemo(() => {
+    if (!data?.initial_stock) return null;
+    return data.initial_stock as unknown as InitialStockDummyData;
+  }, [data]);
+
+  // Get state of the art efficiency
+  const sotaEfficiency = initialStock?.state_of_the_art_energy_efficiency_relative_to_h100 || 6.35;
+
+  // Calculate dashboard values
+  const dashboardValues = useMemo(() => {
+    const samples = initialStock?.initial_compute_stock_samples;
+    if (!samples?.length) {
+      return { medianDarkCompute: '--', medianEnergy: '--', detectionProb: '--' };
+    }
+
+    const sorted = [...samples].sort((a, b) => a - b);
+    const medianValue = sorted[Math.floor(sorted.length * 0.5)];
+
+    // Calculate energy
+    const combinedEfficiency = sotaEfficiency * prcEfficiencyRelativeToSOTA;
+    const energyGW = (medianValue * H100_POWER_WATTS / combinedEfficiency) / 1e9;
+
+    // Get detection probability for 4x threshold
+    const detectionProb = initialStock?.initial_black_project_detection_probs?.['4x'];
+
+    return {
+      medianDarkCompute: formatH100e(medianValue),
+      medianEnergy: formatEnergy(energyGW),
+      detectionProb: detectionProb !== undefined ? `${(detectionProb * 100).toFixed(1)}%` : '--',
+    };
+  }, [initialStock, sotaEfficiency, prcEfficiencyRelativeToSOTA, H100_POWER_WATTS]);
+
+  // Create detection probability bar chart data
+  const detectionBarData = useMemo(() => {
+    const probs = initialStock?.initial_black_project_detection_probs;
+    if (!probs) return [];
+
+    const thresholds = ['1x', '2x', '4x'];
+    const colors = ['#5E6FB8', '#E9A842', '#4AA896'];
+
+    const validData = thresholds
+      .map((t, i) => ({ threshold: t, prob: probs[t], color: colors[i] }))
+      .filter(d => d.prob !== undefined);
+
+    if (validData.length === 0) return [];
+
+    return [{
+      x: validData.map(d => `Detection means<br>\u2265${d.threshold} LR`),
+      y: validData.map(d => d.prob),
+      type: 'bar' as const,
+      marker: { color: validData.map(d => d.color) },
+      hovertemplate: 'P(LR \u2265 %{x}): %{y:.2%}<extra></extra>',
+    }];
+  }, [initialStock]);
+
+  // Create histogram data for initial compute stock
+  const computeHistogramData = useMemo(() => {
+    const samples = initialStock?.initial_compute_stock_samples;
+    if (!samples?.length) return [];
+    const trace = createHistogramTrace(samples, COLOR_PALETTE.chip_stock, 25);
+    return trace ? [trace] : [];
+  }, [initialStock]);
+
+  // Create histogram data for initial PRC stock
+  const prcStockHistogramData = useMemo(() => {
+    const samples = initialStock?.initial_prc_stock_samples;
+    if (!samples?.length) return [];
+    const trace = createHistogramTrace(samples, COLOR_PALETTE.chip_stock, 25);
+    return trace ? [trace] : [];
+  }, [initialStock]);
+
+  // Create energy requirements histogram (calculated from compute stock)
+  const energyRequirementsData = useMemo(() => {
+    const samples = initialStock?.initial_compute_stock_samples;
+    if (!samples?.length) return [];
+
+    // Calculate energy in GW: (H100e * watts_per_H100 / efficiency_multiplier) / 1e9
+    const combinedEfficiency = sotaEfficiency * prcEfficiencyRelativeToSOTA;
+    const energySamples = samples.map(h100e => {
+      // Energy = chips * power_per_chip / efficiency / 1e9 (convert W to GW)
+      return (h100e * H100_POWER_WATTS) / combinedEfficiency / 1e9;
+    });
+
+    // Filter out any invalid values
+    const validEnergySamples = energySamples.filter(e =>
+      typeof e === 'number' && !isNaN(e) && isFinite(e) && e > 0
+    );
+
+    if (validEnergySamples.length === 0) return [];
+
+    const trace = createHistogramTrace(validEnergySamples, COLOR_PALETTE.datacenters_and_energy, 20);
+    return trace ? [trace] : [];
+  }, [initialStock, sotaEfficiency, prcEfficiencyRelativeToSOTA, H100_POWER_WATTS]);
+
+  // Create PRC compute over time time series data
+  const prcComputeOverTimeData = useMemo(() => {
+    const years = initialStock?.prc_compute_years;
+    const overTime = initialStock?.prc_compute_over_time;
+    const domestic = initialStock?.prc_domestic_compute_over_time;
+    const proportionDomestic = initialStock?.proportion_domestic_by_year;
+    const largestCompany = initialStock?.largest_company_compute_over_time;
+
+    if (!years?.length || !overTime?.median?.length) return [];
+
+    const traces: Plotly.Data[] = [];
+
+    // Shaded area for 25-75 percentile range
+    traces.push({
+      x: [...years, ...years.slice().reverse()],
+      y: [...overTime.p75, ...overTime.p25.slice().reverse()],
+      fill: 'toself',
+      fillcolor: hexToRgba(COLOR_PALETTE.chip_stock, 0.2),
+      line: { color: 'transparent' },
+      type: 'scatter',
+      showlegend: false,
+      hoverinfo: 'skip',
+      name: '25th-75th percentile',
+    });
+
+    // 25th percentile line
+    traces.push({
+      x: years,
+      y: overTime.p25,
+      mode: 'lines',
+      line: { color: COLOR_PALETTE.chip_stock, width: 1, dash: 'dash' },
+      type: 'scatter',
+      showlegend: false,
+      hovertemplate: 'Year: %{x}<br>25th percentile: %{y:.2s} H100e<extra></extra>',
+    });
+
+    // Median line
+    traces.push({
+      x: years,
+      y: overTime.median,
+      mode: 'lines',
+      line: { color: COLOR_PALETTE.chip_stock, width: 2 },
+      type: 'scatter',
+      name: 'Median',
+      hovertemplate: 'Year: %{x}<br>Median: %{y:.2s} H100e<extra></extra>',
+    });
+
+    // 75th percentile line
+    traces.push({
+      x: years,
+      y: overTime.p75,
+      mode: 'lines',
+      line: { color: COLOR_PALETTE.chip_stock, width: 1, dash: 'dash' },
+      type: 'scatter',
+      showlegend: false,
+      hovertemplate: 'Year: %{x}<br>75th percentile: %{y:.2s} H100e<extra></extra>',
+    });
+
+    // Dummy trace for percentile range legend entry
+    traces.push({
+      x: [years[0], years[1]],
+      y: [null, null],
+      type: 'scatter',
+      mode: 'lines',
+      fill: 'tozeroy',
+      fillcolor: hexToRgba(COLOR_PALETTE.chip_stock, 0.2),
+      line: { color: 'transparent' },
+      name: '25th-75th %tile',
+      showlegend: true,
+      hoverinfo: 'skip',
+    });
+
+    // Domestic production line
+    if (domestic?.median?.length && proportionDomestic) {
+      const domesticHoverText = years.map((year, idx) =>
+        `Year: ${year}<br>Domestically produced: ${domestic.median[idx]?.toExponential(2)} H100e<br>(${(proportionDomestic[idx] * 100).toFixed(1)}% of total)`
+      );
+
+      traces.push({
+        x: years,
+        y: domestic.median,
+        mode: 'lines',
+        line: { color: COLOR_PALETTE.datacenters_and_energy, width: 2, dash: 'dot' },
+        type: 'scatter',
+        name: 'Domestically produced (median)',
+        text: domesticHoverText,
+        hovertemplate: '%{text}<extra></extra>',
+      });
+    }
+
+    // Largest AI company line
+    if (largestCompany?.length) {
+      traces.push({
+        x: years,
+        y: largestCompany,
+        mode: 'lines',
+        line: { color: COLOR_PALETTE.fab, width: 2, dash: 'dash' },
+        type: 'scatter',
+        name: 'Largest AI Company',
+        hovertemplate: 'Year: %{x}<br>Largest AI Company: %{y:.2s} H100e<extra></extra>',
+      });
+    }
+
+    return traces;
+  }, [initialStock]);
+
+  if (isLoading) {
+    return (
+      <section className="space-y-6">
+        <h1 className="text-2xl font-bold text-gray-800">Initial stock</h1>
+        <div className="h-48 bg-gray-100 animate-pulse rounded" />
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      {/* Title */}
+      <h1 id="initialStockSection" className="text-[32px] font-bold text-gray-800 mb-5 mt-10">
+        Initial stock
+      </h1>
+
+      {/* Description */}
+      <p className="section-description">
+        States might stash away compute for a covert project before an international AI agreement is in force.
+        How much compute could the PRC stash away, and how energy efficient would it be?
+      </p>
+
+      {/* Dashboard and Detection Plots */}
+      <div className="flex flex-wrap gap-5 items-stretch mb-2">
+        {/* Dashboard */}
+        <div className="dashboard" style={{ flex: '0 0 auto', width: 240, padding: 20 }}>
+          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 20 }}>
+            Median outcome
+          </div>
+          <div className="dashboard-item" style={{ marginBottom: 20 }}>
+            <div className="dashboard-value">{dashboardValues.medianDarkCompute}</div>
+            <div style={{ fontSize: 18, color: '#666', marginBottom: 5 }}>{dashboardValues.medianEnergy}</div>
+            <div className="dashboard-label">Initial PRC dark compute stock</div>
+          </div>
+          <div className="dashboard-item">
+            <div className="dashboard-value-small">{dashboardValues.detectionProb}</div>
+            <div className="dashboard-label-light">Probability of detection</div>
+            <div className="dashboard-sublabel">Detection means a {'\u2265'}4x likelihood ratio</div>
+          </div>
+        </div>
+
+        {/* Detection Probability Bar Chart */}
+        <div className="plot-container" style={{ flex: '1 1 200px', minWidth: 200, padding: 20 }}>
+          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
+            Detection probability by likelihood ratio
+          </div>
+          <div style={{ height: 280 }}>
+            <PlotlyChart
+              data={detectionBarData}
+              layout={{
+                xaxis: {
+                  title: { text: 'Probability of detection', font: { size: 13 } },
+                  tickfont: { size: 10 },
+                  automargin: true,
+                },
+                yaxis: {
+                  title: { text: 'P(Detection)', standoff: 15, font: { size: 13 } },
+                  tickfont: { size: 10 },
+                  range: [0, 1],
+                  tickformat: '.0%',
+                  automargin: true,
+                },
+                margin: { l: 55, r: 0, t: 0, b: 60 },
+              }}
+              isLoading={isLoading}
+              isEmpty={detectionBarData.length === 0}
+            />
+          </div>
+        </div>
+
+        {/* Initial Compute Stock Distribution */}
+        <div className="plot-container" style={{ flex: '1 1 200px', minWidth: 200, padding: 20 }}>
+          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
+            Initial PRC dark compute distribution
+          </div>
+          <div style={{ height: 280 }}>
+            <PlotlyChart
+              data={computeHistogramData}
+              layout={{
+                xaxis: {
+                  title: { text: 'PRC Dark Compute Stock (H100 equivalents)', font: { size: 11 } },
+                  tickfont: { size: 10 },
+                  type: 'log',
+                  automargin: true,
+                },
+                yaxis: {
+                  title: { text: 'Probability', font: { size: 11 } },
+                  tickfont: { size: 10 },
+                },
+                margin: { l: 50, r: 10, t: 10, b: 55 },
+              }}
+              isLoading={isLoading}
+              isEmpty={computeHistogramData.length === 0}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Breakdown Section - Compute Stock */}
+      <div className="breakdown-section">
+        <h3 className="breakdown-title">Breaking down initial unreported chip stock</h3>
+        <p className="section-description">
+          The PRC&apos;s stock of covert compute depends on total PRC compute stock at the agreement start
+          and the proportion it diverts to a covert project.
+        </p>
+
+        {/* Breakdown Row - Compute Stock with Time Series */}
+        <div className="breakdown-plots-row">
+          {/* PRC Compute Over Time Plot */}
+          <div className="breakdown-item">
+            <div className="breakdown-plot">
+              <PlotlyChart
+                data={prcComputeOverTimeData}
+                layout={{
+                  xaxis: {
+                    title: { text: 'Year', font: { size: 10 } },
+                    tickfont: { size: 9 },
+                    automargin: true,
+                    range: initialStock?.prc_compute_years?.length ? [
+                      initialStock.prc_compute_years[0],
+                      initialStock.prc_compute_years[initialStock.prc_compute_years.length - 1]
+                    ] : undefined,
+                  },
+                  yaxis: {
+                    title: { text: 'PRC chip stock (H100e)', font: { size: 10 } },
+                    tickfont: { size: 9 },
+                    type: 'log',
+                    automargin: true,
+                  },
+                  showlegend: true,
+                  legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    xanchor: 'left',
+                    yanchor: 'top',
+                    bgcolor: 'rgba(255, 255, 255, 0.9)',
+                    bordercolor: '#ccc',
+                    borderwidth: 1,
+                    font: { size: 7 },
+                  },
+                  margin: { l: 50, r: 20, t: 10, b: 55, pad: 10 },
+                }}
+                isLoading={isLoading}
+                isEmpty={prcComputeOverTimeData.length === 0}
+              />
+            </div>
+            <div className="breakdown-label">PRC chip stock over time</div>
+            <div className="breakdown-description">
+              Assuming the PRC has <span className="param-link">1</span>M H100e in 2025, and its chip stock grows by <span className="param-link">1.5</span>x per year.
+            </div>
+          </div>
+
+          {/* Arrow with dynamic text */}
+          <div className="operator arrow-operator" style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+            <div style={{ fontSize: 13, color: '#666', textAlign: 'center', whiteSpace: 'nowrap' }}>
+              Plug in {agreementYear}
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 'bold', color: '#666' }}>{'\u2192'}</div>
+          </div>
+
+          {/* Initial PRC compute stock */}
+          <div className="breakdown-item">
+            <div className="breakdown-plot">
+              <PlotlyChart
+                data={prcStockHistogramData}
+                layout={{
+                  xaxis: {
+                    title: { text: 'H100 equivalents', font: { size: 10 } },
+                    tickfont: { size: 9 },
+                    type: 'log',
+                  },
+                  yaxis: {
+                    title: { text: 'Probability', font: { size: 10 } },
+                    tickfont: { size: 9 },
+                  },
+                  margin: { l: 45, r: 10, t: 10, b: 45 },
+                }}
+                isLoading={isLoading}
+                isEmpty={prcStockHistogramData.length === 0}
+              />
+            </div>
+            <div className="breakdown-label">PRC chip stock at agreement start</div>
+            <div className="breakdown-description">
+              The total compute stock owned by the PRC at the time the agreement goes into force.
+            </div>
+          </div>
+
+          {/* Multiply operator */}
+          <div className="operator">{'\u00D7'}</div>
+
+          {/* Diversion Proportion Box */}
+          <div className="breakdown-box-item">
+            <div className="breakdown-box">
+              <div className="breakdown-box-inner">
+                {(diversionProportion * 100).toFixed(0)}%
+              </div>
+            </div>
+            <div className="breakdown-label" style={{ marginTop: 5 }}>
+              Proportion diverted<br />to covert project
+            </div>
+          </div>
+
+          {/* Equals operator */}
+          <div className="operator">=</div>
+
+          {/* Dark Compute Result Plot */}
+          <div className="breakdown-item">
+            <div className="breakdown-plot">
+              <PlotlyChart
+                data={computeHistogramData}
+                layout={{
+                  xaxis: {
+                    title: { text: 'H100 equivalents', font: { size: 10 } },
+                    tickfont: { size: 9 },
+                    type: 'log',
+                  },
+                  yaxis: {
+                    title: { text: 'Probability', font: { size: 10 } },
+                    tickfont: { size: 9 },
+                  },
+                  margin: { l: 45, r: 10, t: 10, b: 45 },
+                }}
+                isLoading={isLoading}
+                isEmpty={computeHistogramData.length === 0}
+              />
+            </div>
+            <div className="breakdown-label">Initial PRC unreported chip stock</div>
+            <div className="breakdown-description">
+              The resulting compute stock diverted to the covert project, which is hidden from international monitoring.
+            </div>
+          </div>
+        </div>
+
+        {/* Energy Efficiency Description */}
+        <p className="section-description" style={{ marginTop: 40 }}>
+          The energy efficiency of these AI chips is important because it determines how much covert
+          datacenter capacity the PRC needs to operate them.
+        </p>
+
+        {/* Energy Breakdown Row */}
+        <div className="breakdown-plots-row">
+          {/* H100 Energy Box */}
+          <div className="breakdown-box-item">
+            <div className="breakdown-box">
+              <div className="breakdown-box-inner">
+                {H100_POWER_KW.toFixed(2)} kW
+              </div>
+            </div>
+            <div className="breakdown-label" style={{ marginTop: 5 }}>
+              Energy consumption of H100
+            </div>
+          </div>
+
+          {/* Multiply operator */}
+          <div className="operator">{'\u00D7'}</div>
+
+          {/* Dark Compute Stock Plot */}
+          <div className="breakdown-item">
+            <div className="breakdown-plot">
+              <PlotlyChart
+                data={computeHistogramData}
+                layout={{
+                  xaxis: {
+                    title: { text: 'Dark Compute Stock (H100e)', font: { size: 9 } },
+                    tickfont: { size: 8 },
+                    type: 'log',
+                  },
+                  yaxis: {
+                    title: { text: 'Probability', font: { size: 9 } },
+                    tickfont: { size: 8 },
+                  },
+                  margin: { l: 40, r: 5, t: 5, b: 45 },
+                }}
+                isLoading={isLoading}
+                isEmpty={computeHistogramData.length === 0}
+              />
+            </div>
+            <div className="breakdown-label">Initial PRC unreported chip stock</div>
+            <div className="breakdown-description">
+              The compute stock diverted to the covert project.
+            </div>
+          </div>
+
+          {/* Divide operator */}
+          <div className="operator">{'\u00F7'}</div>
+
+          {/* Open parenthesis - hidden on mobile */}
+          <div className="operator desktop-only" style={{ fontSize: 120, fontWeight: 300, lineHeight: '250px' }}>(</div>
+
+          {/* SOTA Efficiency Box */}
+          <div className="breakdown-box-item">
+            <div className="breakdown-box">
+              <div className="breakdown-box-inner">
+                {sotaEfficiency.toFixed(2)}
+              </div>
+            </div>
+            <div className="breakdown-label" style={{ marginTop: 5, maxWidth: 140 }}>
+              State of the art energy efficiency relative to H100 in {agreementYear}
+            </div>
+          </div>
+
+          {/* Multiply operator */}
+          <div className="operator">{'\u00D7'}</div>
+
+          {/* PRC Efficiency Box */}
+          <div className="breakdown-box-item">
+            <div className="breakdown-box">
+              <div className="breakdown-box-inner">
+                {prcEfficiencyRelativeToSOTA.toFixed(2)}
+              </div>
+            </div>
+            <div className="breakdown-label" style={{ marginTop: 5, maxWidth: 140 }}>
+              PRC energy efficiency relative to state of the art
+            </div>
+          </div>
+
+          {/* Close parenthesis - hidden on mobile */}
+          <div className="operator desktop-only" style={{ fontSize: 120, fontWeight: 300, lineHeight: '250px' }}>)</div>
+
+          {/* Equals operator */}
+          <div className="operator">=</div>
+
+          {/* Energy Requirements Plot */}
+          <div className="breakdown-item">
+            <div className="breakdown-plot">
+              <PlotlyChart
+                data={energyRequirementsData}
+                layout={{
+                  xaxis: {
+                    title: { text: 'Energy Requirements (GW)', font: { size: 9 } },
+                    tickfont: { size: 8 },
+                  },
+                  yaxis: {
+                    title: { text: 'Probability', font: { size: 9 } },
+                    tickfont: { size: 8 },
+                  },
+                  margin: { l: 40, r: 5, t: 5, b: 45 },
+                }}
+                isLoading={isLoading}
+                isEmpty={energyRequirementsData.length === 0}
+              />
+            </div>
+            <div className="breakdown-label">Energy requirements of initial stock (GW)</div>
+            <div className="breakdown-description">
+              Total energy required to power the initial unreported chip stock.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

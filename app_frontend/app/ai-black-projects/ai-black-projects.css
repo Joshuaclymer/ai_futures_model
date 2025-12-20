@@ -17,7 +17,7 @@
   min-width: 240px;
   background-color: var(--vivid-background, #fffff8);
   padding: 0;
-  overflow-y: auto;
+  overflow: hidden;
   border-right: 1px solid rgba(209, 213, 219, 0.6);
   flex-shrink: 0;
   height: calc(100vh - 64px);
@@ -37,16 +37,22 @@
 
 /* Sidebar header */
 .bp-sidebar-header {
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(209, 213, 219, 0.6);
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
   flex-shrink: 0;
+  background: #fffff8;
+  box-sizing: border-box;
 }
 
-.bp-sidebar-header h1 {
+.bp-sidebar-header h1,
+.bp-sidebar-header .sidebar-title {
   font-size: 14px;
-  font-weight: bold;
-  color: var(--primary, #333);
-  font-family: var(--font-et-book, serif);
+  font-weight: 700;
+  color: #111;
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0 0 4px 0;
+  line-height: 1.3;
+  display: block;
 }
 
 /* Sidebar content */
@@ -75,6 +81,24 @@
 .bp-section-header .bp-section-line {
   flex: 1;
   border-top: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+/* Subsection styles for nested parameter groups */
+.bp-subsection {
+  margin-top: 8px;
+  margin-bottom: 10px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(94, 111, 184, 0.2);
+}
+
+.bp-subsection-header {
+  font-size: 10px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  padding-bottom: 2px;
 }
 
 /* Collapsible sections using details/summary */
@@ -266,6 +290,10 @@
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 20px;
+  min-height: 370px; /* Match plot container height (300px plot + 32px padding + ~38px title) */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .bp-dashboard-item {
@@ -284,6 +312,20 @@
   font-size: 12px;
   font-weight: 600;
   color: #333;
+  line-height: 1.3;
+}
+
+.bp-dashboard-value-small {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--bp-primary);
+  margin-bottom: 4px;
+}
+
+.bp-dashboard-label-light {
+  font-size: 11px;
+  font-weight: 500;
+  color: #666;
   line-height: 1.3;
 }
 
@@ -312,6 +354,15 @@
   height: 300px;
 }
 
+/* Plot class matching original black_project_frontend */
+.plot {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 300px;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
 /* Breakdown section styles */
 .bp-breakdown-section {
   margin-top: 50px;
@@ -333,6 +384,261 @@
   color: #666;
   margin-bottom: 20px;
   line-height: 1.6;
+}
+
+/* Breakdown equation row - matches black_project_frontend */
+.breakdown-equation-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-top: 40px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+/* Breakdown item styles (matching original black_project_frontend) */
+.breakdown-item {
+  text-align: left;
+  min-width: 170px;
+  flex: 1 1 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  transition: transform 0.2s ease;
+}
+
+/* Only apply hover effects to clickable breakdown items */
+.breakdown-item.clickable:hover .breakdown-plot {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(110, 127, 217, 0.15);
+}
+
+.breakdown-plot {
+  height: 240px;
+  width: 100%;
+  max-width: 100%;
+  background: white;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.breakdown-label {
+  font-size: 11px;
+  font-weight: bold;
+  margin-top: 5px;
+  color: #555;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.breakdown-description {
+  font-size: 9px;
+  color: #777;
+  margin-top: 5px;
+  line-height: 1.3;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Operator styles - matches black_project_frontend */
+.breakdown-operator {
+  font-size: 24px;
+  font-weight: bold;
+  color: #666;
+  padding: 0 3px;
+  flex: 0 0 auto;
+  position: relative;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Bracket styles - matches black_project_frontend */
+.breakdown-bracket {
+  font-size: 120px;
+  font-weight: 300;
+  color: #666;
+  flex: 0 0 30px;
+  text-align: center;
+  line-height: 250px;
+  margin-top: 5px;
+}
+
+/* Limits arrow - matches black_project_frontend */
+.breakdown-limits-arrow {
+  position: relative;
+  flex: 0 0 30px;
+  text-align: center;
+  margin-top: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.breakdown-limits-label {
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+  color: #888;
+  white-space: nowrap;
+  margin-bottom: 5px;
+}
+
+.breakdown-limits-symbol {
+  font-size: 20px;
+  color: #666;
+}
+
+.breakdown-box-item {
+  text-align: center;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; /* Don't center - let margin-top on .breakdown-box handle positioning */
+  margin-top: 20px;
+  margin-bottom: 10px;
+  height: 240px; /* Match plot height */
+}
+
+.breakdown-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  color: #555;
+  margin-top: 80px; /* Position box at vertical center of 240px height */
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  max-width: 170px;
+}
+
+.breakdown-box-inner {
+  max-height: 200px;
+  width: 100%;
+  background: white;
+  border-radius: 4px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--bp-primary);
+}
+
+.breakdown-box-inner:hover {
+  box-shadow: 0 0 6px rgba(94, 111, 184, 0.25);
+  transform: scale(1.015);
+}
+
+/* Parameter link styles */
+.param-link {
+  font-weight: bold;
+  color: var(--bp-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.param-link:hover {
+  color: var(--bp-primary-hover);
+  text-decoration-style: solid;
+}
+
+/* Has tooltip indicator */
+.has-tooltip {
+  cursor: pointer;
+}
+
+.has-tooltip:hover .breakdown-plot,
+.has-tooltip:hover .breakdown-box-inner {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(110, 127, 217, 0.15);
+}
+
+/* Mobile responsive styles for breakdown - matches original black_project_frontend */
+/* Items naturally wrap due to flex-wrap: wrap and min-width: 170px */
+@media (max-width: 768px) {
+  .breakdown-box-item + .breakdown-operator,
+  .breakdown-box-item + .operator {
+    display: none !important;
+  }
+
+  /* Operator responsive styles */
+  .operator {
+    height: auto !important;
+    padding: 10px 0 !important;
+    margin-top: 0 !important;
+    font-size: 20px !important;
+  }
+
+  .breakdown-item {
+    flex: 1 1 100%;
+    min-width: 100%;
+    margin-top: 10px;
+    margin-bottom: 5px;
+  }
+
+  .breakdown-box-item {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-top: 10px;
+    margin-bottom: 5px;
+  }
+
+  .breakdown-plot {
+    height: 200px;
+  }
+
+  /* bp-breakdown-section mobile padding */
+  .bp-breakdown-section {
+    padding: 25px 15px;
+    margin-left: -10px;
+    margin-right: -10px;
+  }
+
+  /* breakdown-plots-row mobile */
+  .breakdown-plots-row {
+    gap: 3px;
+  }
+}
+
+/* Desktop/Mobile content visibility */
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: inline;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: inline;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Hide detailed breakdown sections on mobile (matching original) */
+  .detailed-breakdown-sections {
+    display: none !important;
+  }
 }
 
 /* Loading spinner */
@@ -401,4 +707,182 @@
 
 .js-plotly-plot .plotly .hoverlayer .hovertext text {
   fill: #666666 !important;
+}
+
+/* ========================================
+   Original black_project_frontend classes
+   ======================================== */
+
+/* Dashboard - matching original exactly */
+.dashboard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  justify-content: center;
+  min-height: 370px; /* Match plot container height (300px plot + 32px padding + ~38px title) */
+}
+
+.dashboard-item {
+  text-align: center;
+}
+
+.dashboard-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--bp-primary);
+  margin-bottom: 5px;
+}
+
+.dashboard-value-small {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--bp-primary);
+  margin-bottom: 5px;
+}
+
+.dashboard-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+
+.dashboard-label-light {
+  font-size: 13px;
+  font-weight: 400;
+  color: #333;
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+
+.dashboard-sublabel {
+  font-size: 10px;
+  color: #777;
+  line-height: 1.3;
+}
+
+/* Plot container - matching original exactly */
+.plot-container {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.plot-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Section description */
+.section-description {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+  text-align: left;
+  line-height: 1.6;
+}
+
+/* Breakdown section - matching original exactly */
+.breakdown-section {
+  margin-top: 70px;
+  margin-bottom: 70px;
+  padding: 40px 30px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  overflow: visible;
+}
+
+.breakdown-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #333;
+  text-align: left;
+}
+
+/* Breakdown plots row - matching original exactly */
+.breakdown-plots-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin-bottom: 10px;
+  max-width: 100%;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+/* Operator - matching original exactly */
+.operator {
+  font-size: 24px;
+  font-weight: bold;
+  color: #666;
+  padding: 0 3px;
+  flex: 0 0 auto;
+  position: relative;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Mobile responsive for original classes */
+@media (max-width: 768px) {
+  .breakdown-section {
+    padding: 25px 20px;
+    margin-top: 40px;
+    margin-bottom: 40px;
+    margin-left: -10px;
+    margin-right: -10px;
+  }
+
+  .breakdown-plots-row {
+    gap: 3px;
+  }
+
+  .breakdown-item {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
+  .breakdown-box-item {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .breakdown-box-item + .operator {
+    display: none !important;
+  }
+
+  .operator {
+    height: auto;
+    padding: 10px 0;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .breakdown-section {
+    padding: 20px 15px;
+  }
+
+  .operator {
+    font-size: 18px;
+    padding: 5px 1px;
+  }
+
+  .breakdown-plot {
+    height: 200px;
+  }
 }

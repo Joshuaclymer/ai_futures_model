@@ -15,7 +15,7 @@ from parameters.simulation_parameters import (
     SoftwareRAndDParameters,
 )
 from parameters.compute_parameters import ComputeParameters
-from parameters.energy_consumption_parameters import EnergyConsumptionParameters
+from parameters.data_center_and_energy_parameters import DataCenterAndEnergyParameters, PRCDataCenterAndEnergyParameters
 
 # Developer ID in the simulator
 DEVELOPER_ID = "us_frontier_lab"

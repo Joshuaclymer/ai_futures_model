@@ -15,10 +15,11 @@ class BlackProjectProperties:
     (separated into a separate class so we can specify black project properties in /parameters)
     """
     # Labor
-    datacenter_construction_labor: float
-    black_fab_construction_labor: float
-    black_fab_operating_labor: float
-    ai_researcher_headcount: float
+    total_labor: float
+    fraction_of_labor_devoted_to_datacenter_construction: float
+    fraction_of_labor_devoted_to_black_fab_construction: float
+    fraction_of_labor_devoted_to_black_fab_operation: float
+    fraction_of_labor_devoted_to_ai_research: float
 
     # Diverted resources
     fraction_of_initial_compute_stock_to_divert_at_black_project_start: float
@@ -35,11 +36,5 @@ class BlackProjectParameters:
     """Complete set of black project parameters."""
 
     run_a_black_project: bool
-    start_black_project_how_many_years_before_agreement_year: float
+    black_project_start_year: float
     black_project_properties: BlackProjectProperties
-
-    # How to covert between number of workers and fab / datacenter capacity
-    fab_wafers_per_month_per_operating_worker: float
-    fab_wafers_per_month_per_construction_worker_under_standard_timeline: float
-    datacenter_mw_per_year_per_construction_worker: float
-    datacenter_mw_per_operating_worker: float
