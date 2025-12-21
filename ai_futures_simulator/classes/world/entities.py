@@ -80,12 +80,22 @@ class AISoftwareDeveloper(Entity):
     human_ai_capability_researchers: float = field(metadata={'is_state': True})
     ai_software_progress: AISoftwareProgress = field(metadata={'is_state': True})
 
-    # Metrics (computed from state)
-    ai_r_and_d_inference_compute_tpp_h100e: float = field(init=False)
-    ai_r_and_d_training_compute_tpp_h100e: float = field(init=False)
-    external_deployment_compute_tpp_h100e: float = field(init=False)
-    alignment_research_compute_tpp_h100e: float = field(init=False)
-    frontier_training_compute_tpp_h100e: float = field(init=False)
+    # Metrics (computed from state) - initialized to 0.0, computed via __post_init__
+    ai_r_and_d_inference_compute_tpp_h100e: float = field(init=False, default=0.0)
+    ai_r_and_d_training_compute_tpp_h100e: float = field(init=False, default=0.0)
+    external_deployment_compute_tpp_h100e: float = field(init=False, default=0.0)
+    alignment_research_compute_tpp_h100e: float = field(init=False, default=0.0)
+    frontier_training_compute_tpp_h100e: float = field(init=False, default=0.0)
+
+    def __post_init__(self):
+        """Compute metrics from state after initialization."""
+        total_compute = sum(c.functional_tpp_h100e for c in self.operating_compute)
+        ca = self.compute_allocation
+        self.ai_r_and_d_inference_compute_tpp_h100e = total_compute * ca.fraction_for_ai_r_and_d_inference
+        self.ai_r_and_d_training_compute_tpp_h100e = total_compute * ca.fraction_for_ai_r_and_d_training
+        self.external_deployment_compute_tpp_h100e = total_compute * ca.fraction_for_external_deployment
+        self.alignment_research_compute_tpp_h100e = total_compute * ca.fraction_for_alignment_research
+        self.frontier_training_compute_tpp_h100e = total_compute * ca.fraction_for_frontier_training
 
 @dataclass
 class AIBlackProject(AISoftwareDeveloper):

@@ -106,12 +106,25 @@ class TensorDataclass:
         Create a deep clone of this object, properly handling tensors.
 
         Uses tensor.clone() instead of copy.deepcopy() to preserve gradients.
+        Only passes fields with init=True to the constructor; sets init=False
+        fields after construction.
         """
         kwargs = {}
+        post_init_fields = []
         for f in fields(self):
             value = getattr(self, f.name)
-            kwargs[f.name] = _deep_clone(value)
-        return type(self)(**kwargs)
+            if f.init:
+                kwargs[f.name] = _deep_clone(value)
+            else:
+                post_init_fields.append((f.name, _deep_clone(value)))
+
+        result = type(self)(**kwargs)
+
+        # Set fields that have init=False after construction
+        for name, value in post_init_fields:
+            object.__setattr__(result, name, value)
+
+        return result
 
     def _set_state_field(self, path: str, value: Tensor) -> None:
         """Set a state field value given its path."""

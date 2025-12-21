@@ -20,7 +20,7 @@ LAST_YEAR_IN_HISTORY = 2026
 def initialize_world_for_year(params: SimulationParameters, year: int) -> World:
     """Initialize the world state for a specific year."""
     us_developer = initialize_us_frontier_lab(params, year)
-    usa = initialize_usa(params, year, leading_ai_developer_id=us_developer.id)
+    usa = initialize_usa(params, year, ai_software_developers=[us_developer])
 
     return World(
         current_time=torch.tensor(float(year)),

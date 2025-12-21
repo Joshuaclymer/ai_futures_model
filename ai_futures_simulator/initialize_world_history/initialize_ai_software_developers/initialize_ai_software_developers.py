@@ -5,8 +5,6 @@ Initializes AISoftwareDeveloper entities for a given year using historical data.
 """
 
 import csv
-import math
-import torch
 from pathlib import Path
 
 from classes.world.entities import AISoftwareDeveloper, ComputeAllocation
@@ -31,16 +29,19 @@ def initialize_us_frontier_lab(params: SimulationParameters, year: int) -> AISof
     """Initialize a US frontier AI lab for a given year using historical data."""
     data = _historical_data[year]
     inference_compute = data['inference_compute']
-    experiment_compute = data['experiment_compute']
     human_researchers = int(data['human_researchers'])
+
+    # Create the compute object for operating compute
+    compute = Compute(
+        all_tpp_h100e=inference_compute,
+        functional_tpp_h100e=inference_compute,  # Initially all compute is functional
+        watts_per_h100e=700.0,  # ~700W per H100e
+        average_functional_chip_age_years=0.0,  # New chips
+    )
 
     return AISoftwareDeveloper(
         id="us_frontier_lab",
-        is_primarily_controlled_by_misaligned_AI=False,
-        compute=Compute(
-            total_tpp_h100e=inference_compute,
-            total_energy_requirements_watts=inference_compute * 700.0,  # ~700W per H100e, TODO: refine
-        ),
+        operating_compute=[compute],  # List of Compute objects
         compute_allocation=ComputeAllocation(
             fraction_for_ai_r_and_d_inference=0.1,
             fraction_for_ai_r_and_d_training=0.1,
@@ -48,9 +49,6 @@ def initialize_us_frontier_lab(params: SimulationParameters, year: int) -> AISof
             fraction_for_alignment_research=0.1,
             fraction_for_frontier_training=0.4,
         ),
-        ai_software_progress=initialize_ai_software_progress(params, year),
         human_ai_capability_researchers=human_researchers,
-        log_compute=torch.tensor(math.log(inference_compute)),
-        log_researchers=torch.tensor(math.log(human_researchers)),
-        experiment_compute=experiment_compute,
+        ai_software_progress=initialize_ai_software_progress(params, year),
     )

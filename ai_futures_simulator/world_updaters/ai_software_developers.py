@@ -60,12 +60,10 @@ class AISoftwareDeveloperUpdater(WorldUpdater):
         if year < LAST_YEAR_IN_HISTORY and year in _historical_data:
             return _historical_data[year]['training_compute_growth_rate']
 
-        # Otherwise use modeled growth with slowdown
-        cg = self.params.compute_growth
-        if current_time < cg.slowdown_year:
-            return cg.us_frontier_project_compute_growth_rate
-        else:
-            return cg.post_slowdown_training_compute_growth_rate
+        # Otherwise use modeled growth rate from compute parameters
+        # The new structure has compute.USComputeParameters.us_frontier_project_compute_annual_growth_rate
+        us_compute = self.params.compute.USComputeParameters
+        return us_compute.us_frontier_project_compute_annual_growth_rate
 
     def get_researcher_growth_rate(self, current_time: float) -> float:
         """Get researcher growth rate (natural log units/year) at a given time."""
@@ -82,32 +80,17 @@ class AISoftwareDeveloperUpdater(WorldUpdater):
         """
         Compute contribution to d(state)/dt for AI software developers.
 
-        Updates:
-        - d(log_compute)/dt = training_compute_growth_rate * ln(10)
-        - d(log_researchers)/dt = researcher_growth_rate
+        Note: The new entity structure no longer has log_compute/log_researchers as state.
+        Time-varying compute and researcher counts are now read from CSV data by
+        the SoftwareRAndD updater. This updater returns empty derivatives.
         """
         d_world = World.zeros(world)
-
-        current_time = t.item() if isinstance(t, Tensor) else float(t)
-
-        # Get growth rates
-        compute_growth_rate = self.get_training_compute_growth_rate(current_time)
-        researcher_growth_rate = self.get_researcher_growth_rate(current_time)
-
-        # Convert OOMs/year to natural log growth rate for compute
-        log_compute_growth_rate = compute_growth_rate * 2.302585  # ln(10)
-
-        for dev_id in world.ai_software_developers:
-            d_dev = d_world.ai_software_developers[dev_id]
-            d_dev.log_compute = torch.tensor(log_compute_growth_rate)
-            d_dev.log_researchers = torch.tensor(researcher_growth_rate)
-
         return StateDerivative(d_world)
 
     def set_metric_attributes(self, t: Tensor, world: World) -> World:
-        """Update compute and researcher count from log values."""
-        for dev_id, dev in world.ai_software_developers.items():
-            dev.compute.total_tpp_h100e = float(torch.exp(dev.log_compute).item())
-            dev.human_ai_capability_researchers = int(torch.exp(dev.log_researchers).item())
+        """Update metric attributes for AI software developers.
 
+        Note: With the new structure, compute allocation metrics are computed from
+        operating_compute list. This is a no-op for now.
+        """
         return world

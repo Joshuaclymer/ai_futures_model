@@ -41,7 +41,7 @@ def print_simulation_summary(result: "SimulationResult"):
             progress = sw.progress.item() if isinstance(sw.progress, Tensor) else sw.progress
             rate = sw.progress_rate.item() if isinstance(sw.progress_rate, Tensor) else sw.progress_rate
             auto = sw.automation_fraction.item() if isinstance(sw.automation_fraction, Tensor) else sw.automation_fraction
-            compute = dev.compute.total_tpp_h100e
+            compute = dev.compute.functional_tpp_h100e
 
             print(f"{t:<8.2f} {progress:<12.4f} {rate:<12.4f} {auto:<12.4f} {compute:<15.2e}")
 
@@ -52,7 +52,7 @@ def print_simulation_summary(result: "SimulationResult"):
     for dev_id, dev in final_world.ai_software_developers.items():
         sw = dev.ai_software_progress
         print(f"  Developer: {dev_id}")
-        print(f"  Compute: {dev.compute.total_tpp_h100e:.2e} H100e TPP")
+        print(f"  Compute: {dev.compute.functional_tpp_h100e:.2e} H100e TPP")
 
         progress = sw.progress.item() if isinstance(sw.progress, Tensor) else sw.progress
         rate = sw.progress_rate.item() if isinstance(sw.progress_rate, Tensor) else sw.progress_rate
