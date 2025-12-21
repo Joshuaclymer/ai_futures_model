@@ -9,7 +9,7 @@
   <rect x="0" y="0" width="540" height="150" rx="8" fill="#f9f9f9" stroke="#e0e0e0" stroke-width="1"/>
 
   <!-- "selected to maximize" label -->
-  <text x="270" y="22" text-anchor="middle" font-size="10" font-style="italic" fill="#666" font-family="system-ui, -apple-system, sans-serif">Selected to maximize</text>
+  <text x="270" y="22" text-anchor="middle" font-size="10" font-style="italic" fill="#666" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Selected to maximize</text>
 
   <!-- Feedback arrow from Project properties to label -->
   <path d="M 72 38 L 72 18 L 215 18" stroke="#999" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
@@ -19,36 +19,36 @@
 
   <!-- Project properties box -->
   <rect x="15" y="40" width="115" height="45" rx="5" fill="white" stroke="#6E7FD9" stroke-width="2"/>
-  <text x="72" y="58" text-anchor="middle" font-size="11" font-weight="600" fill="#333" font-family="system-ui, -apple-system, sans-serif">Project properties</text>
-  <text x="72" y="72" text-anchor="middle" font-size="9" fill="#888" font-family="system-ui, -apple-system, sans-serif">(e.g. # of workers)</text>
+  <text x="72" y="58" text-anchor="middle" font-size="11" font-weight="600" fill="#333" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Project properties</text>
+  <text x="72" y="72" text-anchor="middle" font-size="9" fill="#888" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">(e.g. # of workers)</text>
 
   <!-- Time box -->
   <rect x="15" y="95" width="115" height="35" rx="5" fill="white" stroke="#aaa" stroke-width="2"/>
-  <text x="72" y="117" text-anchor="middle" font-size="11" font-weight="600" fill="#333" font-family="system-ui, -apple-system, sans-serif">Time</text>
+  <text x="72" y="117" text-anchor="middle" font-size="11" font-weight="600" fill="#333" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Time</text>
 
   <!-- Arrow 1 - centered vertically between the two left boxes -->
-  <text x="150" y="90" text-anchor="middle" font-size="18" fill="#999" font-family="system-ui, -apple-system, sans-serif">→</text>
+  <text x="150" y="90" text-anchor="middle" font-size="18" fill="#999" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">→</text>
 
   <!-- Model box - centered vertically (between y=40 and y=130, center at 85) -->
   <rect x="170" y="60" width="70" height="50" rx="5" fill="white" stroke="#56C4AE" stroke-width="2"/>
-  <text x="205" y="90" text-anchor="middle" font-size="12" font-weight="600" fill="#333" font-family="system-ui, -apple-system, sans-serif">Model</text>
+  <text x="205" y="90" text-anchor="middle" font-size="12" font-weight="600" fill="#333" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Model</text>
 
   <!-- Arrow 2 -->
-  <text x="260" y="90" text-anchor="middle" font-size="18" fill="#999" font-family="system-ui, -apple-system, sans-serif">→</text>
+  <text x="260" y="90" text-anchor="middle" font-size="18" fill="#999" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">→</text>
 
   <!-- Rate of computation box -->
   <rect x="280" y="45" width="110" height="35" rx="5" fill="white" stroke="#F5B84D" stroke-width="2"/>
-  <text x="335" y="68" text-anchor="middle" font-size="10" font-weight="600" fill="#333" font-family="system-ui, -apple-system, sans-serif">Rate of computation</text>
+  <text x="335" y="68" text-anchor="middle" font-size="10" font-weight="600" fill="#333" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Rate of computation</text>
 
   <!-- Detection likelihood box -->
   <rect x="280" y="90" width="110" height="35" rx="5" fill="white" stroke="#8DB8DA" stroke-width="2"/>
-  <text x="335" y="113" text-anchor="middle" font-size="10" font-weight="600" fill="#333" font-family="system-ui, -apple-system, sans-serif">Detection likelihood</text>
+  <text x="335" y="113" text-anchor="middle" font-size="10" font-weight="600" fill="#333" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Detection likelihood</text>
 
   <!-- Arrow 3 - centered vertically -->
-  <text x="410" y="90" text-anchor="middle" font-size="18" fill="#999" font-family="system-ui, -apple-system, sans-serif">→</text>
+  <text x="410" y="90" text-anchor="middle" font-size="18" fill="#999" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">→</text>
 
   <!-- Covert computation box - centered vertically (between y=45 and y=125, center at 85) -->
   <rect x="430" y="55" width="95" height="55" rx="5" fill="white" stroke="#F5B84D" stroke-width="2"/>
-  <text x="477" y="80" text-anchor="middle" font-size="11" font-weight="600" fill="#333" font-family="system-ui, -apple-system, sans-serif">Covert</text>
-  <text x="477" y="95" text-anchor="middle" font-size="11" font-weight="600" fill="#333" font-family="system-ui, -apple-system, sans-serif">computation</text>
+  <text x="477" y="80" text-anchor="middle" font-size="11" font-weight="600" fill="#333" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Covert</text>
+  <text x="477" y="95" text-anchor="middle" font-size="11" font-weight="600" fill="#333" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">computation</text>
 </svg>

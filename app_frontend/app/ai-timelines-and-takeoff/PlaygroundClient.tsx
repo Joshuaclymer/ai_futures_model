@@ -669,7 +669,7 @@ export default function PlaygroundClient({
           <nav className="flex flex-row">
             <Link
               href="/ai-timelines-and-takeoff"
-              className="px-4 py-4 text-sm font-medium text-gray-900 border-b-2 border-blue-500"
+              className="px-4 py-4 text-sm font-medium text-gray-900 border-b-2 border-[#5E6FB8]"
             >
               AI Timelines and Takeoff
             </Link>

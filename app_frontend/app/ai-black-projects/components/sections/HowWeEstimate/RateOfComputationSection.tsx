@@ -1,17 +1,31 @@
 'use client';
 
-import { TimeSeriesChart } from '../../charts';
+import { TimeSeriesChart, PDFChart, EnergyStackedAreaChart } from '../../charts';
 import { COLOR_PALETTE } from '../../colors';
-import {
-  getDummyInitialChipStock,
-  getDummyAcquiredHardware,
-  getDummySurvivingFraction,
-  getDummyCovertChipStock,
-  getDummyDatacenterCapacity,
-  getDummyEnergyUsage,
-  getDummyOperatingChips,
-  getDummyCovertComputation,
-} from './DUMMY_DATA';
+import { ParamLink, ParamValue } from '../../ui';
+import { Parameters } from '../../../types';
+
+// Types for the rate of computation data from API
+interface TimeSeriesData {
+  years: number[];
+  median: number[];
+  p25: number[];
+  p75: number[];
+}
+
+export interface RateOfComputationData {
+  years: number[];
+  initial_chip_stock_samples: number[];
+  acquired_hardware: TimeSeriesData;
+  surviving_fraction: TimeSeriesData;
+  covert_chip_stock: TimeSeriesData;
+  datacenter_capacity: TimeSeriesData;
+  energy_usage: TimeSeriesData;
+  energy_stacked_data: [number, number][];
+  energy_source_labels: [string, string];
+  operating_chips: TimeSeriesData;
+  covert_computation: TimeSeriesData;
+}
 
 interface SubsectionItemProps {
   children: React.ReactNode;
@@ -28,64 +42,19 @@ function SubsectionItem({ children }: SubsectionItemProps) {
   );
 }
 
-interface ParamInputProps {
-  label: string;
-  value: string | number;
-  paramId: string;
-  suffix?: string;
-}
-
-function ParamInput({ label, value, paramId, suffix = '' }: ParamInputProps) {
-  return (
-    <div
-      className="param-input-row"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '4px',
-        fontSize: '9px',
-        color: '#666',
-        marginTop: '2px'
-      }}
-    >
-      <span>{label}:</span>
-      <input
-        type="text"
-        value={`${value}${suffix}`}
-        readOnly
-        onClick={(e) => {
-          e.stopPropagation();
-          scrollToParameter(paramId);
-        }}
-        style={{
-          width: '50px',
-          padding: '2px 4px',
-          fontSize: '9px',
-          border: '1px solid #ddd',
-          borderRadius: '3px',
-          textAlign: 'center',
-          cursor: 'pointer',
-          backgroundColor: '#f9f9f9'
-        }}
-        title={`Click to edit ${label} in sidebar`}
-      />
-    </div>
-  );
-}
 
 interface BreakdownChartProps {
   title: string;
   description?: string;
+  descriptionNode?: React.ReactNode;
   data: { years: number[]; median: number[]; p25: number[]; p75: number[] };
   color: string;
   yLabel?: string;
   onClick?: () => void;
   tooltip?: string;
-  params?: ParamInputProps[];
 }
 
-function BreakdownChart({ title, description, data, color, yLabel, onClick, tooltip, params }: BreakdownChartProps) {
+function BreakdownChart({ title, description, descriptionNode, data, color, yLabel, onClick, tooltip }: BreakdownChartProps) {
   const isClickable = !!onClick;
 
   return (
@@ -93,7 +62,6 @@ function BreakdownChart({ title, description, data, color, yLabel, onClick, tool
       className={`breakdown-item ${isClickable ? 'clickable' : ''}`}
       onClick={onClick}
       title={tooltip}
-      style={isClickable ? { cursor: 'pointer' } : undefined}
     >
       <div className="breakdown-plot">
         <TimeSeriesChart
@@ -108,12 +76,9 @@ function BreakdownChart({ title, description, data, color, yLabel, onClick, tool
         />
       </div>
       <div className="breakdown-label">{title}</div>
-      {description && <div className="breakdown-description">{description}</div>}
-      {params && params.length > 0 && (
-        <div style={{ marginTop: '4px' }}>
-          {params.map((param, idx) => (
-            <ParamInput key={idx} {...param} />
-          ))}
+      {(description || descriptionNode) && (
+        <div className="breakdown-description" onClick={(e) => e.stopPropagation()}>
+          {descriptionNode || description}
         </div>
       )}
     </div>
@@ -128,6 +93,45 @@ function Bracket({ children }: { children: React.ReactNode }) {
   return <div className="breakdown-bracket">{children}</div>;
 }
 
+interface PDFBreakdownChartProps {
+  title: string;
+  description?: string;
+  descriptionNode?: React.ReactNode;
+  samples: number[];
+  color: string;
+  xLabel?: string;
+  onClick?: () => void;
+  tooltip?: string;
+}
+
+function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'H100e', onClick, tooltip }: PDFBreakdownChartProps) {
+  const isClickable = !!onClick;
+
+  return (
+    <div
+      className={`breakdown-item ${isClickable ? 'clickable' : ''}`}
+      onClick={onClick}
+      title={tooltip}
+    >
+      <div className="breakdown-plot">
+        <PDFChart
+          samples={samples}
+          color={color}
+          xLabel={xLabel}
+          yLabel="Prob"
+          logScale={true}
+          numBins={15}
+        />
+      </div>
+      <div className="breakdown-label">{title}</div>
+      {(description || descriptionNode) && (
+        <div className="breakdown-description" onClick={(e) => e.stopPropagation()}>
+          {descriptionNode || description}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Helper function to scroll to a section by ID
 function scrollToSection(sectionId: string) {
@@ -137,58 +141,24 @@ function scrollToSection(sectionId: string) {
   }
 }
 
-// Helper function to scroll to a sidebar parameter and highlight it
-function scrollToParameter(paramId: string) {
-  const input = document.getElementById(paramId);
-  if (input) {
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    input.focus();
-    if (input instanceof HTMLInputElement) {
-      input.select();
-    }
-  }
-}
-
-// ParamLink component for clickable parameter references
-interface ParamLinkProps {
-  paramId: string;
-  children: React.ReactNode;
-}
-
-function ParamLink({ paramId, children }: ParamLinkProps) {
-  return (
-    <span
-      className="param-link"
-      onClick={(e) => {
-        e.stopPropagation();
-        scrollToParameter(paramId);
-      }}
-      style={{
-        color: '#5E6FB8',
-        textDecoration: 'underline',
-        cursor: 'pointer',
-        textDecorationStyle: 'dotted'
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
 interface RateOfComputationSectionProps {
   agreementYear?: number;
+  data?: RateOfComputationData | null;
+  parameters?: Parameters;
 }
 
-export function RateOfComputationSection({ agreementYear = 2030 }: RateOfComputationSectionProps) {
-  // Get dummy data (clearly marked as fake)
-  const initialStock = getDummyInitialChipStock(agreementYear);
-  const acquiredHardware = getDummyAcquiredHardware(agreementYear);
-  const survivingFraction = getDummySurvivingFraction(agreementYear);
-  const covertChipStock = getDummyCovertChipStock(agreementYear);
-  const datacenterCapacity = getDummyDatacenterCapacity(agreementYear);
-  const energyUsage = getDummyEnergyUsage(agreementYear);
-  const operatingChips = getDummyOperatingChips(agreementYear);
-  const covertComputation = getDummyCovertComputation(agreementYear);
+export function RateOfComputationSection({ agreementYear = 2030, data, parameters }: RateOfComputationSectionProps) {
+  // Use data from API, with fallback empty arrays if not available
+  const initialStockSamples = data?.initial_chip_stock_samples || [];
+  const acquiredHardware = data?.acquired_hardware || { years: [], median: [], p25: [], p75: [] };
+  const survivingFraction = data?.surviving_fraction || { years: [], median: [], p25: [], p75: [] };
+  const covertChipStock = data?.covert_chip_stock || { years: [], median: [], p25: [], p75: [] };
+  const datacenterCapacity = data?.datacenter_capacity || { years: [], median: [], p25: [], p75: [] };
+  const energyUsage = data?.energy_usage || { years: [], median: [], p25: [], p75: [] };
+  const energyStackedData = data?.energy_stacked_data || [];
+  const energySourceLabels = data?.energy_source_labels || ['Initial Stock', 'Fab-Produced'] as [string, string];
+  const operatingChips = data?.operating_chips || { years: [], median: [], p25: [], p75: [] };
+  const covertComputation = data?.covert_computation || { years: [], median: [], p25: [], p75: [] };
 
   return (
     <div className="pt-5">
@@ -217,30 +187,38 @@ export function RateOfComputationSection({ agreementYear = 2030 }: RateOfComputa
         <div className="breakdown-equation-row">
           <Bracket>[</Bracket>
 
-          <BreakdownChart
+          <PDFBreakdownChart
             title="Initial covert chip stock"
-            data={initialStock}
+            descriptionNode={
+              <>
+                Assuming the PRC initially has ~1M H100e, and diverts{' '}
+                <ParamLink paramId="param-fraction-compute-divert">{parameters ? `${(parameters.proportionOfInitialChipStockToDivert * 100).toFixed(0)}%` : '5%'}</ParamLink>{' '}
+                before the agreement goes into force.
+              </>
+            }
+            samples={initialStockSamples}
             color={COLOR_PALETTE.chip_stock}
-            yLabel="H100e"
+            xLabel="H100e"
             onClick={() => scrollToSection('initialStockSection')}
             tooltip="Click for more details"
-            params={[
-              { label: 'Divert', value: '5', paramId: 'param-proportion-chips-divert', suffix: '%' }
-            ]}
           />
 
           <Operator>+</Operator>
 
           <BreakdownChart
             title="Acquired hardware"
+            descriptionNode={
+              <>
+                Assuming the PRC diverts{' '}
+                <ParamLink paramId="param-fraction-scanners-divert">{parameters ? `${(parameters.fractionOfLithographyScannersToDivert * 100).toFixed(0)}%` : '10%'}</ParamLink>{' '}
+                of indigenous ≤<ParamLink paramId="param-fab-node">{parameters?.blackFabMaxProcessNode || '28'}</ParamLink>nm SME before the agreement goes into force.
+              </>
+            }
             data={acquiredHardware}
             color={COLOR_PALETTE.fab}
             yLabel="H100e"
             onClick={() => scrollToSection('covertFabSection')}
             tooltip="Click for more details"
-            params={[
-              { label: 'Fab', value: 'Yes', paramId: 'param-build-covert-fab' }
-            ]}
           />
 
           <Bracket>]</Bracket>
@@ -249,7 +227,13 @@ export function RateOfComputationSection({ agreementYear = 2030 }: RateOfComputa
 
           <BreakdownChart
             title="Surviving fraction of compute"
-            description="The fraction of compute that remains operational, accounting for degradation."
+            descriptionNode={
+              <>
+                The fraction of compute that remains operational, accounting for degradation, assuming a{' '}
+                <ParamLink paramId="param-initial-hazard-rate">{parameters ? `${(parameters.initialAnnualHazardRate * 100).toFixed(0)}%` : '5%'}</ParamLink> initial annual hazard rate that increases by{' '}
+                <ParamLink paramId="param-hazard-rate-increase">{parameters ? `${(parameters.annualHazardRateIncreasePerYear * 100).toFixed(0)}%` : '2%'}</ParamLink> per year.
+              </>
+            }
             data={survivingFraction}
             color={COLOR_PALETTE.survival_rate}
             yLabel="Fraction"
@@ -279,14 +263,20 @@ export function RateOfComputationSection({ agreementYear = 2030 }: RateOfComputa
         <div className="breakdown-equation-row">
           <BreakdownChart
             title="Unreported datacenter capacity"
+            descriptionNode={
+              <>
+                Assuming{' '}
+                {parameters ? <ParamValue paramKey="workersInCovertProject" parameters={parameters} /> : '10,000'}{' '}
+                workers are involved in the covert project and{' '}
+                {parameters ? <ParamValue paramKey="fractionOfLaborDevotedToDatacenterConstruction" parameters={parameters} /> : '89%'}{' '}
+                construct datacenters.
+              </>
+            }
             data={datacenterCapacity}
             color={COLOR_PALETTE.datacenters_and_energy}
             yLabel="GW"
             onClick={() => scrollToSection('covertDataCentersSection')}
             tooltip="Click for more details"
-            params={[
-              { label: 'Workers', value: '10K', paramId: 'param-datacenter-construction-labor' }
-            ]}
           />
 
           <div className="breakdown-limits-arrow">
@@ -294,13 +284,20 @@ export function RateOfComputationSection({ agreementYear = 2030 }: RateOfComputa
             <span className="breakdown-limits-symbol">&rarr;</span>
           </div>
 
-          <BreakdownChart
-            title="Chip stock energy usage (medians)"
-            description="Energy required to run untraced AI chips at full capacity."
-            data={energyUsage}
-            color={COLOR_PALETTE.datacenters_and_energy}
-            yLabel="GW"
-          />
+          <div className="breakdown-item">
+            <div className="breakdown-plot">
+              <EnergyStackedAreaChart
+                years={datacenterCapacity.years}
+                energyData={energyStackedData}
+                sourceLabels={energySourceLabels}
+                datacenterCapacity={datacenterCapacity.median}
+              />
+            </div>
+            <div className="breakdown-label">Chip stock energy usage (medians)</div>
+            <div className="breakdown-description">
+              Energy required to run untraced AI chips at full capacity.
+            </div>
+          </div>
 
           <Operator>=</Operator>
 

@@ -125,11 +125,11 @@ def create_dummy_prc_nation(
         ai_software_progress=ai_sw_progress,
     )
     # Set init=False metrics
-    object.__setattr__(prc_developer, 'ai_r_and_d_inference_compute_tpp_h100e', 0.0)
-    object.__setattr__(prc_developer, 'ai_r_and_d_training_compute_tpp_h100e', 0.0)
-    object.__setattr__(prc_developer, 'external_deployment_compute_tpp_h100e', 0.0)
-    object.__setattr__(prc_developer, 'alignment_research_compute_tpp_h100e', 0.0)
-    object.__setattr__(prc_developer, 'frontier_training_compute_tpp_h100e', 0.0)
+    prc_developer._set_frozen_field('ai_r_and_d_inference_compute_tpp_h100e', 0.0)
+    prc_developer._set_frozen_field('ai_r_and_d_training_compute_tpp_h100e', 0.0)
+    prc_developer._set_frozen_field('external_deployment_compute_tpp_h100e', 0.0)
+    prc_developer._set_frozen_field('alignment_research_compute_tpp_h100e', 0.0)
+    prc_developer._set_frozen_field('frontier_training_compute_tpp_h100e', 0.0)
 
     # Create fab
     fab_production_compute = Compute(

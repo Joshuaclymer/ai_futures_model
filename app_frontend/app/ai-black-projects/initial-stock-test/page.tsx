@@ -1,7 +1,14 @@
 'use client';
 
-import { InitialStockSection } from '../components';
+import dynamic from 'next/dynamic';
 import '../ai-black-projects.css';
+import { defaultParameters } from '../types';
+
+// Dynamically import to avoid SSR issues with Math.random()
+const InitialStockSection = dynamic(
+  () => import('../components/sections/InitialStockSection').then(mod => mod.InitialStockSection),
+  { ssr: false }
+);
 
 export default function InitialStockTestPage() {
   // Use only dummy data - no API call
@@ -11,8 +18,7 @@ export default function InitialStockTestPage() {
       <InitialStockSection
         data={null}
         isLoading={false}
-        diversionProportion={0.1}
-        agreementYear={2027}
+        parameters={defaultParameters}
       />
     </div>
   );

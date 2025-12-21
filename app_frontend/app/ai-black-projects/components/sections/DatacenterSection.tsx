@@ -1,14 +1,17 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BlackProjectData, COLOR_PALETTE } from '@/types/blackProject';
+import { COLOR_PALETTE } from '@/types/blackProject';
 import { CCDFChart, TimeSeriesChart, PlotlyChart } from '../charts';
-import { useTooltip, Tooltip, TOOLTIP_DOCS } from '../ui/Tooltip';
+import { hexToRgba } from '../colors';
+import { CHART_FONT_SIZES } from '../chartConfig';
+import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamValue } from '../ui';
+import { Parameters, SimulationData } from '../../types';
 
 interface DatacenterSectionProps {
-  data: BlackProjectData | null;
+  data: SimulationData | null;
   isLoading?: boolean;
-  agreementYear?: number;
+  parameters: Parameters;
 }
 
 // Helper to format capacity values
@@ -22,55 +25,12 @@ function formatCapacity(gw: number): string {
   }
 }
 
-// Helper to convert hex to rgba
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-// Generate dummy data for PRC datacenter capacity over time
-function generateDummyPrcCapacity(agreementYear: number) {
-  const years = [];
-  const median = [];
-  const p25 = [];
-  const p75 = [];
-
-  for (let year = 2020; year <= agreementYear; year++) {
-    years.push(year);
-    // Simulate exponential growth in datacenter capacity
-    const baseValue = 50 * Math.pow(1.15, year - 2020); // ~15% annual growth
-    median.push(baseValue);
-    p25.push(baseValue * 0.8);
-    p75.push(baseValue * 1.2);
-  }
-
-  return { years, median, p25, p75 };
-}
-
-// Generate dummy data for datacenter capacity built for concealment
-function generateDummyDatacenterCapacity(agreementYear: number) {
-  const years = [];
-  const median = [];
-  const p25 = [];
-  const p75 = [];
-
-  for (let year = agreementYear; year <= agreementYear + 10; year++) {
-    years.push(year);
-    // Capacity grows linearly from construction
-    const yearsFromStart = year - agreementYear;
-    const baseValue = yearsFromStart * 5; // 5 GW per year
-    median.push(Math.min(baseValue, 50)); // Cap at 50 GW
-    p25.push(Math.min(baseValue * 0.7, 40));
-    p75.push(Math.min(baseValue * 1.3, 60));
-  }
-
-  return { years, median, p25, p75 };
-}
-
-export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: DatacenterSectionProps) {
-  const { tooltipState, showTooltip, hideTooltip } = useTooltip();
+export function DatacenterSection({ data, isLoading, parameters }: DatacenterSectionProps) {
+  const agreementYear = parameters.agreementYear;
+  const fractionDiverted = parameters.fractionOfDatacenterCapacityToDivert;
+  const maxEnergyFraction = parameters.maxFractionOfTotalNationalEnergyConsumption;
+  const totalPrcEnergyGw = parameters.totalPrcEnergyConsumptionGw;
+  const { tooltipState, showTooltip, hideTooltip, onTooltipMouseEnter, onTooltipMouseLeave } = useTooltip();
 
   // Helper to create tooltip handlers - pass the markdown doc name as string
   const createTooltipHandlers = (docName: keyof typeof TOOLTIP_DOCS) => ({
@@ -156,7 +116,7 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
         type: 'scatter',
         mode: 'lines',
         line: { color: lrColor, width: 3 },
-        name: 'Evidence of Datacenters',
+        name: 'Evidence of Datacenters    ',
         hovertemplate: 'LR: %{y:.2f}<extra></extra>',
         yaxis: 'y',
       });
@@ -196,7 +156,7 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
         type: 'scatter',
         mode: 'lines',
         line: { color: capacityColor, width: 3 },
-        name: 'Covert Datacenter capacity',
+        name: 'Covert Datacenter capacity    ',
         hovertemplate: 'Capacity: %{y:.2f} GW<extra></extra>',
         yaxis: 'y2',
       });
@@ -207,18 +167,18 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
 
   const combinedPlotLayout: Partial<Plotly.Layout> = {
     xaxis: {
-      title: { text: 'Year', font: { size: 13 } },
-      tickfont: { size: 10 },
+      title: { text: 'Year', font: { size: CHART_FONT_SIZES.axisTitle } },
+      tickfont: { size: CHART_FONT_SIZES.tickLabel },
     },
     yaxis: {
-      title: { text: 'Evidence (LR)', font: { size: 13 } },
-      tickfont: { size: 10 },
+      title: { text: 'Evidence (LR)', font: { size: CHART_FONT_SIZES.axisTitle } },
+      tickfont: { size: CHART_FONT_SIZES.tickLabel },
       side: 'left',
       type: 'log',
     },
     yaxis2: {
-      title: { text: 'Capacity (GW)', font: { size: 13 } },
-      tickfont: { size: 10 },
+      title: { text: 'Capacity (GW)', font: { size: CHART_FONT_SIZES.axisTitle } },
+      tickfont: { size: CHART_FONT_SIZES.tickLabel },
       overlaying: 'y',
       side: 'right',
     },
@@ -229,12 +189,11 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
       xanchor: 'right',
       yanchor: 'bottom',
       orientation: 'v',
-      font: { size: 10 },
+      font: { size: CHART_FONT_SIZES.legend },
       bgcolor: 'rgba(255,255,255,0.8)',
-      borderwidth: 1,
-      bordercolor: '#ddd',
+      borderwidth: 0,
     },
-    hovermode: 'x unified',
+    hovermode: 'closest',
     margin: { l: 55, r: 55, t: 10, b: 50 },
   };
 
@@ -307,8 +266,8 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
       <div className="flex flex-wrap gap-5 items-start">
         {/* Dashboard */}
         <div className="bp-dashboard w-60 flex-shrink-0">
-          <div className="bp-plot-title">Median outcome</div>
-          <div className="space-y-5 mt-4">
+          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 20 }}>Median outcome</div>
+          <div className="space-y-5">
             <div className="bp-dashboard-item">
               <div className="bp-dashboard-value" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
                 {dashboardValues.capacity}
@@ -325,7 +284,7 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
 
         {/* Capacity CCDF Plot */}
         <div className="bp-plot-container flex-1 min-w-[280px]">
-          <div className="bp-plot-title">Datacenter capacity built before detection</div>
+          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>Datacenter capacity built before detection</div>
           <div className="h-[300px]">
             <CCDFChart
               data={capacityCcdfData}
@@ -340,7 +299,7 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
 
         {/* Combined Simulation Runs Plot */}
         <div className="bp-plot-container flex-1 min-w-[280px]">
-          <div className="bp-plot-title">Simulation runs</div>
+          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>Simulation runs</div>
           <div className="h-[300px]">
             <PlotlyChart
               data={combinedPlotData}
@@ -382,30 +341,15 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
           {/* PRC datacenter capacity over time plot */}
           <div className="breakdown-item">
             <div className="breakdown-plot">
-              {(() => {
-                // Use real data if available, otherwise use dummy data
-                const hasRealData = data.black_datacenters.prc_capacity_years?.length > 0 &&
-                                    data.black_datacenters.prc_capacity_gw?.median?.length > 0;
-                const plotData = hasRealData
-                  ? {
-                      years: data.black_datacenters.prc_capacity_years,
-                      median: data.black_datacenters.prc_capacity_gw?.median,
-                      p25: data.black_datacenters.prc_capacity_gw?.p25,
-                      p75: data.black_datacenters.prc_capacity_gw?.p75,
-                    }
-                  : generateDummyPrcCapacity(agreementYear);
-                return (
-                  <TimeSeriesChart
-                    years={plotData.years}
-                    median={plotData.median}
-                    p25={plotData.p25}
-                    p75={plotData.p75}
-                    color={COLOR_PALETTE.datacenters_and_energy}
-                    yLabel="GW"
-                    isLoading={isLoading}
-                  />
-                );
-              })()}
+              <TimeSeriesChart
+                years={data.black_datacenters.prc_capacity_years}
+                median={data.black_datacenters.prc_capacity_gw?.median}
+                p25={data.black_datacenters.prc_capacity_gw?.p25}
+                p75={data.black_datacenters.prc_capacity_gw?.p75}
+                color={COLOR_PALETTE.datacenters_and_energy}
+                yLabel="GW"
+                isLoading={isLoading}
+              />
             </div>
             <div className="breakdown-label">Unconcealed PRC datacenter capacity</div>
             <div className="breakdown-description">The capacity of datacenters not built with concealment in mind.</div>
@@ -429,7 +373,7 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
                 {data.black_datacenters.prc_capacity_at_agreement_year_gw
                   ? formatCapacity(data.black_datacenters.prc_capacity_at_agreement_year_gw)
-                  : formatCapacity(generateDummyPrcCapacity(agreementYear).median.slice(-1)[0])}
+                  : '--'}
               </div>
             </div>
             <div className="breakdown-label">Unconcealed PRC datacenter<br/>capacity in {agreementYear}</div>
@@ -445,7 +389,7 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
-                {`${((data.black_datacenters.fraction_diverted || 0.01) * 100).toFixed(0)}%`}
+                <ParamValue paramKey="fractionOfDatacenterCapacityToDivert" parameters={parameters} />
               </div>
             </div>
             <div className="breakdown-label">Proportion diverted<br/>to covert project</div>
@@ -461,11 +405,9 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
-                {(() => {
-                  const prcCapacity = data.black_datacenters.prc_capacity_at_agreement_year_gw || generateDummyPrcCapacity(agreementYear).median.slice(-1)[0];
-                  const fractionDiverted = data.black_datacenters.fraction_diverted || 0.01;
-                  return formatCapacity(prcCapacity * fractionDiverted);
-                })()}
+                {data.black_datacenters.prc_capacity_at_agreement_year_gw
+                  ? formatCapacity(data.black_datacenters.prc_capacity_at_agreement_year_gw * fractionDiverted)
+                  : '--'}
               </div>
             </div>
             <div className="breakdown-label">Capacity of datacenters<br/>retrofitted for secrecy</div>
@@ -497,9 +439,7 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy, fontSize: '20px' }}>
-                {data.black_datacenters.total_prc_energy_gw
-                  ? `${(data.black_datacenters.total_prc_energy_gw / 1000).toFixed(0)}K GW`
-                  : '1K GW'}
+                <ParamValue paramKey="totalPrcEnergyConsumptionGw" parameters={parameters} />
               </div>
             </div>
             <div className="breakdown-label">PRC energy<br/>consumption</div>
@@ -515,9 +455,7 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy, fontSize: '20px' }}>
-                {data.black_datacenters.max_proportion_energy
-                  ? `${(data.black_datacenters.max_proportion_energy * 100).toFixed(0)}%`
-                  : '1%'}
+                <ParamValue paramKey="maxFractionOfTotalNationalEnergyConsumption" parameters={parameters} />
               </div>
             </div>
             <div className="breakdown-label">Max % energy</div>
@@ -533,11 +471,9 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy, fontSize: '20px' }}>
-                {(() => {
-                  const prcCapacity = data.black_datacenters.prc_capacity_at_agreement_year_gw || generateDummyPrcCapacity(agreementYear).median.slice(-1)[0];
-                  const fractionDiverted = data.black_datacenters.fraction_diverted || 0.01;
-                  return formatCapacity(prcCapacity * fractionDiverted);
-                })()}
+                {data.black_datacenters.prc_capacity_at_agreement_year_gw
+                  ? formatCapacity(data.black_datacenters.prc_capacity_at_agreement_year_gw * fractionDiverted)
+                  : '--'}
               </div>
             </div>
             <div className="breakdown-label">Covert unconcealed<br/>capacity</div>
@@ -605,30 +541,15 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
           {/* Datacenter capacity plot */}
           <div className="breakdown-item">
             <div className="breakdown-plot">
-              {(() => {
-                // Use real data if available, otherwise use dummy data
-                const hasRealData = data.black_datacenters.years?.length > 0 &&
-                                    data.black_datacenters.datacenter_capacity?.median?.length > 0;
-                const plotData = hasRealData
-                  ? {
-                      years: data.black_datacenters.years,
-                      median: data.black_datacenters.datacenter_capacity?.median,
-                      p25: data.black_datacenters.datacenter_capacity?.p25,
-                      p75: data.black_datacenters.datacenter_capacity?.p75,
-                    }
-                  : generateDummyDatacenterCapacity(agreementYear);
-                return (
-                  <TimeSeriesChart
-                    years={plotData.years}
-                    median={plotData.median}
-                    p25={plotData.p25}
-                    p75={plotData.p75}
-                    color={COLOR_PALETTE.datacenters_and_energy}
-                    yLabel="GW"
-                    isLoading={isLoading}
-                  />
-                );
-              })()}
+              <TimeSeriesChart
+                years={data.black_datacenters.years}
+                median={data.black_datacenters.datacenter_capacity?.median}
+                p25={data.black_datacenters.datacenter_capacity?.p25}
+                p75={data.black_datacenters.datacenter_capacity?.p75}
+                color={COLOR_PALETTE.datacenters_and_energy}
+                yLabel="GW"
+                isLoading={isLoading}
+              />
             </div>
             <div className="breakdown-label">Capacity of datacenters built for concealment</div>
             <div className="breakdown-description">The cumulative capacity of covert datacenters built by the construction workforce, capped by maximum energy consumption limits.</div>
@@ -641,7 +562,9 @@ export function DatacenterSection({ data, isLoading, agreementYear = 2027 }: Dat
       <Tooltip
         content={tooltipState.content}
         visible={tooltipState.visible}
-        position={tooltipState.position}
+        triggerRect={tooltipState.triggerRect}
+        onMouseEnter={onTooltipMouseEnter}
+        onMouseLeave={onTooltipMouseLeave}
       />
     </section>
   );

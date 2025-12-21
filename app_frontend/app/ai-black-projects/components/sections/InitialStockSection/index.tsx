@@ -1,23 +1,39 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BlackProjectData, COLOR_PALETTE } from '@/types/blackProject';
+import { COLOR_PALETTE } from '@/types/blackProject';
 import { PlotlyChart } from '../../charts';
-import { InitialStockDummyData } from './DUMMY_DATA';
+import { hexToRgba } from '../../colors';
+import { CHART_FONT_SIZES } from '../../chartConfig';
+import { ParamValue } from '../../ui';
+import { Parameters, SimulationData } from '../../../types';
 
-interface InitialStockSectionProps {
-  data: BlackProjectData | null;
-  isLoading?: boolean;
-  diversionProportion?: number;
-  agreementYear?: number;
+// Type for initial stock data from API
+interface TimeSeriesPercentiles {
+  p25: number[];
+  median: number[];
+  p75: number[];
 }
 
-// Helper to convert hex to rgba
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+interface InitialStockData {
+  initial_prc_stock_samples: number[];
+  initial_compute_stock_samples: number[];
+  initial_energy_samples: number[];
+  diversion_proportion: number;
+  lr_prc_accounting_samples: number[];
+  initial_black_project_detection_probs: Record<string, number>;
+  prc_compute_years: number[];
+  prc_compute_over_time: TimeSeriesPercentiles;
+  prc_domestic_compute_over_time: { median: number[] };
+  proportion_domestic_by_year: number[];
+  largest_company_compute_over_time?: number[];
+  state_of_the_art_energy_efficiency_relative_to_h100: number;
+}
+
+interface InitialStockSectionProps {
+  data: SimulationData | null;
+  isLoading?: boolean;
+  parameters: Parameters;
 }
 
 // Helper to format H100e values
@@ -41,12 +57,71 @@ function formatEnergy(energyGW: number): string {
 }
 
 // Create histogram trace with probability normalization
+// For log-scale x-axis, we need to bin in log space
 function createHistogramTrace(
   samples: number[],
   color: string,
-  nbins: number = 30
+  nbins: number = 30,
+  useLogBins: boolean = false
 ): Plotly.Data | null {
   if (!samples || samples.length === 0) return null;
+
+  // Filter out non-positive values for log binning
+  const validSamples = useLogBins
+    ? samples.filter(s => s > 0)
+    : samples;
+
+  if (validSamples.length === 0) return null;
+
+  if (useLogBins) {
+    // Create log-spaced bins manually
+    const logSamples = validSamples.map(s => Math.log10(s));
+    const minLog = Math.min(...logSamples);
+    const maxLog = Math.max(...logSamples);
+    const binWidth = (maxLog - minLog) / nbins;
+
+    // Count samples in each bin
+    const counts = new Array(nbins).fill(0);
+    const binEdges: number[] = [];
+
+    for (let i = 0; i <= nbins; i++) {
+      binEdges.push(Math.pow(10, minLog + i * binWidth));
+    }
+
+    for (const sample of validSamples) {
+      const binIndex = Math.min(
+        Math.floor((Math.log10(sample) - minLog) / binWidth),
+        nbins - 1
+      );
+      counts[binIndex]++;
+    }
+
+    // Convert to probability
+    const total = validSamples.length;
+    const probs = counts.map(c => c / total);
+
+    // Create bin centers (geometric mean of edges)
+    const binCenters = binEdges.slice(0, -1).map((edge, i) =>
+      Math.sqrt(edge * binEdges[i + 1])
+    );
+
+    // Calculate bar widths for log scale (as fraction of bin center)
+    const barWidths = binCenters.map((center, i) =>
+      binEdges[i + 1] - binEdges[i]
+    );
+
+    return {
+      x: binCenters,
+      y: probs,
+      type: 'bar',
+      width: barWidths,
+      marker: {
+        color: hexToRgba(color, 0.7),
+        line: { color: color, width: 1 },
+      },
+      hovertemplate: 'Value: %{x:.2s}<br>Probability: %{y:.3f}<extra></extra>',
+    } as Plotly.Data;
+  }
 
   return {
     x: samples,
@@ -64,19 +139,20 @@ function createHistogramTrace(
 export function InitialStockSection({
   data,
   isLoading,
-  diversionProportion = 0.1,
-  agreementYear = 2027
+  parameters
 }: InitialStockSectionProps) {
-  // Constants
-  const H100_POWER_WATTS = 700;
-  const H100_POWER_KW = H100_POWER_WATTS / 1000;
-  const prcEfficiencyRelativeToSOTA = 0.20;
+  // Extract values from parameters
+  const agreementYear = parameters.agreementYear;
 
-  // Use API data from data.initial_stock
-  // The dummy API endpoint at /api/black-project-dummy provides this data
-  const initialStock: InitialStockDummyData | null = useMemo(() => {
-    if (!data?.initial_stock) return null;
-    return data.initial_stock as unknown as InitialStockDummyData;
+  // Constants
+  const H100_POWER_KW = 0.7; // 700W = 0.7kW
+
+  // Use API data from data.initial_stock, with null fallback when not available
+  const initialStock: InitialStockData | null = useMemo(() => {
+    if (data?.initial_stock) {
+      return data.initial_stock as unknown as InitialStockData;
+    }
+    return null;
   }, [data]);
 
   // Get state of the art efficiency
@@ -84,27 +160,27 @@ export function InitialStockSection({
 
   // Calculate dashboard values
   const dashboardValues = useMemo(() => {
-    const samples = initialStock?.initial_compute_stock_samples;
-    if (!samples?.length) {
+    const computeSamples = initialStock?.initial_compute_stock_samples;
+    const energySamples = initialStock?.initial_energy_samples;
+    if (!computeSamples?.length || !energySamples?.length) {
       return { medianDarkCompute: '--', medianEnergy: '--', detectionProb: '--' };
     }
 
-    const sorted = [...samples].sort((a, b) => a - b);
-    const medianValue = sorted[Math.floor(sorted.length * 0.5)];
+    const sortedCompute = [...computeSamples].sort((a, b) => a - b);
+    const medianCompute = sortedCompute[Math.floor(sortedCompute.length * 0.5)];
 
-    // Calculate energy
-    const combinedEfficiency = sotaEfficiency * prcEfficiencyRelativeToSOTA;
-    const energyGW = (medianValue * H100_POWER_WATTS / combinedEfficiency) / 1e9;
+    const sortedEnergy = [...energySamples].sort((a, b) => a - b);
+    const medianEnergy = sortedEnergy[Math.floor(sortedEnergy.length * 0.5)];
 
     // Get detection probability for 4x threshold
     const detectionProb = initialStock?.initial_black_project_detection_probs?.['4x'];
 
     return {
-      medianDarkCompute: formatH100e(medianValue),
-      medianEnergy: formatEnergy(energyGW),
+      medianDarkCompute: formatH100e(medianCompute),
+      medianEnergy: formatEnergy(medianEnergy),
       detectionProb: detectionProb !== undefined ? `${(detectionProb * 100).toFixed(1)}%` : '--',
     };
-  }, [initialStock, sotaEfficiency, prcEfficiencyRelativeToSOTA, H100_POWER_WATTS]);
+  }, [initialStock]);
 
   // Create detection probability bar chart data
   const detectionBarData = useMemo(() => {
@@ -129,33 +205,26 @@ export function InitialStockSection({
     }];
   }, [initialStock]);
 
-  // Create histogram data for initial compute stock
+  // Create histogram data for initial compute stock (log-binned for log scale x-axis)
   const computeHistogramData = useMemo(() => {
     const samples = initialStock?.initial_compute_stock_samples;
     if (!samples?.length) return [];
-    const trace = createHistogramTrace(samples, COLOR_PALETTE.chip_stock, 25);
+    const trace = createHistogramTrace(samples, COLOR_PALETTE.chip_stock, 25, true);
     return trace ? [trace] : [];
   }, [initialStock]);
 
-  // Create histogram data for initial PRC stock
+  // Create histogram data for initial PRC stock (log-binned for log scale x-axis)
   const prcStockHistogramData = useMemo(() => {
     const samples = initialStock?.initial_prc_stock_samples;
     if (!samples?.length) return [];
-    const trace = createHistogramTrace(samples, COLOR_PALETTE.chip_stock, 25);
+    const trace = createHistogramTrace(samples, COLOR_PALETTE.chip_stock, 25, true);
     return trace ? [trace] : [];
   }, [initialStock]);
 
-  // Create energy requirements histogram (calculated from compute stock)
+  // Create energy requirements histogram (from API-provided samples)
   const energyRequirementsData = useMemo(() => {
-    const samples = initialStock?.initial_compute_stock_samples;
-    if (!samples?.length) return [];
-
-    // Calculate energy in GW: (H100e * watts_per_H100 / efficiency_multiplier) / 1e9
-    const combinedEfficiency = sotaEfficiency * prcEfficiencyRelativeToSOTA;
-    const energySamples = samples.map(h100e => {
-      // Energy = chips * power_per_chip / efficiency / 1e9 (convert W to GW)
-      return (h100e * H100_POWER_WATTS) / combinedEfficiency / 1e9;
-    });
+    const energySamples = initialStock?.initial_energy_samples;
+    if (!energySamples?.length) return [];
 
     // Filter out any invalid values
     const validEnergySamples = energySamples.filter(e =>
@@ -166,7 +235,7 @@ export function InitialStockSection({
 
     const trace = createHistogramTrace(validEnergySamples, COLOR_PALETTE.datacenters_and_energy, 20);
     return trace ? [trace] : [];
-  }, [initialStock, sotaEfficiency, prcEfficiencyRelativeToSOTA, H100_POWER_WATTS]);
+  }, [initialStock]);
 
   // Create PRC compute over time time series data
   const prcComputeOverTimeData = useMemo(() => {
@@ -211,7 +280,7 @@ export function InitialStockSection({
       mode: 'lines',
       line: { color: COLOR_PALETTE.chip_stock, width: 2 },
       type: 'scatter',
-      name: 'Median',
+      name: 'Median    ',
       hovertemplate: 'Year: %{x}<br>Median: %{y:.2s} H100e<extra></extra>',
     });
 
@@ -235,7 +304,7 @@ export function InitialStockSection({
       fill: 'tozeroy',
       fillcolor: hexToRgba(COLOR_PALETTE.chip_stock, 0.2),
       line: { color: 'transparent' },
-      name: '25th-75th %tile',
+      name: '25th-75th %tile    ',
       showlegend: true,
       hoverinfo: 'skip',
     });
@@ -252,7 +321,7 @@ export function InitialStockSection({
         mode: 'lines',
         line: { color: COLOR_PALETTE.datacenters_and_energy, width: 2, dash: 'dot' },
         type: 'scatter',
-        name: 'Domestically produced (median)',
+        name: 'Domestically produced (median)    ',
         text: domesticHoverText,
         hovertemplate: '%{text}<extra></extra>',
       });
@@ -266,7 +335,7 @@ export function InitialStockSection({
         mode: 'lines',
         line: { color: COLOR_PALETTE.fab, width: 2, dash: 'dash' },
         type: 'scatter',
-        name: 'Largest AI Company',
+        name: 'Largest AI Company    ',
         hovertemplate: 'Year: %{x}<br>Largest AI Company: %{y:.2s} H100e<extra></extra>',
       });
     }
@@ -320,18 +389,18 @@ export function InitialStockSection({
           <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
             Detection probability by likelihood ratio
           </div>
-          <div style={{ height: 280 }}>
+          <div style={{ height: 240 }}>
             <PlotlyChart
               data={detectionBarData}
               layout={{
                 xaxis: {
-                  title: { text: 'Probability of detection', font: { size: 13 } },
-                  tickfont: { size: 10 },
+                  title: { text: 'Probability of detection', font: { size: CHART_FONT_SIZES.axisTitle } },
+                  tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   automargin: true,
                 },
                 yaxis: {
-                  title: { text: 'P(Detection)', standoff: 15, font: { size: 13 } },
-                  tickfont: { size: 10 },
+                  title: { text: 'P(Detection)', standoff: 15, font: { size: CHART_FONT_SIZES.axisTitle } },
+                  tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   range: [0, 1],
                   tickformat: '.0%',
                   automargin: true,
@@ -349,19 +418,19 @@ export function InitialStockSection({
           <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
             Initial PRC dark compute distribution
           </div>
-          <div style={{ height: 280 }}>
+          <div style={{ height: 240 }}>
             <PlotlyChart
               data={computeHistogramData}
               layout={{
                 xaxis: {
-                  title: { text: 'PRC Dark Compute Stock (H100 equivalents)', font: { size: 11 } },
-                  tickfont: { size: 10 },
+                  title: { text: 'PRC Dark Compute Stock (H100 equivalents)', font: { size: CHART_FONT_SIZES.axisTitle } },
+                  tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   type: 'log',
                   automargin: true,
                 },
                 yaxis: {
-                  title: { text: 'Probability', font: { size: 11 } },
-                  tickfont: { size: 10 },
+                  title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
+                  tickfont: { size: CHART_FONT_SIZES.tickLabel },
                 },
                 margin: { l: 50, r: 10, t: 10, b: 55 },
               }}
@@ -389,8 +458,8 @@ export function InitialStockSection({
                 data={prcComputeOverTimeData}
                 layout={{
                   xaxis: {
-                    title: { text: 'Year', font: { size: 10 } },
-                    tickfont: { size: 9 },
+                    title: { text: 'Year', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     automargin: true,
                     range: initialStock?.prc_compute_years?.length ? [
                       initialStock.prc_compute_years[0],
@@ -398,8 +467,8 @@ export function InitialStockSection({
                     ] : undefined,
                   },
                   yaxis: {
-                    title: { text: 'PRC chip stock (H100e)', font: { size: 10 } },
-                    tickfont: { size: 9 },
+                    title: { text: 'PRC chip stock (H100e)', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     type: 'log',
                     automargin: true,
                   },
@@ -410,9 +479,8 @@ export function InitialStockSection({
                     xanchor: 'left',
                     yanchor: 'top',
                     bgcolor: 'rgba(255, 255, 255, 0.9)',
-                    bordercolor: '#ccc',
-                    borderwidth: 1,
-                    font: { size: 7 },
+                    borderwidth: 0,
+                    font: { size: CHART_FONT_SIZES.legend },
                   },
                   margin: { l: 50, r: 20, t: 10, b: 55, pad: 10 },
                 }}
@@ -422,7 +490,7 @@ export function InitialStockSection({
             </div>
             <div className="breakdown-label">PRC chip stock over time</div>
             <div className="breakdown-description">
-              Assuming the PRC has <span className="param-link">1</span>M H100e in 2025, and its chip stock grows by <span className="param-link">1.5</span>x per year.
+              Assuming the PRC has <ParamValue paramKey="totalPrcComputeTppH100eIn2025" parameters={parameters} /> H100e in 2025, and its chip stock grows by <ParamValue paramKey="annualGrowthRateOfPrcComputeStock" parameters={parameters} /> per year.
             </div>
           </div>
 
@@ -441,13 +509,13 @@ export function InitialStockSection({
                 data={prcStockHistogramData}
                 layout={{
                   xaxis: {
-                    title: { text: 'H100 equivalents', font: { size: 10 } },
-                    tickfont: { size: 9 },
+                    title: { text: 'H100 equivalents', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     type: 'log',
                   },
                   yaxis: {
-                    title: { text: 'Probability', font: { size: 10 } },
-                    tickfont: { size: 9 },
+                    title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   margin: { l: 45, r: 10, t: 10, b: 45 },
                 }}
@@ -468,7 +536,7 @@ export function InitialStockSection({
           <div className="breakdown-box-item">
             <div className="breakdown-box">
               <div className="breakdown-box-inner">
-                {(diversionProportion * 100).toFixed(0)}%
+                <ParamValue paramKey="proportionOfInitialChipStockToDivert" parameters={parameters} />
               </div>
             </div>
             <div className="breakdown-label" style={{ marginTop: 5 }}>
@@ -486,13 +554,13 @@ export function InitialStockSection({
                 data={computeHistogramData}
                 layout={{
                   xaxis: {
-                    title: { text: 'H100 equivalents', font: { size: 10 } },
-                    tickfont: { size: 9 },
+                    title: { text: 'H100 equivalents', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     type: 'log',
                   },
                   yaxis: {
-                    title: { text: 'Probability', font: { size: 10 } },
-                    tickfont: { size: 9 },
+                    title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   margin: { l: 45, r: 10, t: 10, b: 45 },
                 }}
@@ -537,13 +605,13 @@ export function InitialStockSection({
                 data={computeHistogramData}
                 layout={{
                   xaxis: {
-                    title: { text: 'Dark Compute Stock (H100e)', font: { size: 9 } },
-                    tickfont: { size: 8 },
+                    title: { text: 'Dark Compute Stock (H100e)', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     type: 'log',
                   },
                   yaxis: {
-                    title: { text: 'Probability', font: { size: 9 } },
-                    tickfont: { size: 8 },
+                    title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   margin: { l: 40, r: 5, t: 5, b: 45 },
                 }}
@@ -582,7 +650,7 @@ export function InitialStockSection({
           <div className="breakdown-box-item">
             <div className="breakdown-box">
               <div className="breakdown-box-inner">
-                {prcEfficiencyRelativeToSOTA.toFixed(2)}
+                <ParamValue paramKey="energyEfficiencyOfComputeStockRelativeToStateOfTheArt" parameters={parameters} />
               </div>
             </div>
             <div className="breakdown-label" style={{ marginTop: 5, maxWidth: 140 }}>
@@ -603,12 +671,12 @@ export function InitialStockSection({
                 data={energyRequirementsData}
                 layout={{
                   xaxis: {
-                    title: { text: 'Energy Requirements (GW)', font: { size: 9 } },
-                    tickfont: { size: 8 },
+                    title: { text: 'Energy Requirements (GW)', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   yaxis: {
-                    title: { text: 'Probability', font: { size: 9 } },
-                    tickfont: { size: 8 },
+                    title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
+                    tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   margin: { l: 40, r: 5, t: 5, b: 45 },
                 }}

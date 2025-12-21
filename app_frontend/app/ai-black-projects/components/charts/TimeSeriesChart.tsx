@@ -1,6 +1,8 @@
 'use client';
 
 import { PlotlyChart } from './PlotlyChart';
+import { hexToRgba } from '../colors';
+import { CHART_FONT_SIZES } from '../chartConfig';
 
 interface TimeSeriesChartProps {
   years?: number[];
@@ -16,17 +18,6 @@ interface TimeSeriesChartProps {
   bandAlpha?: number;
   yLogScale?: boolean;
   additionalTraces?: Plotly.Data[];
-}
-
-// Helper to convert hex to rgba
-function hexToRgba(hex: string | undefined, alpha: number): string {
-  if (!hex) {
-    return `rgba(128, 128, 128, ${alpha})`; // fallback gray
-  }
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 export function TimeSeriesChart({
@@ -72,7 +63,7 @@ export function TimeSeriesChart({
       type: 'scatter',
       mode: 'lines',
       line: { color, width: 2 },
-      name: 'Median',
+      name: 'Median    ',
       hovertemplate: '%{x}: %{y:.2f}<extra></extra>',
     });
 
@@ -83,12 +74,12 @@ export function TimeSeriesChart({
   const layout: Partial<Plotly.Layout> = {
     margin: { l: 60, r: 20, t: title ? 30 : 10, b: 50 },
     xaxis: {
-      title: { text: xLabel, font: { size: 11 } },
-      tickfont: { size: 10 },
+      title: { text: xLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
+      tickfont: { size: CHART_FONT_SIZES.tickLabel },
     },
     yaxis: {
-      title: { text: yLabel, font: { size: 11 } },
-      tickfont: { size: 10 },
+      title: { text: yLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
+      tickfont: { size: CHART_FONT_SIZES.tickLabel },
       type: yLogScale ? 'log' : 'linear',
     },
     showlegend: additionalTraces.length > 0,
@@ -98,10 +89,11 @@ export function TimeSeriesChart({
       xanchor: 'left',
       yanchor: 'top',
       bgcolor: 'rgba(255,255,255,0.8)',
-      font: { size: 10 },
+      borderwidth: 0,
+      font: { size: CHART_FONT_SIZES.legend },
     },
-    hovermode: 'x unified',
-    title: title ? { text: title, font: { size: 12 } } : undefined,
+    hovermode: 'closest',
+    title: title ? { text: title, font: { size: CHART_FONT_SIZES.plotTitle } } : undefined,
   };
 
   return (

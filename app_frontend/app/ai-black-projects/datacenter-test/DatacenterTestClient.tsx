@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { BlackProjectData } from '@/types/blackProject';
 import '../ai-black-projects.css';
+import { defaultParameters } from '../types';
 
 // Dynamically import to avoid SSR issues
 const DatacenterSection = dynamic(
@@ -15,6 +16,7 @@ export default function DatacenterTestClient() {
   const [data, setData] = useState<BlackProjectData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [parameters] = useState(defaultParameters);
 
   // Fetch data from dummy API endpoint
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function DatacenterTestClient() {
       <DatacenterSection
         data={data}
         isLoading={isLoading}
-        agreementYear={2027}
+        parameters={parameters}
       />
     </div>
   );

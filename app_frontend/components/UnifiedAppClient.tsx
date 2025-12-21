@@ -48,15 +48,16 @@ export default function UnifiedAppClient({
   const [blackProjectsLoaded, setBlackProjectsLoaded] = useState(initialTab === 'black-projects');
   const [timelinesLoaded, setTimelinesLoaded] = useState(initialTab === 'timelines');
 
-  // Track when each tab has been visited (for lazy loading)
-  useEffect(() => {
-    if (activeTab === 'black-projects' && !blackProjectsLoaded) {
+  // Handle tab switching - set loaded state synchronously to avoid empty flash
+  const handleTabChange = (tab: TabType) => {
+    if (tab === 'black-projects' && !blackProjectsLoaded) {
       setBlackProjectsLoaded(true);
     }
-    if (activeTab === 'timelines' && !timelinesLoaded) {
+    if (tab === 'timelines' && !timelinesLoaded) {
       setTimelinesLoaded(true);
     }
-  }, [activeTab, blackProjectsLoaded, timelinesLoaded]);
+    setActiveTab(tab);
+  };
 
   // Update URL without navigation (for bookmarking/sharing)
   useEffect(() => {
@@ -70,22 +71,26 @@ export default function UnifiedAppClient({
       <header className="fixed top-0 left-0 right-0 z-50 flex flex-row items-center justify-between px-6 py-0 border-b border-gray-200 bg-white">
         <nav className="flex flex-row">
           <button
-            onClick={() => setActiveTab('timelines')}
-            className={`px-4 py-4 text-sm font-medium border-b-2 transition-colors ${
+            type="button"
+            onClick={() => handleTabChange('timelines')}
+            className={`px-4 py-4 text-sm font-medium transition-colors cursor-pointer ${
               activeTab === 'timelines'
-                ? 'text-gray-900 border-blue-500'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent'
+                ? 'text-gray-900'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
+            style={{ fontFamily: 'et-book, Georgia, serif' }}
           >
             AI Timelines and Takeoff
           </button>
           <button
-            onClick={() => setActiveTab('black-projects')}
-            className={`px-4 py-4 text-sm font-medium border-b-2 transition-colors ${
+            type="button"
+            onClick={() => handleTabChange('black-projects')}
+            className={`px-4 py-4 text-sm font-medium transition-colors cursor-pointer ${
               activeTab === 'black-projects'
-                ? 'text-gray-900 border-blue-500'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent'
+                ? 'text-gray-900'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
+            style={{ fontFamily: 'et-book, Georgia, serif' }}
           >
             Black Projects
           </button>
@@ -110,8 +115,10 @@ export default function UnifiedAppClient({
 
         {/* Black Projects Tab - keep mounted but hidden for instant switching */}
         <div style={{ display: activeTab === 'black-projects' ? 'block' : 'none' }}>
-          {blackProjectsLoaded && (
+          {blackProjectsLoaded ? (
             <BlackProjectClient initialData={null} hideHeader={true} />
+          ) : (
+            <TabLoadingPlaceholder tab="black-projects" />
           )}
         </div>
       </div>

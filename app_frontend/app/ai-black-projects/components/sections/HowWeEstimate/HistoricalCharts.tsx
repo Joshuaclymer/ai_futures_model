@@ -95,7 +95,7 @@ export function DetectionLatencyChart() {
       line: { width: 0 },
       fill: 'tonexty',
       fillcolor: rgba('detection', 0.2),
-      name: '90% CI',
+      name: '90% CI    ',
       hoverinfo: 'skip',
     },
     // Median line
@@ -104,7 +104,7 @@ export function DetectionLatencyChart() {
       y: data.prediction.y_median,
       mode: 'lines',
       line: { color, width: 2 },
-      name: 'Posterior Mean',
+      name: 'Posterior Mean    ',
       hovertemplate: 'workers: %{x}<br>years: %{y:.1f}<extra></extra>'
     },
     // Actual data points
@@ -129,12 +129,12 @@ export function DetectionLatencyChart() {
       tickfont: { size: 9 },
       tickvals: [100, 1000, 10000],
       ticktext: ['100', '1,000', '10,000'],
-      range: [Math.log10(20), Math.log10(15000)]
+      range: [Math.log10(20), Math.log10(10000)]
     },
     yaxis: {
       title: { text: 'Detection latency (years)', font: { size: 10 } },
       tickfont: { size: 9 },
-      rangemode: 'tozero',
+      range: [0, 15],
     },
     showlegend: true,
     legend: {
@@ -143,7 +143,7 @@ export function DetectionLatencyChart() {
       bgcolor: 'rgba(255,255,255,0.8)',
       font: { size: 8 }
     },
-    margin: { l: 50, r: 80, t: 10, b: 50 },
+    margin: { l: 50, r: 20, t: 10, b: 50 },
     height: 240,
   };
 
@@ -176,7 +176,7 @@ export function IntelligenceAccuracyChart() {
       fill: 'toself',
       fillcolor: 'rgba(200,200,200,0.3)',
       line: { width: 0 },
-      name: `Median error = ${medianError.toFixed(0)}%`,
+      name: `Median error = ${medianError.toFixed(0)}%    `,
       hoverinfo: 'skip',
     },
     // y=x line

@@ -3,12 +3,62 @@ import { NextRequest, NextResponse } from 'next/server';
 // Dummy data for the black project sections
 // This endpoint provides realistic test data while the real backend is being developed
 
+// Default parameters (matching frontend defaults)
+const defaultParams = {
+  agreementYear: 2027,
+  proportionOfInitialChipStockToDivert: 0.05,
+  workersInCovertProject: 11300,
+  fractionOfLaborDevotedToDatacenterConstruction: 0.885,
+  fractionOfDatacenterCapacityToDivert: 0.5,
+  maxFractionOfTotalNationalEnergyConsumption: 0.05,
+  totalPrcEnergyConsumptionGw: 1100,
+  priorOddsOfCovertProject: 0.3,
+};
+
+// Type for parameters passed from frontend
+interface SimulationParameters {
+  agreementYear?: number;
+  proportionOfInitialChipStockToDivert?: number;
+  workersInCovertProject?: number;
+  fractionOfLaborDevotedToDatacenterConstruction?: number;
+  fractionOfDatacenterCapacityToDivert?: number;
+  maxFractionOfTotalNationalEnergyConsumption?: number;
+  totalPrcEnergyConsumptionGw?: number;
+  priorOddsOfCovertProject?: number;
+  [key: string]: unknown;
+}
+
+// Handle POST requests with full parameters
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const params: SimulationParameters = await request.json();
+  return generateResponse(params);
+}
+
+// Handle GET requests for backwards compatibility
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const agreementYear = parseInt(request.nextUrl.searchParams.get('agreement_year') || '2027');
-  const diversionProportion = parseFloat(request.nextUrl.searchParams.get('diversion_proportion') || '0.05');
+  const params: SimulationParameters = {
+    agreementYear: parseInt(request.nextUrl.searchParams.get('agreement_year') || '2027'),
+    proportionOfInitialChipStockToDivert: parseFloat(request.nextUrl.searchParams.get('diversion_proportion') || '0.05'),
+  };
+  return generateResponse(params);
+}
+
+function generateResponse(params: SimulationParameters): NextResponse {
+  // Merge with defaults
+  const agreementYear = params.agreementYear ?? defaultParams.agreementYear;
+  const diversionProportion = params.proportionOfInitialChipStockToDivert ?? defaultParams.proportionOfInitialChipStockToDivert;
 
   // Generate initial stock data
   const initialStockData = generateInitialStockData(diversionProportion, agreementYear);
+
+  // Generate rate of computation data (for RateOfComputationSection)
+  const rateOfComputationData = generateRateOfComputationData(agreementYear);
+
+  // Generate covert fab section data
+  const covertFabData = generateCovertFabData(agreementYear);
+
+  // Generate detection likelihood section data
+  const detectionLikelihoodData = generateDetectionLikelihoodData(agreementYear);
 
   const dummyData = {
     success: true,
@@ -16,6 +66,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // Initial stock section data
     initial_stock: initialStockData,
+
+    // Rate of computation section data (HowWeEstimate)
+    rate_of_computation: rateOfComputationData,
+
+    // Covert fab section data
+    covert_fab: covertFabData,
+
+    // Detection likelihood section data
+    detection_likelihood: detectionLikelihoodData,
 
     // Datacenter section data
     black_datacenters: {
@@ -111,38 +170,40 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       individual_project_time_before_detection: generateRandomArray(100, 0.8, 3.0),
       individual_project_h100e_before_detection: generateRandomArray(100, 8000, 20000),
 
-      // CCDFs for main dashboard
+      // CCDFs for main dashboard - includes 1x, 2x, 4x detection thresholds
       h100_years_ccdf: {
-        '2': generateCcdfData(1000, 50000, 20),
-        '4': generateCcdfData(500, 40000, 20),
+        '1': generateCcdfData(5000, 1000000, 20),   // 1x threshold - highest values
+        '2': generateCcdfData(1000, 500000, 20),    // 2x threshold - medium values
+        '4': generateCcdfData(100, 100000, 20),     // 4x threshold - lowest values (detected earlier)
       },
       time_to_detection_ccdf: {
-        '2': generateCcdfData(0.5, 5, 15),
-        '4': generateCcdfData(0.3, 4, 15),
+        '1': generateCcdfData(1.0, 7, 15),   // 1x threshold - longer time to detection
+        '2': generateCcdfData(0.5, 5, 15),   // 2x threshold
+        '4': generateCcdfData(0.2, 3, 15),   // 4x threshold - shorter time (detected earlier)
       },
-      // CCDFs for chip production and AI R&D reduction
+      // CCDFs for chip production relative to no-slowdown scenarios
+      // P(Ratio < x) - probability covert production is less than x times no-slowdown production
+      // Keys: 'global' = relative to global production, 'prc' = relative to PRC production
       chip_production_reduction_ccdf: {
-        '2': [
-          { x: 0.001, y: 1.0 }, { x: 0.005, y: 0.95 }, { x: 0.01, y: 0.88 },
-          { x: 0.02, y: 0.78 }, { x: 0.05, y: 0.60 }, { x: 0.1, y: 0.42 },
-          { x: 0.15, y: 0.28 }, { x: 0.2, y: 0.18 }, { x: 0.3, y: 0.08 },
+        'global': [
+          { x: 1, y: 1.0 }, { x: 0.1, y: 0.995 }, { x: 0.01, y: 0.98 },
+          { x: 0.001, y: 0.95 }, { x: 0.0001, y: 0.88 },
         ],
-        '4': [
-          { x: 0.001, y: 1.0 }, { x: 0.005, y: 0.92 }, { x: 0.01, y: 0.82 },
-          { x: 0.02, y: 0.68 }, { x: 0.05, y: 0.48 }, { x: 0.1, y: 0.30 },
-          { x: 0.15, y: 0.18 }, { x: 0.2, y: 0.10 }, { x: 0.3, y: 0.04 },
+        'prc': [
+          { x: 1, y: 1.0 }, { x: 0.1, y: 0.98 }, { x: 0.01, y: 0.92 },
+          { x: 0.001, y: 0.82 }, { x: 0.0001, y: 0.65 },
         ],
       },
+      // CCDFs for AI R&D computation relative to no-slowdown scenarios
+      // Keys: 'largest_ai_company' = relative to largest AI company, 'prc' = relative to PRC
       ai_rd_reduction_ccdf: {
-        '2': [
-          { x: 0.001, y: 1.0 }, { x: 0.005, y: 0.96 }, { x: 0.01, y: 0.90 },
-          { x: 0.02, y: 0.82 }, { x: 0.05, y: 0.65 }, { x: 0.1, y: 0.48 },
-          { x: 0.2, y: 0.28 }, { x: 0.3, y: 0.15 }, { x: 0.4, y: 0.06 },
+        'largest_ai_company': [
+          { x: 1, y: 1.0 }, { x: 0.1, y: 0.995 }, { x: 0.01, y: 0.95 },
+          { x: 0.001, y: 0.75 }, { x: 0.0001, y: 0.22 },
         ],
-        '4': [
-          { x: 0.001, y: 1.0 }, { x: 0.005, y: 0.94 }, { x: 0.01, y: 0.85 },
-          { x: 0.02, y: 0.72 }, { x: 0.05, y: 0.52 }, { x: 0.1, y: 0.35 },
-          { x: 0.2, y: 0.18 }, { x: 0.3, y: 0.08 }, { x: 0.4, y: 0.03 },
+        'prc': [
+          { x: 1, y: 1.0 }, { x: 0.1, y: 0.98 }, { x: 0.01, y: 0.88 },
+          { x: 0.001, y: 0.65 }, { x: 0.0001, y: 0.20 },
         ],
       },
       ai_rd_reduction_median: 0.05,
@@ -230,6 +291,323 @@ function generateNormalSamples(mean: number, stdDev: number, count: number = 100
   return samples;
 }
 
+// Generate years array with quarterly intervals
+function generateQuarterlyYears(agreementYear: number, numYears: number = 7): number[] {
+  return Array.from({ length: numYears * 4 + 1 }, (_, i) => agreementYear + i * 0.25);
+}
+
+// Generate exponential growth data
+function generateExponentialGrowthData(
+  years: number[],
+  initialValue: number,
+  growthRate: number,
+  noise: number = 0.1
+): { median: number[]; p25: number[]; p75: number[] } {
+  const median = years.map((_, i) => initialValue * Math.pow(1 + growthRate, i / 4));
+  const p25 = median.map(v => v * (1 - noise));
+  const p75 = median.map(v => v * (1 + noise));
+  return { median, p25, p75 };
+}
+
+// Generate decay data (for surviving fraction)
+function generateDecayData(
+  years: number[],
+  halfLife: number = 5
+): { median: number[]; p25: number[]; p75: number[] } {
+  const agreementYear = years[0];
+  const median = years.map(y => Math.pow(0.5, (y - agreementYear) / halfLife));
+  const p25 = median.map(v => Math.max(0, v - 0.05));
+  const p75 = median.map(v => Math.min(1, v + 0.05));
+  return { median, p25, p75 };
+}
+
+// Generate linear growth data
+function generateLinearGrowthData(
+  years: number[],
+  initialValue: number,
+  ratePerYear: number,
+  noise: number = 0.1
+): { median: number[]; p25: number[]; p75: number[] } {
+  const agreementYear = years[0];
+  const median = years.map(y => initialValue + ratePerYear * (y - agreementYear));
+  const p25 = median.map(v => v * (1 - noise));
+  const p75 = median.map(v => v * (1 + noise));
+  return { median, p25, p75 };
+}
+
+// Generate S-curve data with confidence intervals
+function generateSCurveData(
+  years: number[],
+  midpoint: number = 2,
+  steepness: number = 2,
+  noise: number = 0.15
+): { median: number[]; p25: number[]; p75: number[] } {
+  const agreementYear = years[0];
+  const median = years.map(y => {
+    const t = y - agreementYear;
+    return 1 / (1 + Math.exp(-steepness * (t - midpoint)));
+  });
+  // For probabilities, shift the midpoint to create confidence intervals
+  const p25 = years.map(y => {
+    const t = y - agreementYear;
+    return 1 / (1 + Math.exp(-steepness * (t - midpoint - noise * 2)));
+  });
+  const p75 = years.map(y => {
+    const t = y - agreementYear;
+    return 1 / (1 + Math.exp(-steepness * (t - midpoint + noise * 2)));
+  });
+  return { median, p25, p75 };
+}
+
+// Generate rate of computation section data (for RateOfComputationSection)
+function generateRateOfComputationData(agreementYear: number) {
+  const years = generateQuarterlyYears(agreementYear);
+
+  // Initial chip stock samples (log-normal distribution)
+  const initialChipStockSamples = generateLogNormalSamples(50000, 0.3, 100);
+
+  // Acquired hardware (exponential growth)
+  const acquiredHardware = generateExponentialGrowthData(years, 1000, 0.3, 0.2);
+
+  // Surviving fraction (decay)
+  const survivingFraction = generateDecayData(years, 6);
+
+  // Covert chip stock (combination)
+  const initialValue = 50000;
+  const covertChipStock = {
+    median: years.map((_, i) =>
+      (initialValue + acquiredHardware.median[i]) * survivingFraction.median[i]
+    ),
+    p25: [] as number[],
+    p75: [] as number[],
+  };
+  covertChipStock.p25 = covertChipStock.median.map(v => v * 0.7);
+  covertChipStock.p75 = covertChipStock.median.map(v => v * 1.3);
+
+  // Datacenter capacity (linear growth)
+  const datacenterCapacity = generateLinearGrowthData(years, 5, 8, 0.15);
+
+  // Energy per chip (GW per H100e)
+  const energyPerChip = 0.0005; // GW per chip
+
+  // Stacked energy data: [initialStockEnergy, fabProducedEnergy] per year
+  // Initial stock energy decays with surviving fraction
+  // Fab-produced energy comes from acquired hardware
+  const energyStackedData: [number, number][] = years.map((_, i) => {
+    const initialStockEnergy = initialValue * survivingFraction.median[i] * energyPerChip;
+    const fabProducedEnergy = acquiredHardware.median[i] * survivingFraction.median[i] * energyPerChip;
+    return [initialStockEnergy, fabProducedEnergy];
+  });
+
+  // Time series for backward compatibility
+  const energyUsage = {
+    median: covertChipStock.median.map(v => v * energyPerChip),
+    p25: [] as number[],
+    p75: [] as number[],
+  };
+  energyUsage.p25 = energyUsage.median.map(v => v * 0.8);
+  energyUsage.p75 = energyUsage.median.map(v => v * 1.2);
+
+  // Operating chips (min of chip stock and datacenter capacity)
+  const operatingChips = {
+    median: years.map((_, i) => {
+      const chipsFromEnergy = datacenterCapacity.median[i] / energyPerChip;
+      return Math.min(covertChipStock.median[i], chipsFromEnergy);
+    }),
+    p25: [] as number[],
+    p75: [] as number[],
+  };
+  operatingChips.p25 = operatingChips.median.map(v => v * 0.7);
+  operatingChips.p75 = operatingChips.median.map(v => v * 1.3);
+
+  // Covert computation (cumulative H100-years)
+  let cumulative = 0;
+  const covertComputation = {
+    median: operatingChips.median.map(v => {
+      cumulative += v * 0.25;
+      return cumulative;
+    }),
+    p25: [] as number[],
+    p75: [] as number[],
+  };
+  covertComputation.p25 = covertComputation.median.map(v => v * 0.6);
+  covertComputation.p75 = covertComputation.median.map(v => v * 1.4);
+
+  return {
+    years,
+    initial_chip_stock_samples: initialChipStockSamples,
+    acquired_hardware: { years, ...acquiredHardware },
+    surviving_fraction: { years, ...survivingFraction },
+    covert_chip_stock: { years, ...covertChipStock },
+    datacenter_capacity: { years, ...datacenterCapacity },
+    energy_usage: { years, ...energyUsage },
+    energy_stacked_data: energyStackedData,
+    energy_source_labels: ['Initial Stock', 'Fab-Produced'] as [string, string],
+    operating_chips: { years, ...operatingChips },
+    covert_computation: { years, ...covertComputation },
+  };
+}
+
+// Generate covert fab section data
+function generateCovertFabData(agreementYear: number) {
+  const years = generateQuarterlyYears(agreementYear);
+
+  // Dashboard data
+  const dashboard = {
+    production: '800K H100e',
+    energy: '2.8 GW',
+    probFabBuilt: '56.2%',
+    yearsOperational: '0.8',
+    processNode: '28nm',
+  };
+
+  // CCDF data for covert compute produced before detection
+  const computeCCDF: Record<number, { x: number; y: number }[]> = {};
+  for (const threshold of [1, 2, 4]) {
+    const shift = threshold === 4 ? 0 : threshold === 2 ? 0.1 : 0.3;
+    const points: { x: number; y: number }[] = [];
+    for (let i = 0; i <= 100; i++) {
+      const x = Math.pow(10, 2 + i * 0.05 + shift);
+      const y = Math.max(0, 1 - Math.pow(i / 100, 0.5));
+      points.push({ x, y });
+    }
+    computeCCDF[threshold] = points;
+  }
+
+  // Time series data for simulation runs
+  const lrMedian = years.map((_, i) => Math.pow(1.5, i / 4));
+  const lrP25 = lrMedian.map(v => v * 0.7);
+  const lrP75 = lrMedian.map(v => v * 1.4);
+
+  const h100eMedian = years.map((_, i) => {
+    const t = i / 4;
+    return t < 1 ? 0 : Math.min(500000, 100000 * (t - 1));
+  });
+  const h100eP25 = h100eMedian.map(v => v * 0.6);
+  const h100eP75 = h100eMedian.map(v => v * 1.4);
+
+  const timeSeriesData = {
+    years,
+    lr_combined: { years, median: lrMedian, p25: lrP25, p75: lrP75 },
+    h100e_flow: { years, median: h100eMedian, p25: h100eP25, p75: h100eP75 },
+  };
+
+  // Is operational (S-curve)
+  const isOperational = generateSCurveData(years, 2, 2);
+
+  // Wafer starts (distribution samples)
+  const waferStartsSamples: number[] = [];
+  for (let i = 0; i < 100; i++) {
+    waferStartsSamples.push(5000 * (0.5 + Math.random() * 1.5));
+  }
+  waferStartsSamples.sort((a, b) => a - b);
+
+  // Constants
+  const chipsPerWafer = 28;
+  const architectureEfficiency = 0.85;
+  const h100Power = 700;
+
+  // Transistor density by process node with pre-computed watts per TPP
+  // Watts per TPP formula: density^-0.5 before Dennard threshold (0.02),
+  // then wattsAtThreshold * (density/threshold)^-0.15 after
+  const dennardThreshold = 0.02;
+  const computeWattsPerTpp = (density: number): number => {
+    if (density < dennardThreshold) {
+      return Math.pow(density, -0.5);
+    } else {
+      const wattsAtThreshold = Math.pow(dennardThreshold, -0.5);
+      return wattsAtThreshold * Math.pow(density / dennardThreshold, -0.15);
+    }
+  };
+
+  const transistorDensity = [
+    { node: '28nm', density: 0.14, wattsPerTpp: computeWattsPerTpp(0.14) },
+    { node: '14nm', density: 0.5, wattsPerTpp: computeWattsPerTpp(0.5) },
+    { node: '7nm', density: 1.0, wattsPerTpp: computeWattsPerTpp(1.0) },
+  ];
+
+  // Compute per month
+  const baseValue = 5000 * 28 * 0.14 * 0.85;
+  const computePerMonth = {
+    years,
+    median: years.map((_, i) => isOperational.median[i] * baseValue),
+    p25: [] as number[],
+    p75: [] as number[],
+  };
+  computePerMonth.p25 = computePerMonth.median.map(v => v * 0.6);
+  computePerMonth.p75 = computePerMonth.median.map(v => v * 1.5);
+
+  // Watts per TPP curve (uses the same computeWattsPerTpp function defined above)
+  const wattsPerTppCurve: { densityRelative: number[]; wattsPerTppRelative: number[] } = {
+    densityRelative: [],
+    wattsPerTppRelative: [],
+  };
+  for (let i = 0; i <= 50; i++) {
+    const density = Math.pow(10, -3 + i * 0.1);
+    wattsPerTppCurve.densityRelative.push(density);
+    wattsPerTppCurve.wattsPerTppRelative.push(computeWattsPerTpp(density));
+  }
+
+  // Energy per month
+  const wattsPerTppRelative = 3;
+  const energyPerMonth = {
+    years,
+    median: computePerMonth.median.map(v => (v * wattsPerTppRelative * h100Power) / 1e9),
+    p25: [] as number[],
+    p75: [] as number[],
+  };
+  energyPerMonth.p25 = energyPerMonth.median.map(v => v * 0.6);
+  energyPerMonth.p75 = energyPerMonth.median.map(v => v * 1.5);
+
+  return {
+    dashboard,
+    compute_ccdf: computeCCDF,
+    time_series_data: timeSeriesData,
+    is_operational: { years, ...isOperational },
+    wafer_starts_samples: waferStartsSamples,
+    chips_per_wafer: chipsPerWafer,
+    architecture_efficiency: architectureEfficiency,
+    h100_power: h100Power,
+    transistor_density: transistorDensity,
+    compute_per_month: computePerMonth,
+    watts_per_tpp_curve: wattsPerTppCurve,
+    energy_per_month: energyPerMonth,
+  };
+}
+
+// Generate detection likelihood section data
+function generateDetectionLikelihoodData(agreementYear: number) {
+  const years = generateQuarterlyYears(agreementYear);
+
+  // PDF samples for static evidence sources
+  const chipEvidenceSamples = generateLogNormalSamples(1.3, 0.6, 100);
+  const smeEvidenceSamples = generateLogNormalSamples(1.2, 0.5, 100);
+  const dcEvidenceSamples = generateLogNormalSamples(1.1, 0.4, 100);
+
+  // Energy evidence (time series - grows over time)
+  const energyEvidence = generateExponentialGrowthData(years, 1.0, 0.03, 0.15);
+
+  // Combined accounting evidence (product of all sources)
+  const combinedEvidence = generateExponentialGrowthData(years, 1.0, 0.15, 0.4);
+
+  // Direct evidence (grows over time from HUMINT, SIGINT, etc.)
+  const directEvidence = generateExponentialGrowthData(years, 1.0, 0.15, 0.4);
+
+  // Posterior probability (S-curve approaching 1)
+  const posteriorProb = generateSCurveData(years, 3, 1.5);
+
+  return {
+    years,
+    chip_evidence_samples: chipEvidenceSamples,
+    sme_evidence_samples: smeEvidenceSamples,
+    dc_evidence_samples: dcEvidenceSamples,
+    energy_evidence: { years, ...energyEvidence },
+    combined_evidence: { years, ...combinedEvidence },
+    direct_evidence: { years, ...directEvidence },
+    posterior_prob: { years, ...posteriorProb },
+  };
+}
+
 // Generate initial stock section data
 function generateInitialStockData(diversionProportion: number, agreementYear: number) {
   // Generate years from 2025 to agreement year
@@ -291,9 +669,19 @@ function generateInitialStockData(diversionProportion: number, agreementYear: nu
   const yearsFromH100 = agreementYear - 2023;
   const state_of_the_art_energy_efficiency_relative_to_h100 = Math.pow(1.35, yearsFromH100);
 
+  // Calculate energy requirements samples from compute stock samples
+  // Energy = (chips * H100_power_watts / efficiency) / 1e9 (GW)
+  const H100_POWER_WATTS = 700;
+  const prcEfficiencyRelativeToSOTA = 0.20; // Default PRC efficiency
+  const combinedEfficiency = state_of_the_art_energy_efficiency_relative_to_h100 * prcEfficiencyRelativeToSOTA;
+  const initial_energy_samples = initial_compute_stock_samples.map(
+    h100e => (h100e * H100_POWER_WATTS) / combinedEfficiency / 1e9
+  );
+
   return {
     initial_prc_stock_samples,
     initial_compute_stock_samples,
+    initial_energy_samples,
     diversion_proportion: diversionProportion,
     lr_prc_accounting_samples,
     initial_black_project_detection_probs,

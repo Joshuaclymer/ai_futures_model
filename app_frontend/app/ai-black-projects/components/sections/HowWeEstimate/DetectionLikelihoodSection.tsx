@@ -1,18 +1,29 @@
 'use client';
 
-import { useMemo } from 'react';
 import { TimeSeriesChart, PDFChart } from '../../charts';
 import { COLOR_PALETTE, darken } from '../../colors';
+import { ParamLink, ParamValue } from '../../ui';
 import { DetectionLatencyChart, IntelligenceAccuracyChart } from './HistoricalCharts';
-import {
-  getDummyChipAccountingEvidenceSamples,
-  getDummySMEAccountingEvidenceSamples,
-  getDummyDatacenterAccountingEvidenceSamples,
-  getDummyEnergyAccountingEvidence,
-  getDummyCombinedAccountingEvidence,
-  getDummyDirectEvidence,
-  getDummyPosteriorProbability,
-} from './DUMMY_DATA';
+import { Parameters } from '../../../types';
+
+// Types for detection likelihood data from API
+interface TimeSeriesData {
+  years: number[];
+  median: number[];
+  p25: number[];
+  p75: number[];
+}
+
+export interface DetectionLikelihoodData {
+  years: number[];
+  chip_evidence_samples: number[];
+  sme_evidence_samples: number[];
+  dc_evidence_samples: number[];
+  energy_evidence: TimeSeriesData;
+  combined_evidence: TimeSeriesData;
+  direct_evidence: TimeSeriesData;
+  posterior_prob: TimeSeriesData;
+}
 
 interface SubsectionItemProps {
   children: React.ReactNode;
@@ -32,12 +43,13 @@ function SubsectionItem({ children }: SubsectionItemProps) {
 interface BreakdownChartProps {
   title: string;
   description?: string;
+  descriptionNode?: React.ReactNode;
   data: { years: number[]; median: number[]; p25: number[]; p75: number[] };
   color: string;
   yLabel?: string;
 }
 
-function BreakdownChart({ title, description, data, color, yLabel }: BreakdownChartProps) {
+function BreakdownChart({ title, description, descriptionNode, data, color, yLabel }: BreakdownChartProps) {
   return (
     <div className="breakdown-item">
       <div className="breakdown-plot">
@@ -53,7 +65,11 @@ function BreakdownChart({ title, description, data, color, yLabel }: BreakdownCh
         />
       </div>
       <div className="breakdown-label">{title}</div>
-      {description && <div className="breakdown-description">{description}</div>}
+      {(description || descriptionNode) && (
+        <div className="breakdown-description" onClick={(e) => e.stopPropagation()}>
+          {descriptionNode || description}
+        </div>
+      )}
     </div>
   );
 }
@@ -61,12 +77,13 @@ function BreakdownChart({ title, description, data, color, yLabel }: BreakdownCh
 interface PDFBreakdownChartProps {
   title: string;
   description?: string;
+  descriptionNode?: React.ReactNode;
   samples: number[];
   color: string;
   xLabel?: string;
 }
 
-function PDFBreakdownChart({ title, description, samples, color, xLabel = 'LR' }: PDFBreakdownChartProps) {
+function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'LR' }: PDFBreakdownChartProps) {
   return (
     <div className="breakdown-item">
       <div className="breakdown-plot">
@@ -80,7 +97,11 @@ function PDFBreakdownChart({ title, description, samples, color, xLabel = 'LR' }
         />
       </div>
       <div className="breakdown-label">{title}</div>
-      {description && <div className="breakdown-description">{description}</div>}
+      {(description || descriptionNode) && (
+        <div className="breakdown-description" onClick={(e) => e.stopPropagation()}>
+          {descriptionNode || description}
+        </div>
+      )}
     </div>
   );
 }
@@ -92,21 +113,19 @@ function Operator({ children }: { children: React.ReactNode }) {
 
 interface DetectionLikelihoodSectionProps {
   agreementYear?: number;
+  data?: DetectionLikelihoodData | null;
+  parameters?: Parameters;
 }
 
-export function DetectionLikelihoodSection({ agreementYear = 2030 }: DetectionLikelihoodSectionProps) {
-  // Get dummy data (clearly marked as fake)
-  // Use useMemo to prevent regenerating random samples on each render
-  // PDFs for static evidence sources (constant over time)
-  const chipEvidenceSamples = useMemo(() => getDummyChipAccountingEvidenceSamples(100), []);
-  const smeEvidenceSamples = useMemo(() => getDummySMEAccountingEvidenceSamples(100), []);
-  const dcEvidenceSamples = useMemo(() => getDummyDatacenterAccountingEvidenceSamples(100), []);
-
-  // Time series data for charts that vary over time
-  const energyEvidence = getDummyEnergyAccountingEvidence(agreementYear);
-  const combinedEvidence = getDummyCombinedAccountingEvidence(agreementYear);
-  const directEvidence = getDummyDirectEvidence(agreementYear);
-  const posteriorProb = getDummyPosteriorProbability(agreementYear);
+export function DetectionLikelihoodSection({ agreementYear = 2030, data, parameters }: DetectionLikelihoodSectionProps) {
+  // Use data from API with empty fallbacks
+  const chipEvidenceSamples = data?.chip_evidence_samples || [];
+  const smeEvidenceSamples = data?.sme_evidence_samples || [];
+  const dcEvidenceSamples = data?.dc_evidence_samples || [];
+  const energyEvidence = data?.energy_evidence || { years: [], median: [], p25: [], p75: [] };
+  const combinedEvidence = data?.combined_evidence || { years: [], median: [], p25: [], p75: [] };
+  const directEvidence = data?.direct_evidence || { years: [], median: [], p25: [], p75: [] };
+  const posteriorProb = data?.posterior_prob || { years: [], median: [], p25: [], p75: [] };
 
   return (
     <div className="pt-5">
@@ -141,28 +160,48 @@ export function DetectionLikelihoodSection({ agreementYear = 2030 }: DetectionLi
         <div className="breakdown-equation-row">
           <PDFBreakdownChart
             title="Evidence from chip accounting"
-            description="Assuming a 5% chip discrepancy and 20% median error in US estimates."
+            descriptionNode={
+              <>
+                Assuming a <ParamLink paramId="param-fraction-compute-divert">{parameters ? `${(parameters.proportionOfInitialChipStockToDivert * 100).toFixed(0)}%` : '5%'}</ParamLink> chip discrepancy and{' '}
+                <ParamLink paramId="param-median-error-chip-stock">{parameters ? `${(parameters.intelligenceMedianErrorInEstimateOfFabStock * 100).toFixed(0)}%` : '7%'}</ParamLink> median error in US estimates.
+              </>
+            }
             samples={chipEvidenceSamples}
             color={COLOR_PALETTE.chip_stock}
           />
           <Operator>&times;</Operator>
           <PDFBreakdownChart
             title="Evidence from SME accounting"
-            description="Assuming a 10% SME discrepancy and 20% median error in US estimates."
+            descriptionNode={
+              <>
+                Assuming a <ParamLink paramId="param-fraction-scanners-divert">{parameters ? `${(parameters.fractionOfLithographyScannersToDivert * 100).toFixed(0)}%` : '10%'}</ParamLink> SME discrepancy and{' '}
+                <ParamLink paramId="param-median-error-chip-stock">{parameters ? `${(parameters.intelligenceMedianErrorInEstimateOfFabStock * 100).toFixed(0)}%` : '7%'}</ParamLink> median error in US estimates.
+              </>
+            }
             samples={smeEvidenceSamples}
             color={COLOR_PALETTE.fab}
           />
           <Operator>&times;</Operator>
           <PDFBreakdownChart
             title="Evidence from datacenter accounting"
-            description="Evidence from satellite imagery of datacenter capacity."
+            descriptionNode={
+              <>
+                Evidence from satellite imagery with{' '}
+                <ParamLink paramId="param-median-error-satellite">median error</ParamLink> in estimates.
+              </>
+            }
             samples={dcEvidenceSamples}
             color={COLOR_PALETTE.datacenters_and_energy}
           />
           <Operator>&times;</Operator>
           <BreakdownChart
             title="Evidence from energy accounting"
-            description="Evidence from monitoring PRC energy consumption patterns."
+            descriptionNode={
+              <>
+                Evidence from monitoring PRC energy consumption with{' '}
+                <ParamLink paramId="param-median-error-energy">median error</ParamLink> in estimates.
+              </>
+            }
             data={energyEvidence}
             color={darken('datacenters_and_energy', 0.8)}
             yLabel="LR"
@@ -191,7 +230,11 @@ export function DetectionLikelihoodSection({ agreementYear = 2030 }: DetectionLi
         <div className="breakdown-equation-row">
           <div className="breakdown-box-item">
             <div className="breakdown-box">
-              <div className="breakdown-box-inner">30%</div>
+              <div className="breakdown-box-inner">
+                {parameters ? (
+                  <ParamValue paramKey="priorOddsOfCovertProject" parameters={parameters} />
+                ) : '30%'}
+              </div>
             </div>
             <div className="breakdown-label">Prior odds of<br/>covert project</div>
           </div>
@@ -240,7 +283,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030 }: DetectionLi
             <div className="h-[260px] bg-white border border-gray-200 rounded overflow-hidden">
               <IntelligenceAccuracyChart />
             </div>
-            <p className="text-center mt-3 text-[11px] font-bold text-[#555]">
+            <p className="text-center mt-3 text-[13px] font-bold text-[#555]" style={{ fontFamily: 'et-book, Georgia, serif' }}>
               Historical accuracy of intelligence estimates
             </p>
             <p className="text-center text-[9px] text-[#777] italic">
@@ -251,7 +294,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030 }: DetectionLi
             <div className="h-[260px] bg-white border border-gray-200 rounded overflow-hidden">
               <DetectionLatencyChart />
             </div>
-            <p className="text-center mt-3 text-[11px] font-bold text-[#555]">
+            <p className="text-center mt-3 text-[13px] font-bold text-[#555]" style={{ fontFamily: 'et-book, Georgia, serif' }}>
               Historical detection speed
             </p>
             <p className="text-center text-[9px] text-[#777] italic">

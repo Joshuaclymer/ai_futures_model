@@ -3,15 +3,20 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   rewrites: async () => {
-    return [
-      {
-        source: '/api/:path*',
-        destination:
-          process.env.NODE_ENV === 'development'
-            ? 'http://127.0.0.1:5329/api/:path*'
-            : '/api/',
-      },
-    ]
+    // Only proxy specific backend API routes, not local Next.js API routes
+    const backendRoutes = [
+      'run-sw-progress-simulation',
+      'sampling-config',
+    ];
+
+    if (process.env.NODE_ENV !== 'development') {
+      return [];
+    }
+
+    return backendRoutes.map(route => ({
+      source: `/api/${route}`,
+      destination: `http://127.0.0.1:5329/api/${route}`,
+    }));
   },
   turbopack: {
     root: __dirname,

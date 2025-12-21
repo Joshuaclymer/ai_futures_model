@@ -14,7 +14,7 @@ export function IntroSection() {
       </h2>
 
       {/* Introduction with diagram */}
-      <div className="flex gap-8 items-start flex-wrap lg:flex-nowrap mb-6">
+      <div className="flex gap-8 items-center flex-wrap lg:flex-nowrap mb-6">
         {/* Text content */}
         <div
           className="flex-1 text-[15px] leading-[1.7] text-[#555]"

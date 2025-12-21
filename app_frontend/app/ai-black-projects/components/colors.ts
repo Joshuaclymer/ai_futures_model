@@ -14,9 +14,17 @@ export const COLOR_PALETTE = {
   gray: '#7F8C8D',                 // Neutral/disabled
 } as const;
 
-// Helper function to get rgba version with alpha
+// Helper function to get rgba version with alpha (for palette colors)
 export function rgba(colorName: keyof typeof COLOR_PALETTE, alpha: number): string {
-  const hex = COLOR_PALETTE[colorName];
+  return hexToRgba(COLOR_PALETTE[colorName], alpha);
+}
+
+// Helper function to convert any hex color to rgba
+export function hexToRgba(hex: string, alpha: number): string {
+  // Handle undefined/null hex values
+  if (!hex) {
+    return `rgba(128, 128, 128, ${alpha})`; // fallback gray
+  }
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);

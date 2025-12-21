@@ -1,69 +1,75 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { BlackProjectData } from '@/types/blackProject';
-import { TimeSeriesChart, CCDFChart, PlotlyChart } from '../../charts';
-import { COLOR_PALETTE } from '../../colors';
-import { useTooltip, Tooltip, TOOLTIP_DOCS } from '../../ui/Tooltip';
-import {
-  getDummyDashboard,
-  getDummyComputeCCDF,
-  getDummyTimeSeriesData,
-  getDummyIsOperational,
-  getDummyWaferStarts,
-  getDummyChipsPerWafer,
-  getDummyTransistorDensity,
-  getDummyArchitectureEfficiency,
-  getDummyComputePerMonth,
-  getDummyWattsPerTppCurve,
-  getDummyH100Power,
-  getDummyEnergyPerMonth,
-} from './DUMMY_DATA';
+import { TimeSeriesChart, CCDFChart, PlotlyChart, PDFChart } from '../../charts';
+import { COLOR_PALETTE, hexToRgba } from '../../colors';
+import { CHART_FONT_SIZES } from '../../chartConfig';
+import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamLink, ParamValue } from '../../ui';
+import { Parameters, SimulationData } from '../../../types';
+
+// Types for the covert fab data from API
+interface TimeSeriesData {
+  years: number[];
+  median: number[];
+  p25: number[];
+  p75: number[];
+}
+
+interface DashboardData {
+  production: string;
+  energy: string;
+  probFabBuilt: string;
+  yearsOperational: string;
+  processNode: string;
+}
+
+interface CCDFPoint {
+  x: number;
+  y: number;
+}
+
+export interface CovertFabApiData {
+  dashboard: DashboardData;
+  compute_ccdf: Record<number, CCDFPoint[]>;
+  time_series_data: {
+    years: number[];
+    lr_combined: TimeSeriesData;
+    h100e_flow: TimeSeriesData;
+  };
+  is_operational: TimeSeriesData;
+  wafer_starts_samples: number[];
+  chips_per_wafer: number;
+  architecture_efficiency: number;
+  h100_power: number;
+  transistor_density: { node: string; density: number; wattsPerTpp: number }[];
+  compute_per_month: TimeSeriesData;
+  watts_per_tpp_curve: {
+    densityRelative: number[];
+    wattsPerTppRelative: number[];
+  };
+  energy_per_month: TimeSeriesData;
+}
 
 interface CovertFabSectionProps {
-  data: BlackProjectData | null;
+  data: SimulationData | null;
   isLoading?: boolean;
-  agreementYear?: number;
-}
-
-// Helper function to convert hex to rgba
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-// ParamLink component for clickable parameter values
-function ParamLink({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="param-link" style={{
-      fontWeight: 'bold',
-      color: COLOR_PALETTE.chip_stock,
-      cursor: 'pointer',
-      textDecoration: 'underline',
-      textDecorationStyle: 'dotted',
-    }}>
-      {children}
-    </span>
-  );
+  parameters: Parameters;
+  covertFabData?: CovertFabApiData | null;
 }
 
 
 // Dashboard component
-function Dashboard() {
-  const dashboard = getDummyDashboard();
-
+function Dashboard({ dashboard }: { dashboard?: DashboardData }) {
+  if (!dashboard) return <div className="bp-dashboard" style={{ width: '240px' }}>Loading...</div>;
   return (
     <div className="bp-dashboard" style={{ width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '20px' }}>
-      <div className="bp-plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: '8px', marginBottom: '20px' }}>
+      <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 20 }}>
         Median outcome
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div className="bp-dashboard-item">
-          <div className="bp-dashboard-value">{dashboard.energy}</div>
+          <div className="bp-dashboard-value">{dashboard.production}</div>
           <div className="bp-dashboard-label" style={{ fontWeight: 600 }}>Production before detection</div>
-          <div style={{ fontSize: '20px', color: COLOR_PALETTE.fab, marginTop: '4px' }}>{dashboard.production}</div>
+          <div style={{ fontSize: '20px', color: COLOR_PALETTE.fab, marginTop: '4px' }}>{dashboard.energy}</div>
           <div className="bp-dashboard-sublabel" style={{ fontSize: '10px', color: '#777' }}>Detection means &ge;5x update</div>
         </div>
         <div className="bp-dashboard-item">
@@ -84,17 +90,19 @@ function Dashboard() {
 }
 
 // CCDF Chart for compute produced before detection
-function ComputeCCDFChart() {
-  const ccdfData = getDummyComputeCCDF();
+function ComputeCCDFChart({ ccdfData }: { ccdfData?: Record<number, CCDFPoint[]> }) {
   const thresholds = [
-    { value: 4, label: '"Detection" = >4x update', color: '#2E7D32' },
-    { value: 2, label: '"Detection" = >2x update', color: '#4AA896' },
-    { value: 1, label: '"Detection" = >1x update', color: '#7BA3C4' },
+    { value: 4, label: '"Detection" = >4x update        ', color: '#2E7D32' },
+    { value: 2, label: '"Detection" = >2x update        ', color: '#4AA896' },
+    { value: 1, label: '"Detection" = >1x update        ', color: '#7BA3C4' },
   ];
 
-  const traces: Plotly.Data[] = thresholds.map(t => ({
-    x: ccdfData[t.value].map(d => d.x),
-    y: ccdfData[t.value].map(d => d.y),
+  // Filter out thresholds that don't have data
+  const validThresholds = ccdfData ? thresholds.filter(t => ccdfData[t.value]?.length > 0) : [];
+
+  const traces: Plotly.Data[] = validThresholds.map(t => ({
+    x: ccdfData![t.value].map(d => d.x),
+    y: ccdfData![t.value].map(d => d.y),
     type: 'scatter' as const,
     mode: 'lines' as const,
     line: { color: t.color, width: 2 },
@@ -107,14 +115,14 @@ function ComputeCCDFChart() {
       data={traces}
       layout={{
         xaxis: {
-          title: { text: "H100 equivalents (FLOPS) Produced by Covert Fab Before 'Detection'", font: { size: 11 } },
+          title: { text: "H100 equivalents (FLOPS) Produced by Covert Fab Before 'Detection'", font: { size: CHART_FONT_SIZES.axisTitle } },
           type: 'log',
-          tickfont: { size: 10 },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         yaxis: {
-          title: { text: 'P(covert compute > x)', font: { size: 11 } },
+          title: { text: 'P(covert compute > x)', font: { size: CHART_FONT_SIZES.axisTitle } },
           range: [0, 1],
-          tickfont: { size: 10 },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         showlegend: true,
         legend: {
@@ -123,9 +131,8 @@ function ComputeCCDFChart() {
           xanchor: 'right',
           yanchor: 'top',
           bgcolor: 'rgba(255,255,255,0.8)',
-          bordercolor: '#ccc',
-          borderwidth: 1,
-          font: { size: 10 },
+          borderwidth: 0,
+          font: { size: CHART_FONT_SIZES.legend },
         },
         margin: { l: 55, r: 10, t: 0, b: 60 },
       }}
@@ -134,14 +141,13 @@ function ComputeCCDFChart() {
 }
 
 // Time series chart for simulation runs
-function SimulationRunsChart({ agreementYear = 2030 }: { agreementYear?: number }) {
-  const data = getDummyTimeSeriesData(agreementYear);
-
+function SimulationRunsChart({ timeSeriesData }: { timeSeriesData?: CovertFabApiData['time_series_data'] }) {
+  if (!timeSeriesData) return <div>Loading...</div>;
   const traces: Plotly.Data[] = [
     // LR percentile band
     {
-      x: [...data.years, ...data.years.slice().reverse()],
-      y: [...data.lrCombined.p75, ...data.lrCombined.p25.slice().reverse()],
+      x: [...timeSeriesData.years, ...timeSeriesData.years.slice().reverse()],
+      y: [...timeSeriesData.lr_combined.p75, ...timeSeriesData.lr_combined.p25.slice().reverse()],
       type: 'scatter' as const,
       mode: 'lines' as const,
       fill: 'toself',
@@ -153,18 +159,18 @@ function SimulationRunsChart({ agreementYear = 2030 }: { agreementYear?: number 
     },
     // LR median
     {
-      x: data.years,
-      y: data.lrCombined.median,
+      x: timeSeriesData.years,
+      y: timeSeriesData.lr_combined.median,
       type: 'scatter' as const,
       mode: 'lines' as const,
       line: { color: COLOR_PALETTE.detection, width: 2 },
-      name: 'LR: Median',
+      name: 'LR: Median    ',
       hovertemplate: 'LR: %{y:.2f}<extra></extra>',
     },
     // H100e percentile band (secondary axis)
     {
-      x: [...data.years, ...data.years.slice().reverse()],
-      y: [...data.h100eFlow.p75, ...data.h100eFlow.p25.slice().reverse()],
+      x: [...timeSeriesData.years, ...timeSeriesData.years.slice().reverse()],
+      y: [...timeSeriesData.h100e_flow.p75, ...timeSeriesData.h100e_flow.p25.slice().reverse()],
       type: 'scatter' as const,
       mode: 'lines' as const,
       fill: 'toself',
@@ -177,12 +183,12 @@ function SimulationRunsChart({ agreementYear = 2030 }: { agreementYear?: number 
     },
     // H100e median (secondary axis)
     {
-      x: data.years,
-      y: data.h100eFlow.median,
+      x: timeSeriesData.years,
+      y: timeSeriesData.h100e_flow.median,
       type: 'scatter' as const,
       mode: 'lines' as const,
       line: { color: COLOR_PALETTE.fab, width: 2 },
-      name: 'H100e: Median',
+      name: 'H100e: Median    ',
       yaxis: 'y2',
       hovertemplate: 'H100e: %{y:,.0f}<extra></extra>',
     },
@@ -193,24 +199,24 @@ function SimulationRunsChart({ agreementYear = 2030 }: { agreementYear?: number 
       data={traces}
       layout={{
         xaxis: {
-          title: { text: 'Year', font: { size: 11 } },
-          tickfont: { size: 10 },
+          title: { text: 'Year', font: { size: CHART_FONT_SIZES.axisTitle } },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         yaxis: {
-          title: { text: 'Evidence of Covert Fab (LR)', font: { size: 11 } },
+          title: { text: 'Evidence of Covert Fab (LR)', font: { size: CHART_FONT_SIZES.axisTitle } },
           type: 'log',
           side: 'left',
-          tickfont: { size: 10 },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         yaxis2: {
-          title: { text: 'H100 equivalents (FLOPS) Produced by Fab', font: { size: 11 } },
+          title: { text: 'H100 equivalents (FLOPS) Produced by Fab', font: { size: CHART_FONT_SIZES.axisTitle } },
           overlaying: 'y',
           side: 'right',
-          tickfont: { size: 10 },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
           tickformat: '.2s',
         },
         showlegend: false,
-        hovermode: 'x unified',
+        hovermode: 'closest',
         margin: { l: 55, r: 55, t: 0, b: 50 },
       }}
     />
@@ -233,24 +239,18 @@ function BreakdownItem({ title, description, children, tooltipKey, onMouseEnter,
   return (
     <div
       className={`breakdown-item ${hasTooltip ? 'has-tooltip' : ''}`}
-      style={{
-        flex: '1 1 170px',
-        minWidth: '170px',
-        marginTop: '20px',
-        marginBottom: '10px',
-        cursor: hasTooltip ? 'pointer' : 'default',
-      }}
+      style={hasTooltip ? { cursor: 'pointer' } : undefined}
       onMouseEnter={hasTooltip && onMouseEnter ? onMouseEnter : undefined}
       onMouseLeave={hasTooltip && onMouseLeave ? onMouseLeave : undefined}
     >
-      <div className="breakdown-plot" style={{ height: '240px', background: 'white', borderRadius: '4px' }}>
+      <div className="breakdown-plot">
         {children}
       </div>
-      <div className="breakdown-label" style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '5px', color: '#555', textAlign: 'center' }}>
+      <div className="breakdown-label">
         {title}
       </div>
       {description && (
-        <div className="breakdown-description" style={{ fontSize: '9px', color: '#777', marginTop: '5px', lineHeight: 1.3, fontStyle: 'italic', textAlign: 'center' }}>
+        <div className="breakdown-description">
           {description}
         </div>
       )}
@@ -293,11 +293,11 @@ function BreakdownBox({ title, description, value, tooltipKey, onMouseEnter, onM
             }}>
               {value}
             </div>
-            <div className="breakdown-label" style={{ fontSize: '11px', fontWeight: 'bold', color: '#555', textAlign: 'center' }}>
+            <div className="breakdown-label">
               {title}
             </div>
             {description && (
-              <div className="breakdown-description" style={{ fontSize: '9px', color: '#777', lineHeight: 1.3, fontStyle: 'italic', textAlign: 'center' }}>
+              <div className="breakdown-description">
                 {description}
               </div>
             )}
@@ -329,8 +329,8 @@ function Operator({ children, style }: { children: React.ReactNode; style?: Reac
 }
 
 // Is Operational Plot (proportion over time)
-function IsOperationalPlot({ agreementYear = 2030 }: { agreementYear?: number }) {
-  const data = getDummyIsOperational(agreementYear);
+function IsOperationalPlot({ data }: { data?: TimeSeriesData }) {
+  if (!data) return <div>Loading...</div>;
   return (
     <TimeSeriesChart
       years={data.years}
@@ -344,61 +344,24 @@ function IsOperationalPlot({ agreementYear = 2030 }: { agreementYear?: number })
   );
 }
 
-// Wafer Starts PDF Plot
-function WaferStartsPlot() {
-  const values = getDummyWaferStarts();
-  const bins = 20;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const binWidth = (max - min) / bins;
-
-  // Create histogram bins
-  const binCounts = new Array(bins).fill(0);
-  const binCenters: number[] = [];
-  for (let i = 0; i < bins; i++) {
-    binCenters.push(min + (i + 0.5) * binWidth);
-  }
-  for (const v of values) {
-    const binIndex = Math.min(bins - 1, Math.floor((v - min) / binWidth));
-    binCounts[binIndex]++;
-  }
-
-  // Normalize to density
-  const density = binCounts.map(c => c / (values.length * binWidth));
-
-  const traces: Plotly.Data[] = [
-    {
-      x: binCenters,
-      y: density,
-      type: 'bar' as const,
-      marker: { color: COLOR_PALETTE.chip_stock },
-      hovertemplate: 'Wafers/Month: %{x:.0f}<br>Density: %{y:.4f}<extra></extra>',
-    },
-  ];
-
+// Wafer Starts PDF Plot - uses shared PDFChart component
+function WaferStartsPlot({ samples }: { samples?: number[] }) {
+  if (!samples || samples.length === 0) return <div>Loading...</div>;
   return (
-    <PlotlyChart
-      data={traces}
-      layout={{
-        xaxis: {
-          title: { text: 'Wafers/Month', font: { size: 10 } },
-          tickfont: { size: 9 },
-        },
-        yaxis: {
-          title: { text: 'Density', font: { size: 10 } },
-          tickfont: { size: 9 },
-        },
-        bargap: 0.05,
-        margin: { l: 50, r: 10, t: 10, b: 50 },
-      }}
+    <PDFChart
+      samples={samples}
+      color={COLOR_PALETTE.chip_stock}
+      xLabel="Wafers/Month"
+      logScale={false}
+      numBins={20}
+      normalize="density"
     />
   );
 }
 
 // Transistor Density Bar Plot by Process Node
-function TransistorDensityPlot() {
-  const data = getDummyTransistorDensity();
-
+function TransistorDensityPlot({ data }: { data?: { node: string; density: number }[] }) {
+  if (!data || data.length === 0) return <div>Loading...</div>;
   const traces: Plotly.Data[] = [
     {
       x: data.map(d => d.node),
@@ -414,12 +377,12 @@ function TransistorDensityPlot() {
       data={traces}
       layout={{
         xaxis: {
-          title: { text: 'Process Node', font: { size: 10 } },
-          tickfont: { size: 9 },
+          title: { text: 'Process Node', font: { size: CHART_FONT_SIZES.axisTitle } },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         yaxis: {
-          title: { text: 'Density (rel. to H100)', font: { size: 10 } },
-          tickfont: { size: 9 },
+          title: { text: 'Density (rel. to H100)', font: { size: CHART_FONT_SIZES.axisTitle } },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         bargap: 0.3,
         margin: { l: 50, r: 10, t: 10, b: 50 },
@@ -429,8 +392,8 @@ function TransistorDensityPlot() {
 }
 
 // Compute per Month Plot
-function ComputePerMonthPlot({ agreementYear = 2030 }: { agreementYear?: number }) {
-  const data = getDummyComputePerMonth(agreementYear);
+function ComputePerMonthPlot({ data }: { data?: TimeSeriesData }) {
+  if (!data) return <div>Loading...</div>;
   return (
     <TimeSeriesChart
       years={data.years}
@@ -446,34 +409,29 @@ function ComputePerMonthPlot({ agreementYear = 2030 }: { agreementYear?: number 
 }
 
 // Watts per TPP Curve Plot
-function WattsPerTppPlot() {
-  const data = getDummyWattsPerTppCurve();
-  const simDensities = getDummyTransistorDensity();
-
+function WattsPerTppPlot({
+  curveData,
+  simDensities
+}: {
+  curveData?: CovertFabApiData['watts_per_tpp_curve'];
+  simDensities?: { node: string; density: number; wattsPerTpp: number }[]
+}) {
+  if (!curveData || !simDensities) return <div>Loading...</div>;
   const traces: Plotly.Data[] = [
     // Curve
     {
-      x: data.densityRelative,
-      y: data.wattsPerTppRelative,
+      x: curveData.densityRelative,
+      y: curveData.wattsPerTppRelative,
       type: 'scatter' as const,
       mode: 'lines' as const,
       line: { color: '#7DD4C0', width: 2 },
       name: 'Power Law',
       hovertemplate: 'Density: %{x:.2g}x<br>W/TPP: %{y:.2g}x<extra></extra>',
     },
-    // Simulation points
+    // Simulation points (using pre-computed wattsPerTpp from API)
     {
       x: simDensities.map(d => d.density),
-      y: simDensities.map(d => {
-        // Calculate watts per TPP for each density
-        const dennardThreshold = 0.02;
-        if (d.density < dennardThreshold) {
-          return Math.pow(d.density, -0.5);
-        } else {
-          const wattsAtThreshold = Math.pow(dennardThreshold, -0.5);
-          return wattsAtThreshold * Math.pow(d.density / dennardThreshold, -0.15);
-        }
-      }),
+      y: simDensities.map(d => d.wattsPerTpp),
       type: 'scatter' as const,
       mode: 'markers' as const,
       marker: { size: 8, color: COLOR_PALETTE.fab },
@@ -487,15 +445,15 @@ function WattsPerTppPlot() {
       data={traces}
       layout={{
         xaxis: {
-          title: { text: 'Transistor Density (rel. to H100)', font: { size: 10 } },
+          title: { text: 'Transistor Density (rel. to H100)', font: { size: CHART_FONT_SIZES.axisTitle } },
           type: 'log',
           range: [Math.log10(0.001), Math.log10(100)],
-          tickfont: { size: 9 },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         yaxis: {
-          title: { text: 'Watts per TPP (rel. to H100)', font: { size: 10 } },
+          title: { text: 'Watts per TPP (rel. to H100)', font: { size: CHART_FONT_SIZES.axisTitle } },
           type: 'log',
-          tickfont: { size: 9 },
+          tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         showlegend: false,
         margin: { l: 60, r: 10, t: 10, b: 50 },
@@ -505,8 +463,8 @@ function WattsPerTppPlot() {
 }
 
 // Energy per Month Plot
-function EnergyPerMonthPlot({ agreementYear = 2030 }: { agreementYear?: number }) {
-  const data = getDummyEnergyPerMonth(agreementYear);
+function EnergyPerMonthPlot({ data }: { data?: TimeSeriesData }) {
+  if (!data) return <div>Loading...</div>;
   return (
     <TimeSeriesChart
       years={data.years}
@@ -521,8 +479,9 @@ function EnergyPerMonthPlot({ agreementYear = 2030 }: { agreementYear?: number }
   );
 }
 
-export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: CovertFabSectionProps) {
-  const { tooltipState, showTooltip, hideTooltip } = useTooltip();
+export function CovertFabSection({ data, isLoading, parameters, covertFabData }: CovertFabSectionProps) {
+  const agreementYear = parameters.agreementYear;
+  const { tooltipState, showTooltip, hideTooltip, onTooltipMouseEnter, onTooltipMouseLeave } = useTooltip();
 
   if (isLoading) {
     return (
@@ -533,9 +492,19 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
     );
   }
 
-  const chipsPerWafer = getDummyChipsPerWafer();
-  const archEfficiency = getDummyArchitectureEfficiency();
-  const h100Power = getDummyH100Power();
+  // Extract data from API response (no client-side fallbacks - data comes from API)
+  const dashboard = covertFabData?.dashboard;
+  const ccdfData = covertFabData?.compute_ccdf;
+  const timeSeriesData = covertFabData?.time_series_data;
+  const isOperationalData = covertFabData?.is_operational;
+  const waferStartsSamples = covertFabData?.wafer_starts_samples;
+  const transistorDensityData = covertFabData?.transistor_density;
+  const computePerMonthData = covertFabData?.compute_per_month;
+  const wattsPerTppCurveData = covertFabData?.watts_per_tpp_curve;
+  const energyPerMonthData = covertFabData?.energy_per_month;
+  const chipsPerWafer = covertFabData?.chips_per_wafer;
+  const archEfficiency = covertFabData?.architecture_efficiency;
+  const h100Power = covertFabData?.h100_power;
 
   // Helper to create tooltip handlers - pass markdown doc name as string
   const createTooltipHandlers = (docName: keyof typeof TOOLTIP_DOCS) => ({
@@ -554,23 +523,23 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
 
       {/* Top section: Dashboard + 2 plots */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginBottom: '10px', alignItems: 'stretch' }}>
-        <Dashboard />
+        <Dashboard dashboard={dashboard} />
 
         <div className="bp-plot-container" style={{ flex: '1 1 200px', minWidth: '200px', padding: '20px', display: 'flex', flexDirection: 'column' }}>
-          <div className="bp-plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: '8px', marginBottom: '10px' }}>
+          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
             Covert compute produced before detection
           </div>
           <div style={{ flex: 1, minHeight: '250px' }}>
-            <ComputeCCDFChart />
+            <ComputeCCDFChart ccdfData={ccdfData} />
           </div>
         </div>
 
         <div className="bp-plot-container" style={{ flex: '1 1 200px', minWidth: '200px', padding: '20px', display: 'flex', flexDirection: 'column' }}>
-          <div className="bp-plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: '8px', marginBottom: '10px' }}>
+          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
             Simulation runs
           </div>
           <div style={{ flex: 1, minHeight: '250px' }}>
-            <SimulationRunsChart agreementYear={agreementYear} />
+            <SimulationRunsChart timeSeriesData={timeSeriesData} />
           </div>
         </div>
       </div>
@@ -591,10 +560,10 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             tooltipKey="fab_construction_time"
             {...createTooltipHandlers('fab_construction_time')}
             description={
-              <>Construction time depends on fab capacity (wafers/month) and available workers, based on <ParamLink>5k wafer/month</ParamLink> and <ParamLink>100k wafer/month</ParamLink> benchmarks.</>
+              <>Construction time depends on fab capacity (wafers/month) and available workers, based on <ParamLink paramId="param-construction-time-5k">5k wafer/month</ParamLink> and <ParamLink paramId="param-construction-time-100k">100k wafer/month</ParamLink> benchmarks.</>
             }
           >
-            <IsOperationalPlot agreementYear={agreementYear} />
+            <IsOperationalPlot data={isOperationalData} />
           </BreakdownItem>
 
           <Operator>&times;</Operator>
@@ -604,10 +573,10 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             tooltipKey="operating_labor_production"
             {...createTooltipHandlers('operating_labor_production')}
             description={
-              <>Production capacity is the minimum of labor constraints (<ParamLink>24.6</ParamLink> wafers/month per operating worker) and <ParamLink>SME constraints</ParamLink> (scanners × 1000 wafers/month).</>
+              <>Production capacity is the minimum of labor constraints (<ParamValue paramKey="fabWafersPerMonthPerOperatingWorker" parameters={parameters} /> wafers/month per operating worker) and SME constraints (scanners × <ParamValue paramKey="wafersPerMonthPerLithographyScanner" parameters={parameters} /> wafers/month).</>
             }
           >
-            <WaferStartsPlot />
+            <WaferStartsPlot samples={waferStartsSamples} />
           </BreakdownItem>
 
           <Operator>&times;</Operator>
@@ -616,10 +585,7 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             title="Working H100-sized chips per wafer"
             tooltipKey="chips_per_wafer"
             {...createTooltipHandlers('chips_per_wafer')}
-            description={
-              <>Yield based on <ParamLink>{chipsPerWafer}</ParamLink> H100-sized chips per wafer (TSMC's yield for H100s).</>
-            }
-            value={chipsPerWafer}
+            value={chipsPerWafer ?? '--'}
           />
 
           <Operator>&times;</Operator>
@@ -629,10 +595,10 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             tooltipKey="transistor_density"
             {...createTooltipHandlers('transistor_density')}
             description={
-              <>Transistor density scales with process node improvement. Density increases <ParamLink>2x</ParamLink> for every halving of process node (e.g., 28nm → 14nm).</>
+              <>Transistor density scales with process node improvement. Density increases <ParamValue paramKey="transistorDensityScalingExponent" parameters={parameters} /> for every halving of process node (e.g., 28nm → 14nm).</>
             }
           >
-            <TransistorDensityPlot />
+            <TransistorDensityPlot data={transistorDensityData} />
           </BreakdownItem>
 
           <Operator>&times;</Operator>
@@ -642,23 +608,19 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             tooltipKey="architecture_efficiency"
             {...createTooltipHandlers('architecture_efficiency')}
             description={
-              <>Architecture improves at <ParamLink>1.23x</ParamLink> per year based on historical chip performance improvements beyond transistor density gains.</>
+              <>Assuming architecture improves <ParamValue paramKey="stateOfTheArtArchitectureEfficiencyImprovementPerYear" parameters={parameters} /> per year.</>
             }
-            value={archEfficiency.toFixed(2)}
+            value={archEfficiency?.toFixed(2) ?? '--'}
           />
-        </div>
 
-        {/* Result: Compute produced per month - large plot at bottom */}
-        <div style={{ marginTop: '20px', width: '100%' }}>
-          <div style={{ height: '300px', background: 'white', borderRadius: '4px', marginBottom: '10px' }}>
-            <ComputePerMonthPlot agreementYear={agreementYear} />
-          </div>
-          <div className="breakdown-label" style={{ fontSize: '13px', fontWeight: 'bold', color: '#555', textAlign: 'center' }}>
-            Compute produced per month (H100e / month)
-          </div>
-          <div className="breakdown-description" style={{ fontSize: '10px', color: '#777', marginTop: '5px', lineHeight: 1.3, fontStyle: 'italic', textAlign: 'center' }}>
-            Total monthly compute production in H100-equivalent units, combining production capacity, yield, transistor density, and architecture improvements.
-          </div>
+          <Operator>=</Operator>
+
+          <BreakdownItem
+            title="Compute produced per month (H100e / month)"
+            description="Total monthly compute production in H100-equivalent units, combining production capacity, yield, transistor density, and architecture improvements."
+          >
+            <ComputePerMonthPlot data={computePerMonthData} />
+          </BreakdownItem>
         </div>
 
         {/* Second row: energy efficiency breakdown */}
@@ -672,10 +634,10 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             tooltipKey="transistor_density"
             {...createTooltipHandlers('transistor_density')}
             description={
-              <>Same as compute production: density increases <ParamLink>2x</ParamLink> for every halving of process node.</>
+              <>Same as compute production: density increases <ParamValue paramKey="transistorDensityScalingExponent" parameters={parameters} /> for every halving of process node.</>
             }
           >
-            <TransistorDensityPlot />
+            <TransistorDensityPlot data={transistorDensityData} />
           </BreakdownItem>
 
           <Operator style={{ flexDirection: 'column' }}>
@@ -688,10 +650,10 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             tooltipKey="watts_per_tpp"
             {...createTooltipHandlers('watts_per_tpp')}
             description={
-              <>Energy efficiency follows W/TPP ∝ (density)^exponent. Exponent is <ParamLink>-0.5</ParamLink> before Dennard scaling ended (2006) and <ParamLink>-0.15</ParamLink> after.</>
+              <>Energy efficiency follows W/TPP ∝ (density)^exponent. Exponent is <ParamValue paramKey="wattsTppDensityExponentBeforeDennard" parameters={parameters} /> before Dennard scaling ended (2006) and <ParamValue paramKey="wattsTppDensityExponentAfterDennard" parameters={parameters} /> after.</>
             }
           >
-            <WattsPerTppPlot />
+            <WattsPerTppPlot curveData={wattsPerTppCurveData} simDensities={transistorDensityData} />
           </BreakdownItem>
 
           <Operator>&times;</Operator>
@@ -700,10 +662,7 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             title="Energy requirements of H100"
             tooltipKey="h100_power"
             {...createTooltipHandlers('h100_power')}
-            description={
-              <>H100 power consumption is <ParamLink>{h100Power}</ParamLink>W per chip.</>
-            }
-            value={`${(h100Power / 1000).toFixed(2)} kW`}
+            value={h100Power ? `${(h100Power / 1000).toFixed(2)} kW` : '--'}
           />
 
           <Operator>&times;</Operator>
@@ -712,21 +671,17 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
             title="Compute produced per month (H100e / month)"
             description="Same as the compute production result above, showing monthly H100-equivalent production."
           >
-            <ComputePerMonthPlot agreementYear={agreementYear} />
+            <ComputePerMonthPlot data={computePerMonthData} />
           </BreakdownItem>
-        </div>
 
-        {/* Result: Energy requirements per month - large plot at bottom */}
-        <div style={{ marginTop: '20px', width: '100%' }}>
-          <div style={{ height: '300px', background: 'white', borderRadius: '4px', marginBottom: '10px' }}>
-            <EnergyPerMonthPlot agreementYear={agreementYear} />
-          </div>
-          <div className="breakdown-label" style={{ fontSize: '13px', fontWeight: 'bold', color: '#555', textAlign: 'center' }}>
-            Energy requirements per month (GW / month)
-          </div>
-          <div className="breakdown-description" style={{ fontSize: '10px', color: '#777', marginTop: '5px', lineHeight: 1.3, fontStyle: 'italic', textAlign: 'center' }}>
-            Total energy required to produce chips each month, combining compute output, efficiency scaling, and H100 power requirements.
-          </div>
+          <Operator>=</Operator>
+
+          <BreakdownItem
+            title="Energy requirements per month (GW / month)"
+            description="Total energy required to produce chips each month, combining compute output, efficiency scaling, and H100 power requirements."
+          >
+            <EnergyPerMonthPlot data={energyPerMonthData} />
+          </BreakdownItem>
         </div>
       </div>
 
@@ -734,7 +689,9 @@ export function CovertFabSection({ data, isLoading, agreementYear = 2030 }: Cove
       <Tooltip
         content={tooltipState.content}
         visible={tooltipState.visible}
-        position={tooltipState.position}
+        triggerRect={tooltipState.triggerRect}
+        onMouseEnter={onTooltipMouseEnter}
+        onMouseLeave={onTooltipMouseLeave}
       />
     </section>
   );

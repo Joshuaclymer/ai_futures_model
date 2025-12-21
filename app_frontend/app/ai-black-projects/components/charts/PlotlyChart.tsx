@@ -16,6 +16,7 @@ interface PlotlyChartProps {
   loadingMessage?: string;
   emptyMessage?: string;
   isEmpty?: boolean;
+  height?: number;
 }
 
 export function PlotlyChart({
@@ -28,6 +29,7 @@ export function PlotlyChart({
   loadingMessage = 'Loading...',
   emptyMessage = 'No data available',
   isEmpty = false,
+  height,
 }: PlotlyChartProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -64,6 +66,15 @@ export function PlotlyChart({
     plot_bgcolor: 'transparent',
     font: { family: 'inherit', size: 11 },
     hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#ffffff',
+      bordercolor: '#ffffff',
+      font: {
+        family: 'system-ui, -apple-system, sans-serif',
+        size: 12,
+        color: '#333',
+      },
+    },
     ...layout,
   };
 
@@ -73,12 +84,18 @@ export function PlotlyChart({
     ...config,
   };
 
+  const computedStyle: React.CSSProperties = {
+    width: '100%',
+    height: height ? `${height}px` : '100%',
+    ...style,
+  };
+
   return (
     <Plot
       data={data}
       layout={defaultLayout}
       config={defaultConfig}
-      style={{ width: '100%', height: '100%', ...style }}
+      style={computedStyle}
       className={className}
     />
   );

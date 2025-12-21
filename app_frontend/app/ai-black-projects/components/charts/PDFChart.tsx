@@ -1,6 +1,8 @@
 'use client';
 
 import { PlotlyChart } from './PlotlyChart';
+import { hexToRgba } from '../colors';
+import { CHART_FONT_SIZES } from '../chartConfig';
 
 interface PDFChartProps {
   samples: number[];
@@ -10,6 +12,8 @@ interface PDFChartProps {
   logScale?: boolean;
   numBins?: number;
   isLoading?: boolean;
+  /** 'probability' normalizes so bars sum to 1; 'density' divides by bin width too */
+  normalize?: 'probability' | 'density';
 }
 
 /**
@@ -20,11 +24,15 @@ export function PDFChart({
   samples,
   color,
   xLabel = 'Value',
-  yLabel = 'Density',
+  yLabel,
   logScale = true,
   numBins = 12,
   isLoading = false,
+  normalize = 'probability',
 }: PDFChartProps) {
+  // Default yLabel based on normalization
+  const effectiveYLabel = yLabel ?? (normalize === 'density' ? 'Density' : 'Probability');
+
   if (!samples || samples.length === 0) {
     return <PlotlyChart data={[]} isEmpty emptyMessage="No data" />;
   }
@@ -37,9 +45,9 @@ export function PDFChart({
   }
 
   // Calculate bin edges
-  let binEdges: number[] = [];
-  let binCenters: number[] = [];
-  let binWidths: number[] = [];
+  const binEdges: number[] = [];
+  const binCenters: number[] = [];
+  const binWidths: number[] = [];
 
   if (logScale) {
     // Log-scale binning
@@ -57,9 +65,9 @@ export function PDFChart({
       binEdges.push(Math.pow(10, paddedLogMin + i * (paddedLogMax - paddedLogMin) / numBins));
     }
 
-    // Calculate bin centers and widths
+    // Calculate bin centers (geometric mean for log scale) and widths
     for (let i = 0; i < binEdges.length - 1; i++) {
-      binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
+      binCenters.push(Math.sqrt(binEdges[i] * binEdges[i + 1]));
       binWidths.push(binEdges[i + 1] - binEdges[i]);
     }
   } else {
@@ -90,34 +98,41 @@ export function PDFChart({
     }
   });
 
-  // Convert to probabilities
-  const probabilities = binCounts.map(count => count / validSamples.length);
+  // Normalize based on mode
+  const yValues = normalize === 'density'
+    ? binCounts.map((count, i) => count / (validSamples.length * binWidths[i]))
+    : binCounts.map(count => count / validSamples.length);
+
+  // Format hover and y-axis based on normalization
+  const isProbability = normalize === 'probability';
+  const hoverYFormat = isProbability ? '%{y:.1%}' : '%{y:.4f}';
+  const hovertemplate = `${xLabel}: %{x:.2f}<br>${effectiveYLabel}: ${hoverYFormat}<extra></extra>`;
 
   const data: Plotly.Data[] = [
     {
       type: 'bar',
       x: binCenters,
-      y: probabilities,
+      y: yValues,
       width: binWidths,
       marker: {
-        color: color,
-        line: { width: 0.5, color: 'white' },
+        color: isProbability ? hexToRgba(color, 0.7) : color,
+        line: { width: isProbability ? 1 : 0.5, color: isProbability ? color : 'white' },
       },
-      hovertemplate: `${xLabel}: %{x:.2f}<br>Probability: %{y:.1%}<extra></extra>`,
+      hovertemplate,
     },
   ];
 
   const layout: Partial<Plotly.Layout> = {
     xaxis: {
-      title: { text: xLabel, font: { size: 10 } },
+      title: { text: xLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
       type: logScale ? 'log' : 'linear',
-      tickfont: { size: 9 },
+      tickfont: { size: CHART_FONT_SIZES.tickLabel },
       gridcolor: 'rgba(128, 128, 128, 0.2)',
     },
     yaxis: {
-      title: { text: yLabel, font: { size: 10 } },
-      tickfont: { size: 9 },
-      tickformat: '.0%',
+      title: { text: effectiveYLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
+      tickfont: { size: CHART_FONT_SIZES.tickLabel },
+      tickformat: isProbability ? '.0%' : undefined,
       gridcolor: 'rgba(128, 128, 128, 0.2)',
     },
     margin: { l: 45, r: 10, t: 10, b: 35 },

@@ -1,8 +1,19 @@
 'use client';
 
 import { IntroSection, RateOfComputationSection, DetectionLikelihoodSection } from './HowWeEstimate';
+import { Parameters } from '../../types';
+import { RateOfComputationData } from './HowWeEstimate/RateOfComputationSection';
+import { DetectionLikelihoodData } from './HowWeEstimate/DetectionLikelihoodSection';
 
-export function HowWeEstimateSection() {
+interface HowWeEstimateSectionProps {
+  parameters: Parameters;
+  rateOfComputationData?: RateOfComputationData | null;
+  detectionLikelihoodData?: DetectionLikelihoodData | null;
+}
+
+export function HowWeEstimateSection({ parameters, rateOfComputationData, detectionLikelihoodData }: HowWeEstimateSectionProps) {
+  const agreementYear = parameters.agreementYear;
+
   return (
     <div>
       <section
@@ -16,10 +27,10 @@ export function HowWeEstimateSection() {
         <IntroSection />
 
         {/* Rate of computation subsection */}
-        <RateOfComputationSection />
+        <RateOfComputationSection agreementYear={agreementYear} data={rateOfComputationData} parameters={parameters} />
 
         {/* Detection likelihood subsection */}
-        <DetectionLikelihoodSection />
+        <DetectionLikelihoodSection agreementYear={agreementYear} data={detectionLikelihoodData} parameters={parameters} />
       </section>
 
       {/* Closing note - outside the grey box */}
