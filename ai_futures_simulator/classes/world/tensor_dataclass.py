@@ -86,8 +86,13 @@ class TensorDataclass:
                     state_values.append((f.name, value))
                 elif isinstance(value, (int, float)):
                     state_values.append((f.name, torch.tensor(float(value))))
+                elif is_tensor_dataclass(value):
+                    # Recurse into nested TensorDataclass that's marked as state
+                    nested_states = value._get_state_fields()
+                    for nested_path, nested_value in nested_states:
+                        state_values.append((f"{f.name}.{nested_path}", nested_value))
             elif is_tensor_dataclass(value):
-                # Recurse into nested TensorDataclass
+                # Recurse into nested TensorDataclass (not marked as state, but may contain state)
                 nested_states = value._get_state_fields()
                 for nested_path, nested_value in nested_states:
                     state_values.append((f"{f.name}.{nested_path}", nested_value))
@@ -100,6 +105,20 @@ class TensorDataclass:
                             state_values.append((f"{f.name}[{key}].{nested_path}", nested_value))
 
         return state_values
+
+    def _set_frozen_field(self, name: str, value: Any) -> None:
+        """
+        Set a field on a frozen dataclass, bypassing immutability protection.
+
+        This is the canonical way to set init=False fields after construction
+        on frozen TensorDataclass instances. Use this instead of calling
+        object.__setattr__ directly.
+
+        Args:
+            name: The field name to set
+            value: The value to assign
+        """
+        object.__setattr__(self, name, value)
 
     def _clone(self: T) -> T:
         """
@@ -122,7 +141,7 @@ class TensorDataclass:
 
         # Set fields that have init=False after construction
         for name, value in post_init_fields:
-            object.__setattr__(result, name, value)
+            result._set_frozen_field(name, value)
 
         return result
 

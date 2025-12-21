@@ -143,6 +143,7 @@ class BlackProjectUpdater(WorldUpdater):
             project.fab_watts_per_chip = calculate_fab_watts_per_chip(
                 fab_process_node_nm=project.fab_process_node_nm,
                 exogenous_trends=self.compute_params.exogenous_trends,
+                h100_watts=prc_energy.h100_power_watts,
             )
 
             # Update fab production compute
@@ -153,8 +154,8 @@ class BlackProjectUpdater(WorldUpdater):
                     project.fab_h100e_per_chip
                 )
                 # Update the fab's monthly production
-                object.__setattr__(project.fab.monthly_production_compute, 'all_tpp_h100e', monthly_h100e)
-                object.__setattr__(project.fab.monthly_production_compute, 'functional_tpp_h100e', monthly_h100e)
+                project.fab.monthly_production_compute._set_frozen_field('all_tpp_h100e', monthly_h100e)
+                project.fab.monthly_production_compute._set_frozen_field('functional_tpp_h100e', monthly_h100e)
 
             # --- Datacenter metrics ---
             # Get datacenter construction rate from labor
@@ -176,7 +177,7 @@ class BlackProjectUpdater(WorldUpdater):
             )
 
             # Update datacenters metric
-            object.__setattr__(project.datacenters, 'data_center_capacity_gw', total_capacity_gw)
+            project.datacenters._set_frozen_field('data_center_capacity_gw', total_capacity_gw)
 
             # Operating labor per GW
             project.datacenters_operating_labor_per_gw = prc_energy.data_center_mw_per_operating_worker * 1000.0
@@ -212,11 +213,11 @@ class BlackProjectUpdater(WorldUpdater):
             functional_compute = calculate_functional_compute(total_compute, 1.0)  # Already applied survival
 
             # Update compute stock
-            object.__setattr__(project.compute_stock, 'all_tpp_h100e', total_compute)
-            object.__setattr__(project.compute_stock, 'functional_tpp_h100e', functional_compute)
+            project.compute_stock._set_frozen_field('all_tpp_h100e', total_compute)
+            project.compute_stock._set_frozen_field('functional_tpp_h100e', functional_compute)
 
             # --- Operating compute (limited by datacenter capacity) ---
-            watts_per_h100e = project.compute_stock.watts_per_h100e if project.compute_stock else 700.0
+            watts_per_h100e = project.compute_stock.watts_per_h100e if project.compute_stock else prc_energy.h100_power_watts
             project.operating_compute_tpp_h100e = calculate_operating_compute(
                 functional_compute_h100e=functional_compute,
                 datacenter_capacity_gw=total_capacity_gw,
@@ -275,7 +276,7 @@ def initialize_black_project(
     diverted_compute = initial_prc_compute_stock * props.fraction_of_initial_compute_stock_to_divert_at_black_project_start
 
     # Energy requirements
-    h100_power_w = 700.0
+    h100_power_w = prc_energy.h100_power_watts
     energy_efficiency = prc_energy.energy_efficiency_of_compute_stock_relative_to_state_of_the_art
     energy_per_h100e_gw = (h100_power_w / energy_efficiency) / 1e9
     initial_energy_requirement = diverted_compute * energy_per_h100e_gw
@@ -442,26 +443,24 @@ def initialize_black_project(
     )
 
     # --- Set init=False metrics after construction ---
-    # Use object.__setattr__ to bypass frozen dataclass protection
-
     # AISoftwareDeveloper metrics
-    object.__setattr__(project, 'ai_r_and_d_inference_compute_tpp_h100e', 0.0)
-    object.__setattr__(project, 'ai_r_and_d_training_compute_tpp_h100e', 0.0)
-    object.__setattr__(project, 'external_deployment_compute_tpp_h100e', 0.0)
-    object.__setattr__(project, 'alignment_research_compute_tpp_h100e', 0.0)
-    object.__setattr__(project, 'frontier_training_compute_tpp_h100e', 0.0)
+    project._set_frozen_field('ai_r_and_d_inference_compute_tpp_h100e', 0.0)
+    project._set_frozen_field('ai_r_and_d_training_compute_tpp_h100e', 0.0)
+    project._set_frozen_field('external_deployment_compute_tpp_h100e', 0.0)
+    project._set_frozen_field('alignment_research_compute_tpp_h100e', 0.0)
+    project._set_frozen_field('frontier_training_compute_tpp_h100e', 0.0)
 
     # Fab metrics
-    object.__setattr__(project, 'fab_construction_duration', fab_construction_duration)
-    object.__setattr__(project, 'fab_is_operational', False)
-    object.__setattr__(project, 'fab_wafer_starts_per_month', target_wafer_starts)
-    object.__setattr__(project, 'fab_h100e_per_chip', fab_h100e_per_chip)
-    object.__setattr__(project, 'fab_watts_per_chip', calculate_fab_watts_per_chip(process_node_nm, exogenous_trends))
+    project._set_frozen_field('fab_construction_duration', fab_construction_duration)
+    project._set_frozen_field('fab_is_operational', False)
+    project._set_frozen_field('fab_wafer_starts_per_month', target_wafer_starts)
+    project._set_frozen_field('fab_h100e_per_chip', fab_h100e_per_chip)
+    project._set_frozen_field('fab_watts_per_chip', calculate_fab_watts_per_chip(process_node_nm, exogenous_trends, h100_watts=h100_power_w))
 
     # Datacenter metrics
     datacenters = Datacenters(data_center_capacity_gw=initial_total_capacity)
-    object.__setattr__(project, 'datacenters', datacenters)
-    object.__setattr__(project, 'datacenters_operating_labor_per_gw', prc_energy.data_center_mw_per_operating_worker * 1000.0)
+    project._set_frozen_field('datacenters', datacenters)
+    project._set_frozen_field('datacenters_operating_labor_per_gw', prc_energy.data_center_mw_per_operating_worker * 1000.0)
 
     # Compute stock metrics
     compute_stock = Compute(
@@ -470,7 +469,7 @@ def initialize_black_project(
         watts_per_h100e=h100_power_w / energy_efficiency,
         average_functional_chip_age_years=0.0,
     )
-    object.__setattr__(project, 'compute_stock', compute_stock)
+    project._set_frozen_field('compute_stock', compute_stock)
 
     # Operating compute
     initial_operating = calculate_operating_compute(
@@ -478,7 +477,7 @@ def initialize_black_project(
         datacenter_capacity_gw=initial_total_capacity,
         watts_per_h100e=h100_power_w / energy_efficiency,
     )
-    object.__setattr__(project, 'operating_compute_tpp_h100e', initial_operating)
+    project._set_frozen_field('operating_compute_tpp_h100e', initial_operating)
 
     return project, lr_by_year, sampled_detection_time
 

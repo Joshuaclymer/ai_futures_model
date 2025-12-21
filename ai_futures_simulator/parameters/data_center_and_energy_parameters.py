@@ -18,6 +18,9 @@ class PRCDataCenterAndEnergyParameters:
     data_center_mw_per_year_per_construction_worker: float
     data_center_mw_per_operating_worker: float
 
+    # H100 power consumption in watts (~700W typical for H100)
+    h100_power_watts: float = 700.0
+
 @dataclass
 class DataCenterAndEnergyParameters:
     prc_energy_consumption: PRCDataCenterAndEnergyParameters

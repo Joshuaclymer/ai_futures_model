@@ -28,7 +28,10 @@ class PerceptionsParameters:
 class BlackProjectPerceptionsParameters:
     """Parameters for likelihood ratio calculations."""
 
-    # US intelligence estimation error (median absolute relative error)
+    # Prior odds that a covert project exists
+    prior_odds_of_covert_project: float
+
+    # Intelligence estimation error (median absolute relative error)
     intelligence_median_error_in_estimate_of_compute_stock: float
     intelligence_median_error_in_estimate_of_fab_stock: float
     intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: float
