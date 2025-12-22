@@ -1,7 +1,7 @@
 'use client';
 
 import { PlotlyChart } from './PlotlyChart';
-import { hexToRgba } from '../colors';
+import { hexToRgba, DETECTION_THRESHOLD_COLORS } from '../colors';
 import { CHART_FONT_SIZES } from '../chartConfig';
 
 interface CCDFPoint {
@@ -37,12 +37,8 @@ interface CCDFChartProps {
   height?: number;
 }
 
-// Default colors for different thresholds - purple palette
-const DEFAULT_THRESHOLD_COLORS: Record<string, string> = {
-  '1': '#5E6FB8',  // 1x update (primary purple)
-  '2': '#9B8AC4',  // 2x update (lighter purple)
-  '4': '#7A9EC2',  // 4x update (purple-blue)
-};
+// Default colors for different thresholds - use global detection threshold colors
+const DEFAULT_THRESHOLD_COLORS: Record<string, string> = DETECTION_THRESHOLD_COLORS;
 
 // Trailing spaces are a workaround for Plotly bug that clips legend text
 // See: https://github.com/plotly/documentation/issues/1195

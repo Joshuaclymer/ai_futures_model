@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { COLOR_PALETTE } from '@/types/blackProject';
 import { PlotlyChart } from '../../charts';
-import { hexToRgba } from '../../colors';
+import { hexToRgba, DETECTION_THRESHOLD_COLORS } from '../../colors';
 import { CHART_FONT_SIZES } from '../../chartConfig';
 import { ParamValue } from '../../ui';
 import { Parameters, SimulationData } from '../../../types';
@@ -188,7 +188,7 @@ export function InitialStockSection({
     if (!probs) return [];
 
     const thresholds = ['1x', '2x', '4x'];
-    const colors = ['#5E6FB8', '#E9A842', '#4AA896'];
+    const colors = [DETECTION_THRESHOLD_COLORS['1x'], DETECTION_THRESHOLD_COLORS['2x'], DETECTION_THRESHOLD_COLORS['4x']];
 
     const validData = thresholds
       .map((t, i) => ({ threshold: t, prob: probs[t], color: colors[i] }))

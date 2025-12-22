@@ -1,10 +1,15 @@
 'use client';
 
 import { TimeSeriesChart, CCDFChart, PlotlyChart, PDFChart } from '../../charts';
-import { COLOR_PALETTE, hexToRgba } from '../../colors';
+import { COLOR_PALETTE, DETECTION_THRESHOLD_COLORS, hexToRgba } from '../../colors';
 import { CHART_FONT_SIZES } from '../../chartConfig';
 import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamLink, ParamValue } from '../../ui';
 import { Parameters, SimulationData } from '../../../types';
+
+// Consistent loading indicator style (matches "No data available" style)
+function LoadingIndicator() {
+  return <div className="flex items-center justify-center h-full text-gray-400 text-sm">Loading...</div>;
+}
 
 // Types for the covert fab data from API
 interface TimeSeriesData {
@@ -28,25 +33,25 @@ interface CCDFPoint {
 }
 
 export interface CovertFabApiData {
-  dashboard: DashboardData;
-  compute_ccdf: Record<number, CCDFPoint[]>;
-  time_series_data: {
+  dashboard?: DashboardData;
+  compute_ccdf?: Record<number | string, CCDFPoint[]>;
+  time_series_data?: {
     years: number[];
     lr_combined: TimeSeriesData;
     h100e_flow: TimeSeriesData;
   };
-  is_operational: TimeSeriesData;
-  wafer_starts_samples: number[];
-  chips_per_wafer: number;
-  architecture_efficiency: number;
-  h100_power: number;
-  transistor_density: { node: string; density: number; wattsPerTpp: number }[];
-  compute_per_month: TimeSeriesData;
-  watts_per_tpp_curve: {
+  is_operational?: TimeSeriesData;
+  wafer_starts_samples?: number[];
+  chips_per_wafer?: number;
+  architecture_efficiency?: number;
+  h100_power?: number;
+  transistor_density?: { node: string; density: number; wattsPerTpp?: number }[];
+  compute_per_month?: TimeSeriesData;
+  watts_per_tpp_curve?: {
     densityRelative: number[];
     wattsPerTppRelative: number[];
   };
-  energy_per_month: TimeSeriesData;
+  energy_per_month?: TimeSeriesData;
 }
 
 interface CovertFabSectionProps {
@@ -59,7 +64,7 @@ interface CovertFabSectionProps {
 
 // Dashboard component
 function Dashboard({ dashboard }: { dashboard?: DashboardData }) {
-  if (!dashboard) return <div className="bp-dashboard" style={{ width: '240px' }}>Loading...</div>;
+  if (!dashboard) return <div className="bp-dashboard" style={{ width: '240px' }}><LoadingIndicator /></div>;
   return (
     <div className="bp-dashboard" style={{ width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '20px' }}>
       <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 20 }}>
@@ -69,7 +74,7 @@ function Dashboard({ dashboard }: { dashboard?: DashboardData }) {
         <div className="bp-dashboard-item">
           <div className="bp-dashboard-value">{dashboard.production}</div>
           <div className="bp-dashboard-label" style={{ fontWeight: 600 }}>Production before detection</div>
-          <div style={{ fontSize: '20px', color: COLOR_PALETTE.fab, marginTop: '4px' }}>{dashboard.energy}</div>
+          <div style={{ fontSize: '20px', color: '#666', marginTop: '4px' }}>{dashboard.energy}</div>
           <div className="bp-dashboard-sublabel" style={{ fontSize: '10px', color: '#777' }}>Detection means &ge;5x update</div>
         </div>
         <div className="bp-dashboard-item">
@@ -92,9 +97,9 @@ function Dashboard({ dashboard }: { dashboard?: DashboardData }) {
 // CCDF Chart for compute produced before detection
 function ComputeCCDFChart({ ccdfData }: { ccdfData?: Record<number, CCDFPoint[]> }) {
   const thresholds = [
-    { value: 4, label: '"Detection" = >4x update        ', color: '#2E7D32' },
-    { value: 2, label: '"Detection" = >2x update        ', color: '#4AA896' },
-    { value: 1, label: '"Detection" = >1x update        ', color: '#7BA3C4' },
+    { value: 4, label: '"Detection" = >4x update        ', color: DETECTION_THRESHOLD_COLORS['4'] },
+    { value: 2, label: '"Detection" = >2x update        ', color: DETECTION_THRESHOLD_COLORS['2'] },
+    { value: 1, label: '"Detection" = >1x update        ', color: DETECTION_THRESHOLD_COLORS['1'] },
   ];
 
   // Filter out thresholds that don't have data
@@ -130,7 +135,7 @@ function ComputeCCDFChart({ ccdfData }: { ccdfData?: Record<number, CCDFPoint[]>
           y: 0.98,
           xanchor: 'right',
           yanchor: 'top',
-          bgcolor: 'rgba(255,255,255,0.8)',
+          bgcolor: 'rgba(255,255,248,0.9)',
           borderwidth: 0,
           font: { size: CHART_FONT_SIZES.legend },
         },
@@ -142,7 +147,7 @@ function ComputeCCDFChart({ ccdfData }: { ccdfData?: Record<number, CCDFPoint[]>
 
 // Time series chart for simulation runs
 function SimulationRunsChart({ timeSeriesData }: { timeSeriesData?: CovertFabApiData['time_series_data'] }) {
-  if (!timeSeriesData) return <div>Loading...</div>;
+  if (!timeSeriesData) return <LoadingIndicator />;
   const traces: Plotly.Data[] = [
     // LR percentile band
     {
@@ -330,7 +335,7 @@ function Operator({ children, style }: { children: React.ReactNode; style?: Reac
 
 // Is Operational Plot (proportion over time)
 function IsOperationalPlot({ data }: { data?: TimeSeriesData }) {
-  if (!data) return <div>Loading...</div>;
+  if (!data) return <LoadingIndicator />;
   return (
     <TimeSeriesChart
       years={data.years}
@@ -346,7 +351,7 @@ function IsOperationalPlot({ data }: { data?: TimeSeriesData }) {
 
 // Wafer Starts PDF Plot - uses shared PDFChart component
 function WaferStartsPlot({ samples }: { samples?: number[] }) {
-  if (!samples || samples.length === 0) return <div>Loading...</div>;
+  if (!samples || samples.length === 0) return <LoadingIndicator />;
   return (
     <PDFChart
       samples={samples}
@@ -361,7 +366,7 @@ function WaferStartsPlot({ samples }: { samples?: number[] }) {
 
 // Transistor Density Bar Plot by Process Node
 function TransistorDensityPlot({ data }: { data?: { node: string; density: number }[] }) {
-  if (!data || data.length === 0) return <div>Loading...</div>;
+  if (!data || data.length === 0) return <LoadingIndicator />;
   const traces: Plotly.Data[] = [
     {
       x: data.map(d => d.node),
@@ -393,7 +398,7 @@ function TransistorDensityPlot({ data }: { data?: { node: string; density: numbe
 
 // Compute per Month Plot
 function ComputePerMonthPlot({ data }: { data?: TimeSeriesData }) {
-  if (!data) return <div>Loading...</div>;
+  if (!data) return <LoadingIndicator />;
   return (
     <TimeSeriesChart
       years={data.years}
@@ -414,9 +419,13 @@ function WattsPerTppPlot({
   simDensities
 }: {
   curveData?: CovertFabApiData['watts_per_tpp_curve'];
-  simDensities?: { node: string; density: number; wattsPerTpp: number }[]
+  simDensities?: { node: string; density: number; wattsPerTpp?: number }[]
 }) {
-  if (!curveData || !simDensities) return <div>Loading...</div>;
+  if (!curveData || !simDensities) return <div className="text-gray-400 text-sm">No data available</div>;
+
+  // Filter points that have wattsPerTpp data
+  const validPoints = simDensities.filter(d => d.wattsPerTpp !== undefined);
+
   const traces: Plotly.Data[] = [
     // Curve
     {
@@ -428,16 +437,16 @@ function WattsPerTppPlot({
       name: 'Power Law',
       hovertemplate: 'Density: %{x:.2g}x<br>W/TPP: %{y:.2g}x<extra></extra>',
     },
-    // Simulation points (using pre-computed wattsPerTpp from API)
-    {
-      x: simDensities.map(d => d.density),
-      y: simDensities.map(d => d.wattsPerTpp),
+    // Simulation points (using pre-computed wattsPerTpp from API) - only if we have valid points
+    ...(validPoints.length > 0 ? [{
+      x: validPoints.map(d => d.density),
+      y: validPoints.map(d => d.wattsPerTpp!),
       type: 'scatter' as const,
       mode: 'markers' as const,
       marker: { size: 8, color: COLOR_PALETTE.fab },
       name: 'Simulations',
       hovertemplate: 'Density: %{x:.2g}x<br>W/TPP: %{y:.2g}x<extra></extra>',
-    },
+    }] : []),
   ];
 
   return (
@@ -464,7 +473,7 @@ function WattsPerTppPlot({
 
 // Energy per Month Plot
 function EnergyPerMonthPlot({ data }: { data?: TimeSeriesData }) {
-  if (!data) return <div>Loading...</div>;
+  if (!data) return <LoadingIndicator />;
   return (
     <TimeSeriesChart
       years={data.years}

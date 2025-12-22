@@ -16,8 +16,6 @@ from classes.simulation_primitives import SimulationResult
 from parameters.simulation_parameters import SimulationParameters, ModelParameters
 from initialize_world_history import initialize_world_for_year
 from world_updaters.combined_updater import CombinedUpdater
-from world_updaters.software_r_and_d import SoftwareRAndD
-from world_updaters.ai_software_developers import AISoftwareDeveloperUpdater
 
 
 # ODE solver settings
@@ -46,10 +44,8 @@ class AIFuturesSimulator(nn.Module):
 
         # Sample initial params for the default combined updater
         self._default_params = model_parameters.sample()
-        self.combined = CombinedUpdater(
-            self._default_params,
-            updaters=[SoftwareRAndD(self._default_params), AISoftwareDeveloperUpdater(self._default_params)]
-        )
+        # Let CombinedUpdater create updaters based on params (includes black project if enabled)
+        self.combined = CombinedUpdater(self._default_params)
 
     def _discover_events(
         self,
@@ -87,8 +83,11 @@ class AIFuturesSimulator(nn.Module):
             event_time = event_t.item()
             current_time = event_time
 
+            # odeint_event returns trajectory [N, state_dim], extract final state
+            final_state = event_state[-1] if event_state.dim() > 1 else event_state
+
             if event_time < end_time:
-                world = World.from_state_tensor(event_state, current_template)
+                world = World.from_state_tensor(final_state, current_template)
                 updated_world = combined.set_state_attributes(event_t, world)
                 if updated_world is not None:
                     current_state = updated_world.to_state_tensor()
@@ -96,9 +95,9 @@ class AIFuturesSimulator(nn.Module):
                     combined.set_world_template(updated_world)
                     segments.append((event_time, current_state, current_template))
                 else:
-                    current_state = event_state
+                    current_state = final_state
             else:
-                current_state = event_state
+                current_state = final_state
 
         return segments
 
@@ -127,10 +126,8 @@ class AIFuturesSimulator(nn.Module):
 
         # Create a fresh combined updater if params differ from default
         if params is not self._default_params:
-            combined = CombinedUpdater(
-                params,
-                updaters=[SoftwareRAndD(params), AISoftwareDeveloperUpdater(params)]
-            )
+            # Let CombinedUpdater create updaters based on params (includes black project if enabled)
+            combined = CombinedUpdater(params)
         else:
             combined = self.combined
 

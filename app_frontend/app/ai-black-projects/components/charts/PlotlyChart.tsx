@@ -39,11 +39,8 @@ export function PlotlyChart({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center h-full ${className}`}>
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-3 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-          <span className="text-xs text-gray-400">{loadingMessage}</span>
-        </div>
+      <div className={`flex items-center justify-center h-full text-gray-400 text-sm ${className}`}>
+        {loadingMessage}
       </div>
     );
   }
@@ -67,8 +64,8 @@ export function PlotlyChart({
     font: { family: 'inherit', size: 11 },
     hovermode: 'closest',
     hoverlabel: {
-      bgcolor: '#ffffff',
-      bordercolor: '#ffffff',
+      bgcolor: '#fffff8',
+      bordercolor: '#fffff8',
       font: {
         family: 'system-ui, -apple-system, sans-serif',
         size: 12,

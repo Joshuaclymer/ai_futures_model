@@ -130,7 +130,7 @@ class BlackProjectUpdater(WorldUpdater):
             project.fab_wafer_starts_per_month = calculate_fab_wafer_starts_per_month(
                 fab_operating_labor=project.fab_operating_labor,
                 fab_number_of_lithography_scanners=project.fab_number_of_lithography_scanners,
-                wafers_per_month_per_operating_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
+                wafers_per_month_per_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
                 wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
             )
 
@@ -478,6 +478,33 @@ def initialize_black_project(
         watts_per_h100e=h100_power_w / energy_efficiency,
     )
     project._set_frozen_field('operating_compute_tpp_h100e', initial_operating)
+
+    # Time series metrics (initialized as empty lists, computed during simulation)
+    project._set_frozen_field('years', [])
+    project._set_frozen_field('cumulative_h100_years', [])
+    project._set_frozen_field('operational_compute_h100e_by_year', [])
+    project._set_frozen_field('survival_rate_by_year', [])
+    project._set_frozen_field('datacenter_capacity_gw_by_year', [])
+    project._set_frozen_field('total_black_compute_by_year', [])
+    project._set_frozen_field('initial_black_compute_by_year', [])
+    project._set_frozen_field('fab_flow_by_year', [])
+
+    # LR components
+    project._set_frozen_field('lr_prc_accounting', 1.0)
+    project._set_frozen_field('lr_sme_inventory', 1.0)
+    project._set_frozen_field('lr_satellite_datacenter', 1.0)
+    project._set_frozen_field('lr_reported_energy_by_year', [])
+    project._set_frozen_field('lr_other_intel_by_year', [])
+    project._set_frozen_field('cumulative_lr_by_year', [])
+    project._set_frozen_field('posterior_prob_by_year', [])
+
+    # Fab production metrics
+    project._set_frozen_field('fab_cumulative_production_h100e_by_year', [])
+    project._set_frozen_field('fab_architecture_efficiency_by_year', [])
+    project._set_frozen_field('fab_transistor_density_relative_to_h100', 1.0)
+
+    # Detection outcome
+    project._set_frozen_field('sampled_detection_time', sampled_detection_time)
 
     return project, lr_by_year, sampled_detection_time
 

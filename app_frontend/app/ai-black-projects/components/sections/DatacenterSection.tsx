@@ -190,7 +190,7 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
       yanchor: 'bottom',
       orientation: 'v',
       font: { size: CHART_FONT_SIZES.legend },
-      bgcolor: 'rgba(255,255,255,0.8)',
+      bgcolor: 'rgba(255,255,248,0.9)',
       borderwidth: 0,
     },
     hovermode: 'closest',

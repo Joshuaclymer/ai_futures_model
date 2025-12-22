@@ -26,10 +26,23 @@ export const COLOR_PALETTE = IMPORTED_COLORS;
 interface BlackProjectClientProps {
   initialData: SimulationData | null;
   hideHeader?: boolean;
+  externalSidebarOpen?: boolean;
+  onExternalSidebarClose?: () => void;
 }
 
-export function BlackProjectClient({ initialData, hideHeader = false }: BlackProjectClientProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export function BlackProjectClient({
+  initialData,
+  hideHeader = false,
+  externalSidebarOpen,
+  onExternalSidebarClose,
+}: BlackProjectClientProps) {
+  const [internalSidebarOpen, setInternalSidebarOpen] = useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const sidebarOpen = externalSidebarOpen !== undefined ? externalSidebarOpen : internalSidebarOpen;
+  const setSidebarOpen = onExternalSidebarClose
+    ? (open: boolean) => { if (!open) onExternalSidebarClose(); }
+    : setInternalSidebarOpen;
   const { data, isLoading, error, parameters, updateParameter } = useSimulation(initialData);
 
   return (
@@ -50,8 +63,8 @@ export function BlackProjectClient({ initialData, hideHeader = false }: BlackPro
             hideHeader={hideHeader}
           />
 
-          {/* Mobile overlay */}
-          {sidebarOpen && (
+          {/* Mobile overlay - only render when NOT using external sidebar state (parent handles it) */}
+          {sidebarOpen && externalSidebarOpen === undefined && (
             <div
               className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
               onClick={() => setSidebarOpen(false)}

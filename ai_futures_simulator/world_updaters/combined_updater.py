@@ -38,13 +38,23 @@ class CombinedUpdater(WorldUpdater):
         if updaters is None:
             from world_updaters.software_r_and_d import SoftwareRAndD
             from world_updaters.ai_software_developers import AISoftwareDeveloperUpdater
-            updaters = [SoftwareRAndD(params), AISoftwareDeveloperUpdater(params)]
+            from world_updaters.compute.nation_compute import NationComputeUpdater
+            updaters = [
+                SoftwareRAndD(params),
+                AISoftwareDeveloperUpdater(params),
+                NationComputeUpdater(params),
+            ]
 
             # Add black project updater if enabled in params
             if (params.black_project is not None and
-                params.black_project.properties.run_a_black_project):
+                params.black_project.run_a_black_project):
                 from world_updaters.black_project import BlackProjectUpdater
-                updaters.append(BlackProjectUpdater(params, params.black_project))
+                updaters.append(BlackProjectUpdater(
+                    params=params,
+                    black_project_params=params.black_project,
+                    compute_params=params.compute,
+                    energy_params=params.datacenter_and_energy,
+                ))
 
             # Add perceptions updater if enabled in params
             if (params.perceptions is not None and

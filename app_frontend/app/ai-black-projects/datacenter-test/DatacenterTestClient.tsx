@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
-import { BlackProjectData } from '@/types/blackProject';
+import { SimulationData } from '../types';
 import '../ai-black-projects.css';
 import { defaultParameters } from '../types';
 
@@ -13,7 +13,7 @@ const DatacenterSection = dynamic(
 );
 
 export default function DatacenterTestClient() {
-  const [data, setData] = useState<BlackProjectData | null>(null);
+  const [data, setData] = useState<SimulationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [parameters] = useState(defaultParameters);

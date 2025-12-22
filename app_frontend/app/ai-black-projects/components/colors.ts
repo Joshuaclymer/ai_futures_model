@@ -14,6 +14,19 @@ export const COLOR_PALETTE = {
   gray: '#7F8C8D',                 // Neutral/disabled
 } as const;
 
+/**
+ * Detection threshold colors - consistent purple palette
+ * Used for 1x, 2x, 4x likelihood ratio detection thresholds
+ */
+export const DETECTION_THRESHOLD_COLORS = {
+  '1': '#5E6FB8',   // 1x LR update - dark purple (primary)
+  '2': '#9B8AC4',   // 2x LR update - medium purple/lavender
+  '4': '#7A9EC2',   // 4x LR update - light purple-blue
+  '1x': '#5E6FB8',
+  '2x': '#9B8AC4',
+  '4x': '#7A9EC2',
+} as const;
+
 // Helper function to get rgba version with alpha (for palette colors)
 export function rgba(colorName: keyof typeof COLOR_PALETTE, alpha: number): string {
   return hexToRgba(COLOR_PALETTE[colorName], alpha);

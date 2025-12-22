@@ -55,11 +55,17 @@ export function PDFChart({
     const maxVal = Math.max(...validSamples);
     const logMin = Math.log10(minVal);
     const logMax = Math.log10(maxVal);
-    const logRange = logMax - logMin;
+    let logRange = logMax - logMin;
+
+    // Handle case where all samples are identical (logRange = 0)
+    if (logRange === 0 || !isFinite(logRange)) {
+      // Create a range of ±0.5 log units around the value
+      logRange = 1.0;
+    }
 
     // Add padding
-    const paddedLogMin = logMin - logRange * 0.05;
-    const paddedLogMax = logMax + logRange * 0.05;
+    const paddedLogMin = logMin - logRange * 0.1;
+    const paddedLogMax = logMax + logRange * 0.1;
 
     for (let i = 0; i <= numBins; i++) {
       binEdges.push(Math.pow(10, paddedLogMin + i * (paddedLogMax - paddedLogMin) / numBins));
@@ -74,16 +80,22 @@ export function PDFChart({
     // Linear binning
     const minVal = Math.min(...validSamples);
     const maxVal = Math.max(...validSamples);
-    const range = maxVal - minVal;
+    let range = maxVal - minVal;
+
+    // Handle case where all samples are identical
+    if (range === 0) {
+      range = Math.abs(minVal) * 0.2 || 1.0; // Use 20% of value as range, or 1.0 if value is 0
+    }
+
     const binWidth = range / numBins;
 
     for (let i = 0; i <= numBins; i++) {
-      binEdges.push(minVal + i * binWidth);
+      binEdges.push(minVal - range * 0.1 + i * (range * 1.2) / numBins);
     }
 
     for (let i = 0; i < binEdges.length - 1; i++) {
       binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
-      binWidths.push(binWidth);
+      binWidths.push(binEdges[i + 1] / numBins);
     }
   }
 

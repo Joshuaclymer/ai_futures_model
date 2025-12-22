@@ -1,12 +1,13 @@
 # Default parameters for the AI Futures Simulator
-# All values are point estimates (no uncertainty)
 #
-# To add uncertainty, replace any value with a distribution spec:
+# Parameters can be point estimates or distributions for Monte Carlo sampling:
 #   r_software: 2.4              # Point estimate
 #   r_software:                   # Distribution
 #     dist: uniform
 #     min: 2.0
 #     max: 3.0
+#
+# Supported distributions: uniform, normal, lognormal, triangular
 
 seed: 42
 initial_progress: 0.0
@@ -148,10 +149,15 @@ compute:
     us_frontier_project_compute_tpp_h100e_in_2025: 120325.0
     us_frontier_project_compute_annual_growth_rate: 4.0  # ~4x per year
 
-  # PRC compute parameters
+  # PRC compute parameters (with uncertainty for Monte Carlo)
   prc_compute:
-    total_prc_compute_tpp_h100e_in_2025: 100000.0
-    annual_growth_rate_of_prc_compute_stock: 2.2
+    total_prc_compute_tpp_h100e_in_2025:
+      dist: lognormal
+      ci80: [70000, 140000]  # 80% CI around ~100k H100e
+    annual_growth_rate_of_prc_compute_stock:
+      dist: uniform
+      min: 1.8
+      max: 2.6  # 1.8x to 2.6x growth rate
     prc_architecture_efficiency_relative_to_state_of_the_art: 1.0
     # Domestic production capability
     proportion_of_prc_chip_stock_produced_domestically_2026: 0.10
@@ -198,7 +204,7 @@ black_project:
   run_a_black_project: true
   black_project_start_year: 2029.0
 
-  # User-configurable project properties
+  # User-configurable project properties (with uncertainty for Monte Carlo)
   properties:
     # Labor allocation (total labor and fractions)
     total_labor: 11300
@@ -206,10 +212,19 @@ black_project:
     fraction_of_labor_devoted_to_black_fab_construction: 0.022   # 250/11300
     fraction_of_labor_devoted_to_black_fab_operation: 0.049      # 550/11300
     fraction_of_labor_devoted_to_ai_research: 0.044              # 500/11300
-    # Diverted resources
-    fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05
-    fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 0.5
-    fraction_of_lithography_scanners_to_divert_at_black_project_start: 0.10
+    # Diverted resources (with uncertainty)
+    fraction_of_initial_compute_stock_to_divert_at_black_project_start:
+      dist: uniform
+      min: 0.03
+      max: 0.08  # 3% to 8% diversion
+    fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start:
+      dist: uniform
+      min: 0.3
+      max: 0.7  # 30% to 70% diversion
+    fraction_of_lithography_scanners_to_divert_at_black_project_start:
+      dist: uniform
+      min: 0.05
+      max: 0.15  # 5% to 15% diversion
     max_fraction_of_total_national_energy_consumption: 0.05
     # Fab configuration
     build_a_black_fab: true
@@ -224,19 +239,43 @@ perceptions:
   # Enable/disable perceptions updating
   update_perceptions: true
 
-  # Black project detection parameters
+  # Black project detection parameters (with uncertainty for Monte Carlo)
   black_project_perception_parameters:
     # Prior odds that a covert project exists (odds = p / (1-p))
-    prior_odds_of_covert_project: 0.111  # ~10% prior probability
+    prior_odds_of_covert_project:
+      dist: uniform
+      min: 0.05
+      max: 0.2  # 5% to 20% prior probability
     # US intelligence estimation error (median absolute relative error)
-    intelligence_median_error_in_estimate_of_compute_stock: 0.07
-    intelligence_median_error_in_estimate_of_fab_stock: 0.07
-    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.07
-    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.01
+    intelligence_median_error_in_estimate_of_compute_stock:
+      dist: uniform
+      min: 0.05
+      max: 0.15  # 5% to 15% error
+    intelligence_median_error_in_estimate_of_fab_stock:
+      dist: uniform
+      min: 0.05
+      max: 0.15  # 5% to 15% error
+    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity:
+      dist: uniform
+      min: 0.05
+      max: 0.15  # 5% to 15% error
+    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity:
+      dist: uniform
+      min: 0.005
+      max: 0.02  # 0.5% to 2% error (satellites are more accurate)
     # Worker detection model (Gamma distribution parameters)
-    mean_detection_time_for_100_workers: 6.95
-    mean_detection_time_for_1000_workers: 3.42
-    variance_of_detection_time_given_num_workers: 3.88
+    mean_detection_time_for_100_workers:
+      dist: uniform
+      min: 5.0
+      max: 9.0  # 5 to 9 years
+    mean_detection_time_for_1000_workers:
+      dist: uniform
+      min: 2.5
+      max: 4.5  # 2.5 to 4.5 years
+    variance_of_detection_time_given_num_workers:
+      dist: uniform
+      min: 2.5
+      max: 5.0  # Variance range
     # Likelihood ratio thresholds for detection
     detection_threshold: 100.0
     detection_thresholds: [1, 2, 4]

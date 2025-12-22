@@ -448,7 +448,7 @@ export function Tooltip({ content, visible, triggerRect, onMouseEnter, onMouseLe
         maxWidth: 'calc(100vw - 40px)',
         maxHeight: finalPosition.maxHeight ? `${finalPosition.maxHeight}px` : 'calc(100vh - 40px)',
         overflowY: 'auto',
-        backgroundColor: '#fff',
+        backgroundColor: '#fffff8',
         color: '#333',
         padding: '15px',
         borderRadius: '6px',
