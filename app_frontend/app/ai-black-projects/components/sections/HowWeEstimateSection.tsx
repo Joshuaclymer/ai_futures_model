@@ -17,7 +17,7 @@ export function HowWeEstimateSection({ parameters, rateOfComputationData, detect
   return (
     <div>
       <section
-        className="rounded-lg p-6 md:p-8"
+        className="rounded-lg p-6 md:p-8 how-we-estimate-section"
         style={{
           backgroundColor: '#f9f9f9',
           border: '1px solid #e8e8e8',

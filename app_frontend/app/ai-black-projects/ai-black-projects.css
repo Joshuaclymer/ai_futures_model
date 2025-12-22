@@ -115,6 +115,250 @@
   }
 }
 
+/* Small mobile screens (320px and similar) */
+@media (max-width: 480px) {
+  /* Reduce main content padding on small screens */
+  main.flex-1.overflow-y-auto {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .top-charts-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .top-charts-dashboard {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .top-charts-dashboard-item {
+    flex: none;
+    width: 100%;
+    text-align: center;
+  }
+
+  .top-charts-title {
+    text-align: center;
+  }
+
+  .top-charts-bottom-row {
+    gap: 16px;
+  }
+
+  /* Grey box section (How We Estimate) - full width with smaller padding */
+  .how-we-estimate-section,
+  section.rounded-lg {
+    margin-left: -10px !important;
+    margin-right: -10px !important;
+    border-radius: 0 !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    border-left: none !important;
+    border-right: none !important;
+  }
+
+  /* Equation rows - stack vertically with centered operators */
+  .breakdown-equation-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+
+  /* Breakdown items full width on small screens */
+  .breakdown-equation-row .breakdown-item,
+  .breakdown-plots-row .breakdown-item {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  /* Breakdown plots row - stack vertically */
+  .breakdown-plots-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+
+  /* Operators between items - smaller and inline */
+  .breakdown-equation-row .breakdown-operator,
+  .breakdown-plots-row .operator,
+  .breakdown-plots-row .breakdown-operator {
+    height: auto !important;
+    margin-top: 0 !important;
+    padding: 8px 0 !important;
+    font-size: 18px !important;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Hide brackets on small mobile */
+  .breakdown-equation-row .breakdown-bracket,
+  .breakdown-plots-row .breakdown-bracket {
+    display: none !important;
+  }
+
+  /* Limits arrow inline */
+  .breakdown-equation-row .breakdown-limits-arrow,
+  .breakdown-plots-row .breakdown-limits-arrow {
+    flex-direction: row;
+    margin-top: 0 !important;
+    gap: 8px;
+    padding: 8px 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Border left subsection - reduce padding */
+  .border-l-2.pl-6 {
+    padding-left: 10px !important;
+    margin-left: 0 !important;
+  }
+
+  /* Breakdown sections full width */
+  .breakdown-section,
+  .bp-breakdown-section {
+    margin-left: -10px;
+    margin-right: -10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 0;
+  }
+
+  /* Box items full width */
+  .breakdown-box-item {
+    width: 100%;
+    height: auto !important;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  .breakdown-box {
+    margin-top: 0 !important;
+    max-width: none;
+  }
+
+  /* Reduce plot heights on small screens */
+  .breakdown-plot {
+    height: 180px !important;
+  }
+
+  /* Dashboard fixed widths - make full width on mobile */
+  .dashboard,
+  .bp-dashboard {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Plot containers with inline flex styles - make full width */
+  .plot-container,
+  .bp-plot-container {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Top sections flex containers - stack vertically */
+  section > div[style*="display: flex"],
+  section > div[style*="flex-wrap"] {
+    flex-direction: column !important;
+  }
+
+  /* Arrow operators on mobile */
+  .operator.arrow-operator {
+    height: auto !important;
+    padding: 10px 0 !important;
+    flex-direction: row !important;
+    gap: 8px;
+  }
+
+  /* Force all top-level flex containers with inline styles to stack vertically */
+  section > div[style*="display: flex"][style*="flex-wrap"],
+  section div[style*="display: flex"][style*="flexWrap"],
+  div.flex.flex-wrap {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* Dashboard containers - override ALL inline width styles */
+  .dashboard[style],
+  .bp-dashboard[style],
+  div.dashboard,
+  div.bp-dashboard {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Plot containers - override ALL inline flex/width styles */
+  .plot-container[style],
+  .bp-plot-container[style],
+  div.plot-container,
+  div.bp-plot-container {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Override any inline minWidth on flex children */
+  section > div > div[style*="minWidth"],
+  section > div > div[style*="min-width"] {
+    min-width: 0 !important;
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  /* Breakdown box items on mobile */
+  .breakdown-box-item[style] {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+
+  .breakdown-box-item .breakdown-box {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Ensure breakdown-plots-row children are full width */
+  .breakdown-plots-row > * {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* All operators inside breakdown rows */
+  .breakdown-plots-row > .operator {
+    height: auto !important;
+    margin-top: 0 !important;
+    padding: 8px 0 !important;
+    font-size: 18px !important;
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+    flex-direction: row !important;
+  }
+
+  /* bp-breakdown-section mobile */
+  .bp-breakdown-section {
+    padding: 20px 15px !important;
+    margin-left: -10px !important;
+    margin-right: -10px !important;
+    border-radius: 0 !important;
+  }
+}
+
 /* Navigation links with et-book font */
 .bp-nav-link {
   font-family: et-book, Georgia, serif !important;
@@ -146,11 +390,16 @@
   position: fixed;
   top: 56px;
   left: 0;
-  z-index: 40;
+  z-index: 50;
 }
 
 @media (max-width: 1024px) {
   .bp-sidebar {
+    display: none;
+  }
+
+  .bp-sidebar.bp-sidebar-open {
+    display: flex;
     width: 260px;
   }
 }
@@ -829,7 +1078,7 @@
   max-width: 400px;
   max-height: 80vh;
   overflow-y: auto;
-  background-color: #fff;
+  background-color: #fffff8;
   color: #333;
   padding: 12px;
   border-radius: 6px;
@@ -841,9 +1090,9 @@
   pointer-events: auto;
 }
 
-/* Plotly overrides for consistent tooltip styling - white background, no border */
+/* Plotly overrides for consistent tooltip styling - cream background, no border */
 .js-plotly-plot .plotly .hoverlayer .hovertext path {
-  fill: #ffffff !important;
+  fill: #fffff8 !important;
   stroke: none !important;
 }
 
