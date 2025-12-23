@@ -250,8 +250,8 @@ class BlackProjectUpdater(WorldUpdater):
 
             project.fab_watts_per_chip = calculate_fab_watts_per_chip(
                 fab_process_node_nm=project.fab_process_node_nm,
+                year=project.preparation_start_year,  # Fixed at construction time, matches fab_h100e_per_chip
                 exogenous_trends=self.compute_params.exogenous_trends,
-                h100_watts=prc_energy.h100_power_watts,
             )
 
             # Update fab production compute
@@ -342,6 +342,22 @@ class BlackProjectUpdater(WorldUpdater):
             # Update compute stock metric
             project.compute_stock._set_frozen_field('tpp_h100e_including_attrition', total_compute)
             project.compute_stock._set_frozen_field('functional_tpp_h100e', functional_compute)
+
+            # --- Energy consumption by source ---
+            # Calculate energy consumed by each compute source:
+            # - Initial stock uses watts_per_h100e (weighted efficiency for diverted chips)
+            # - Fab compute uses fab_watts_per_chip / fab_h100e_per_chip (watts per H100e for new chips)
+            initial_watts_per_h100e = project.compute_stock.watts_per_h100e if project.compute_stock else prc_energy.h100_power_watts
+            fab_watts_per_h100e = (project.fab_watts_per_chip / project.fab_h100e_per_chip) if project.fab_h100e_per_chip > 0 else 0.0
+
+            # Energy in GW = H100e * watts_per_H100e / 1e9
+            initial_energy_gw = (surviving_initial * initial_watts_per_h100e) / 1e9
+            fab_energy_gw = (fab_compute * fab_watts_per_h100e) / 1e9
+            total_energy_gw = initial_energy_gw + fab_energy_gw
+
+            project.initial_stock_energy_gw = initial_energy_gw
+            project.fab_compute_energy_gw = fab_energy_gw
+            project.total_compute_energy_gw = total_energy_gw
 
             # --- Operating compute (limited by datacenter capacity) ---
             watts_per_h100e = project.compute_stock.watts_per_h100e if project.compute_stock else prc_energy.h100_power_watts
@@ -478,9 +494,25 @@ def initialize_black_project(
     diverted_compute = initial_prc_compute_stock * props.fraction_of_initial_compute_stock_to_divert_at_black_project_start
 
     # Energy requirements
+    # The energy efficiency needs to account for both:
+    # 1. PRC efficiency relative to state-of-the-art (e.g., 0.2)
+    # 2. State-of-the-art efficiency relative to H100 (which improves over time)
+    # This matches the discrete model's LargestAIProject.get_energy_efficiency_relative_to_h100()
     h100_power_w = prc_energy.h100_power_watts
-    energy_efficiency = prc_energy.energy_efficiency_of_compute_stock_relative_to_state_of_the_art
-    energy_per_h100e_gw = (h100_power_w / energy_efficiency) / 1e9
+    energy_efficiency_relative_to_sota = prc_energy.energy_efficiency_of_compute_stock_relative_to_state_of_the_art
+
+    # Calculate state-of-the-art efficiency relative to H100 at project start year
+    h100_release_year = 2022
+    years_since_h100 = max(0, preparation_start_year - h100_release_year)
+    sota_energy_efficiency_improvement_per_year = exogenous_trends.state_of_the_art_energy_efficiency_improvement_per_year
+    sota_efficiency_relative_to_h100 = sota_energy_efficiency_improvement_per_year ** years_since_h100
+
+    # Combined efficiency: PRC efficiency relative to SOTA * SOTA efficiency relative to H100
+    combined_energy_efficiency = energy_efficiency_relative_to_sota * sota_efficiency_relative_to_h100
+
+    # Watts per H100e = H100 power / combined efficiency
+    watts_per_h100e = h100_power_w / combined_energy_efficiency
+    energy_per_h100e_gw = watts_per_h100e / 1e9
     initial_energy_requirement = diverted_compute * energy_per_h100e_gw
 
     # Unconcealed capacity diverted from existing datacenters
@@ -601,7 +633,7 @@ def initialize_black_project(
     initial_compute = Compute(
         tpp_h100e_including_attrition=diverted_compute,
         functional_tpp_h100e=diverted_compute,
-        watts_per_h100e=h100_power_w / energy_efficiency,
+        watts_per_h100e=watts_per_h100e,  # Uses combined efficiency (PRC vs SOTA * SOTA vs H100)
         average_functional_chip_age_years=0.0,
     )
 
@@ -697,7 +729,11 @@ def initialize_black_project(
     project._set_frozen_field('fab_is_operational', False)
     project._set_frozen_field('fab_wafer_starts_per_month', target_wafer_starts)
     project._set_frozen_field('fab_h100e_per_chip', fab_h100e_per_chip)
-    project._set_frozen_field('fab_watts_per_chip', calculate_fab_watts_per_chip(process_node_nm, exogenous_trends, h100_watts=h100_power_w))
+    project._set_frozen_field('fab_watts_per_chip', calculate_fab_watts_per_chip(
+        fab_process_node_nm=process_node_nm,
+        year=preparation_start_year,  # Fixed at construction time, matches fab_h100e_per_chip
+        exogenous_trends=exogenous_trends,
+    ))
 
     # Datacenter metrics
     datacenters = Datacenters(data_center_capacity_gw=initial_total_capacity)
@@ -708,7 +744,7 @@ def initialize_black_project(
     compute_stock = Compute(
         tpp_h100e_including_attrition=diverted_compute,
         functional_tpp_h100e=diverted_compute,
-        watts_per_h100e=h100_power_w / energy_efficiency,
+        watts_per_h100e=watts_per_h100e,  # Uses combined efficiency (PRC vs SOTA * SOTA vs H100)
         average_functional_chip_age_years=0.0,
     )
     project._set_frozen_field('compute_stock', compute_stock)
@@ -717,7 +753,7 @@ def initialize_black_project(
     initial_operating = calculate_operating_compute(
         functional_compute_h100e=diverted_compute,
         datacenter_capacity_gw=initial_total_capacity,
-        watts_per_h100e=h100_power_w / energy_efficiency,
+        watts_per_h100e=watts_per_h100e,  # Uses combined efficiency
     )
     project._set_frozen_field('operating_compute_tpp_h100e', initial_operating)
 
@@ -821,6 +857,13 @@ def initialize_black_project(
     # Survival and initial compute metrics
     project._set_frozen_field('survival_rate', 1.0)  # Initial survival rate
     project._set_frozen_field('initial_compute_surviving_h100e', diverted_compute)  # Initially all survive
+
+    # Energy consumption by source (initialized, updated during simulation)
+    # Initial energy = diverted_compute * watts_per_h100e / 1e9
+    initial_energy_gw = (diverted_compute * watts_per_h100e) / 1e9
+    project._set_frozen_field('initial_stock_energy_gw', initial_energy_gw)
+    project._set_frozen_field('fab_compute_energy_gw', 0.0)  # No fab compute initially
+    project._set_frozen_field('total_compute_energy_gw', initial_energy_gw)
 
     # Legacy time series fields (kept for backward compatibility)
     project._set_frozen_field('lr_reported_energy_by_year', [])
