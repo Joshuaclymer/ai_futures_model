@@ -1,14 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BlackProjectClient } from '@/app/ai-black-projects/BlackProjectClient';
-
-// Dynamically import PlaygroundClient (heavy component for timelines)
-const PlaygroundClient = dynamic(() => import('@/app/ai-timelines-and-takeoff/PlaygroundClient'), {
-  ssr: false,
-  loading: () => <TabLoadingPlaceholder tab="timelines" />,
-});
+import PlaygroundClient from '@/app/ai-timelines-and-takeoff/PlaygroundClient';
 
 type TabType = 'timelines' | 'black-projects';
 
@@ -22,20 +17,6 @@ interface UnifiedAppClientProps {
   initialSeed: number;
 }
 
-// Loading placeholder component
-function TabLoadingPlaceholder({ tab }: { tab: TabType }) {
-  return (
-    <div className="flex items-center justify-center h-[calc(100vh-57px)] bg-[#fffff8]">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-        <span className="text-sm text-gray-500">
-          Loading {tab === 'timelines' ? 'AI Timelines' : 'Black Projects'}...
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export default function UnifiedAppClient({
   initialTab = 'timelines',
   benchmarkData,
@@ -44,27 +25,16 @@ export default function UnifiedAppClient({
   initialSampleTrajectories,
   initialSeed,
 }: UnifiedAppClientProps) {
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
-  const [blackProjectsLoaded, setBlackProjectsLoaded] = useState(initialTab === 'black-projects');
-  const [timelinesLoaded, setTimelinesLoaded] = useState(initialTab === 'timelines');
+  const [activeTab] = useState<TabType>(initialTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
 
-  // Handle tab switching - set loaded state synchronously to avoid empty flash
+  // Handle tab switching - navigate to the actual page for server-side data fetching
   const handleTabChange = (tab: TabType) => {
-    if (tab === 'black-projects' && !blackProjectsLoaded) {
-      setBlackProjectsLoaded(true);
-    }
-    if (tab === 'timelines' && !timelinesLoaded) {
-      setTimelinesLoaded(true);
-    }
-    setActiveTab(tab);
+    if (tab === activeTab) return;
+    const newPath = tab === 'timelines' ? '/ai-timelines-and-takeoff' : '/ai-black-projects';
+    router.push(newPath);
   };
-
-  // Update URL without navigation (for bookmarking/sharing)
-  useEffect(() => {
-    const newPath = activeTab === 'timelines' ? '/ai-timelines-and-takeoff' : '/ai-black-projects';
-    window.history.replaceState(null, '', newPath);
-  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#fffff8]">
@@ -128,33 +98,27 @@ export default function UnifiedAppClient({
 
       {/* Tab Content */}
       <div className="pt-[57px]">
-        {/* Timelines Tab - keep mounted but hidden for instant switching */}
-        <div style={{ display: activeTab === 'timelines' ? 'block' : 'none' }}>
-          {timelinesLoaded && (
-            <PlaygroundClient
-              benchmarkData={benchmarkData}
-              initialComputeData={initialComputeData}
-              initialParameters={initialParameters}
-              initialSampleTrajectories={initialSampleTrajectories}
-              initialSeed={initialSeed}
-              hideHeader={true}
-            />
-          )}
-        </div>
+        {/* Timelines Tab - conditionally render to avoid fixed positioning conflicts */}
+        {activeTab === 'timelines' && (
+          <PlaygroundClient
+            benchmarkData={benchmarkData}
+            initialComputeData={initialComputeData}
+            initialParameters={initialParameters}
+            initialSampleTrajectories={initialSampleTrajectories}
+            initialSeed={initialSeed}
+            hideHeader={true}
+          />
+        )}
 
-        {/* Black Projects Tab - keep mounted but hidden for instant switching */}
-        <div style={{ display: activeTab === 'black-projects' ? 'block' : 'none' }}>
-          {blackProjectsLoaded ? (
-            <BlackProjectClient
-              initialData={null}
-              hideHeader={true}
-              externalSidebarOpen={sidebarOpen}
-              onExternalSidebarClose={() => setSidebarOpen(false)}
-            />
-          ) : (
-            <TabLoadingPlaceholder tab="black-projects" />
-          )}
-        </div>
+        {/* Black Projects Tab - conditionally render to avoid fixed positioning conflicts */}
+        {activeTab === 'black-projects' && (
+          <BlackProjectClient
+            initialData={null}
+            hideHeader={true}
+            externalSidebarOpen={sidebarOpen}
+            onExternalSidebarClose={() => setSidebarOpen(false)}
+          />
+        )}
       </div>
     </div>
   );

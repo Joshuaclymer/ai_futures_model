@@ -8,7 +8,7 @@ import {
   createStarShape,
   createCircleShape
 } from '@/components/ChartShapes';
-import { createScale, calculateTimeLogTicks, calculateDynamicXDomain, clamp } from '@/utils/chartUtils';
+import { createScale, calculateTimeLogTicks, clamp } from '@/utils/chartUtils';
 import { formatLogWorkTick, formatWorkTimeDurationDetailed } from '@/utils/formatting';
 import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from '@/components/chartTooltipStyle';
 import { CHART_LAYOUT } from '@/constants/chartLayout';
@@ -75,6 +75,7 @@ const CustomHorizonChart = memo(({
   }, [chartData, scHorizonMinutes]);
 
   // Calculate X-axis domain from main trajectory
+  // Show from present year to 1 year after the "100 year" threshold is achieved
   const xDomain = useMemo((): [number, number] => {
     const years = chartData
       .filter(d => d.horizonLength != null && !isNaN(d.horizonLength))
@@ -83,21 +84,25 @@ const CustomHorizonChart = memo(({
 
     if (years.length === 0) return [2020, displayEndYear];
 
-    // Find intersection year where horizon crosses SC threshold
+    // Start from the first year in the data (present)
+    const startYear = Math.min(...years);
+
+    // Find intersection year where horizon crosses SC threshold (100 work years)
     const intersectionPoint = chartData.find(d =>
       d.horizonLength != null &&
       typeof d.horizonLength === 'number' &&
       d.horizonLength >= scHorizonMinutes
     );
-    const intersectionYear = intersectionPoint?.year ?? null;
 
-    return calculateDynamicXDomain(years, {
-      intersectionPoints: [intersectionYear],
-      minPadding: 0.05,
-      maxPadding: 0.15,
-      minRange: 3,
-      maxDomain: displayEndYear,
-    });
+    // End at 1 year after the intersection, or use displayEndYear as fallback
+    const intersectionYear = intersectionPoint?.year ?? null;
+    const endYear = intersectionYear !== null
+      ? Math.min(intersectionYear + 1, displayEndYear)
+      : displayEndYear;
+
+    // Add small padding for visual clarity
+    const padding = (endYear - startYear) * 0.05;
+    return [startYear - padding, endYear + padding];
   }, [chartData, scHorizonMinutes, displayEndYear]);
 
   // Generate x-axis ticks at whole year boundaries, limited to ~4 ticks
@@ -145,30 +150,73 @@ const CustomHorizonChart = memo(({
 
   // Generate keys for sample trajectories
   const sampleKeys = useMemo(() => {
+    console.log(`[CustomHorizonChart] sampleTrajectories count: ${sampleTrajectories.length}`);
+    if (sampleTrajectories.length > 0 && sampleTrajectories[0].length > 0) {
+      console.log(`[CustomHorizonChart] First sample has ${sampleTrajectories[0].length} points, first horizonLength: ${sampleTrajectories[0][0].horizonLength}`);
+    }
     return sampleTrajectories.map((_, index) => `sample_horizon_${index}`);
   }, [sampleTrajectories]);
 
-  // Merge chartData with sample trajectories
+  // Merge chartData with sample trajectories using interpolation
   const mergedData = useMemo<DataPoint[]>(() => {
+    // Helper function to interpolate horizonLength at a given year
+    const interpolateHorizon = (trajectory: ChartDataPoint[], targetYear: number): number | null => {
+      if (trajectory.length === 0) return null;
+
+      // Sort by year
+      const sorted = [...trajectory].sort((a, b) => a.year - b.year);
+
+      // Check bounds
+      if (targetYear <= sorted[0].year) return sorted[0].horizonLength ?? null;
+      if (targetYear >= sorted[sorted.length - 1].year) return sorted[sorted.length - 1].horizonLength ?? null;
+
+      // Find bracketing points
+      for (let i = 0; i < sorted.length - 1; i++) {
+        if (sorted[i].year <= targetYear && targetYear <= sorted[i + 1].year) {
+          const t = (targetYear - sorted[i].year) / (sorted[i + 1].year - sorted[i].year);
+          const h1 = sorted[i].horizonLength;
+          const h2 = sorted[i + 1].horizonLength;
+          if (h1 == null || h2 == null) return null;
+          // Interpolate in log space for smoother results
+          return Math.exp(Math.log(h1) * (1 - t) + Math.log(h2) * t);
+        }
+      }
+      return null;
+    };
+
     // Only use years from main chart data (don't add years from samples)
-    return chartData.map(point => {
+    const result = chartData.map(point => {
       const newPoint: DataPoint = { ...point, x: point.year };
-      
-      // Initialize all sample keys and add their values if available
+
+      // Initialize all sample keys and add their values using interpolation
       sampleTrajectories.forEach((trajectory, sampleIndex) => {
         const key = `sample_horizon_${sampleIndex}`;
-        const samplePoint = trajectory.find(p => p.year === point.year);
-        // Always set the key, use null if no matching point found
-        newPoint[key] = samplePoint?.horizonLength ?? null;
+        // Use interpolation instead of exact year matching
+        newPoint[key] = interpolateHorizon(trajectory, point.year);
       });
-      
+
       return newPoint;
     });
+
+    // Debug: log first merged data point if we have samples
+    if (sampleTrajectories.length > 0 && result.length > 0) {
+      const firstPoint = result[0];
+      const midPoint = result[Math.floor(result.length / 2)];
+      console.log(`[CustomHorizonChart] Merged data first point year=${firstPoint.x}, sample_horizon_0=${firstPoint.sample_horizon_0}`);
+      console.log(`[CustomHorizonChart] Merged data mid point year=${midPoint.x}, sample_horizon_0=${midPoint.sample_horizon_0}`);
+    }
+
+    return result;
   }, [chartData, sampleTrajectories]);
 
   const sanitizedData = useMemo<DataPoint[]>(() => {
     const [xMin, xMax] = xDomain;
     const [yMin, yMax] = horizonDomain;
+
+    // Debug: log domains and sample key count
+    if (sampleKeys.length > 0) {
+      console.log(`[CustomHorizonChart] Sanitizing: xDomain=[${xMin}, ${xMax}], yDomain=[${yMin}, ${yMax}], sampleKeys=${sampleKeys.length}`);
+    }
     const allTrajectoryKeys = [...trajectoryKeys, ...sampleKeys];
 
     // Track whether each series has already gone above yMax (to stop drawing after first out-of-range point)
@@ -176,7 +224,7 @@ const CustomHorizonChart = memo(({
     allTrajectoryKeys.forEach(key => { seriesExceededMax[key] = false; });
     let horizonExceededMax = false;
 
-    return mergedData
+    const result = mergedData
       .filter(point => {
         const xValue = point.x;
         return typeof xValue === 'number' && Number.isFinite(xValue) && xValue >= xMin && xValue <= xMax;
@@ -231,6 +279,19 @@ const CustomHorizonChart = memo(({
           return typeof value === 'number' && Number.isFinite(value);
         });
       });
+
+    // Debug: count how many points have valid sample values
+    if (sampleKeys.length > 0 && result.length > 0) {
+      const pointsWithSample0 = result.filter(p => typeof p.sample_horizon_0 === 'number' && Number.isFinite(p.sample_horizon_0 as number) && (p.sample_horizon_0 as number) !== null);
+      console.log(`[CustomHorizonChart] After sanitization: ${result.length} total points, ${pointsWithSample0.length} with valid sample_horizon_0`);
+      if (pointsWithSample0.length > 0) {
+        const first = pointsWithSample0[0];
+        const mid = pointsWithSample0[Math.floor(pointsWithSample0.length / 2)];
+        console.log(`[CustomHorizonChart] Sample0 values: first(year=${first.x})=${first.sample_horizon_0}, mid(year=${mid.x})=${mid.sample_horizon_0}`);
+      }
+    }
+
+    return result;
   }, [mergedData, xDomain, horizonDomain, trajectoryKeys, sampleKeys]);
 
   // Build line configs

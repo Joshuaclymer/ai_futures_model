@@ -49,7 +49,7 @@ def run_simulation_internal(frontend_params: dict, time_range: list) -> dict:
     start_time = time.perf_counter()
     result = simulator.run_simulation(params=sim_params)
     elapsed = time.perf_counter() - start_time
-    logger.info(f"[run_simulation_internal] Simulation completed in {elapsed:.3f}s")
+    logger.info(f"[simulation] Completed in {elapsed:.3f}s")
 
     # Serialize the raw result
     return {
@@ -108,179 +108,191 @@ def compute_horizon_from_progress(progress: float, present_horizon: float,
     return result if (math.isfinite(result) and result > 0) else H_0
 
 
-def extract_sw_progress_from_raw(raw_result: dict) -> dict:
-    """
-    Extract software progress time series from raw simulation result.
+def _safe_get(d: dict, key: str, default=0.0):
+    """Safely get a value from a dict, returning default if None or non-finite."""
+    val = d.get(key)
+    if val is None:
+        return default
+    if not math.isfinite(val):
+        return None
+    return val
 
-    This transforms the raw World trajectory into the format expected
-    by the frontend for software progress visualization.
+
+def _extract_time_series_point(year: float, world: dict, horizon_params: dict) -> dict | None:
+    """
+    Extract a single time series data point from a World snapshot.
 
     Args:
-        raw_result: Output from run_simulation_internal()
+        year: The simulation year
+        world: The World state dict
+        horizon_params: Dict with present_horizon, present_doubling_time, doubling_difficulty_growth_factor
 
     Returns:
-        dict with time_series, milestones, exp_capacity_params, horizon_params
+        dict with time series metrics, or None if no developer found
     """
-    times = raw_result['times']
-    trajectory = raw_result['trajectory']
-    params = raw_result['params']
+    ai_devs = world.get('ai_software_developers', {})
+    developer = ai_devs.get(DEVELOPER_ID)
+    if developer is None and ai_devs:
+        developer = next(iter(ai_devs.values()))
 
-    # Get horizon parameters for computing horizon from progress
-    sw_params = params.get('software_r_and_d', {})
-    present_horizon = sw_params.get('present_horizon', 26.0)  # minutes
-    present_doubling_time = sw_params.get('present_doubling_time', 0.458)
-    doubling_difficulty_growth_factor = sw_params.get('doubling_difficulty_growth_factor', 0.92)
+    if developer is None:
+        return None
 
-    time_series = []
+    prog = developer.get('ai_software_progress', {})
+    progress = _safe_get(prog, 'progress')
 
-    # Helper to safely get value with default
-    def safe_get(d, key, default=0.0):
-        val = d.get(key)
-        if val is None:
-            return default
-        if not math.isfinite(val):
-            return None
-        return val
+    # Get compute inputs from developer (not ai_software_progress)
+    human_labor = developer.get('human_ai_capability_researchers', 0.0)
+    inference_compute = developer.get('ai_r_and_d_inference_compute_tpp_h100e', 0.0)
+    experiment_compute = developer.get('ai_r_and_d_training_compute_tpp_h100e', 0.0)
+    training_compute_growth_rate = developer.get('training_compute_growth_rate', 0.0)
 
-    for i, world in enumerate(trajectory):
-        year = times[i]
+    point = {
+        'year': year,
+        'progress': progress,
+        'researchStock': _safe_get(prog, 'research_stock'),
+        'automationFraction': _safe_get(prog, 'automation_fraction'),
+        'aiCodingLaborMultiplier': _safe_get(prog, 'ai_coding_labor_multiplier', 1.0),
+        'aiSwProgressMultRefPresentDay': _safe_get(prog, 'ai_sw_progress_mult_ref_present_day', 1.0),
+        'softwareProgressRate': _safe_get(prog, 'software_progress_rate'),
+        'overallProgressRate': _safe_get(prog, 'progress_rate'),
+        'researchEffort': _safe_get(prog, 'research_effort'),
+        'codingLabor': _safe_get(prog, 'coding_labor'),
+        'serialCodingLabor': _safe_get(prog, 'serial_coding_labor'),
+        'serialCodingLaborMultiplier': _safe_get(prog, 'serial_coding_labor_multiplier', 1.0),
+        'humanLabor': human_labor if human_labor and math.isfinite(human_labor) else 0.0,
+        'inferenceCompute': inference_compute if inference_compute and math.isfinite(inference_compute) else 0.0,
+        'experimentCompute': experiment_compute if experiment_compute and math.isfinite(experiment_compute) else 0.0,
+        'experimentCapacity': _safe_get(prog, 'experiment_capacity'),
+        'aiResearchTaste': _safe_get(prog, 'ai_research_taste'),
+        'aggregateResearchTaste': _safe_get(prog, 'aggregate_research_taste', 1.0),
+        'trainingComputeGrowthRate': training_compute_growth_rate if training_compute_growth_rate and math.isfinite(training_compute_growth_rate) else 0.0,
+        'aiResearchTasteSd': _safe_get(prog, 'ai_research_taste_sd', 0.0),
+        'effectiveCompute': None,
+    }
 
-        # Get the developer's AI software progress
-        ai_devs = world.get('ai_software_developers', {})
-        developer = ai_devs.get(DEVELOPER_ID)
-        if developer is None and ai_devs:
-            # Fallback: get first developer
-            developer = next(iter(ai_devs.values()))
+    # Compute horizon from progress if not provided
+    horizon = prog.get('horizon_length')
+    if horizon is not None and math.isfinite(horizon):
+        point['horizonLength'] = horizon
+    elif progress is not None:
+        computed_horizon = compute_horizon_from_progress(
+            progress,
+            horizon_params['present_horizon'],
+            horizon_params['present_doubling_time'],
+            horizon_params['doubling_difficulty_growth_factor'],
+            anchor_progress=0.0
+        )
+        point['horizonLength'] = computed_horizon if math.isfinite(computed_horizon) else None
+    else:
+        point['horizonLength'] = None
 
-        if developer is None:
-            continue
+    return point
 
-        prog = developer.get('ai_software_progress', {})
 
-        # Extract metrics
-        progress = safe_get(prog, 'progress')
-        # Get the software-only progress rate (not the overall rate which includes training compute)
-        software_progress_rate = safe_get(prog, 'software_progress_rate')
-        # Also get overall progress rate for reference
-        overall_progress_rate = safe_get(prog, 'progress_rate')
+def _compute_training_and_efficiency(time_series: list) -> None:
+    """
+    Compute training_compute, software_efficiency, and effective_compute.
+    Updates time_series points in place.
 
-        # Get serial coding labor and multiplier from World state
-        serial_coding_labor = safe_get(prog, 'serial_coding_labor')
-        serial_coding_labor_multiplier = safe_get(prog, 'serial_coding_labor_multiplier', 1.0)
-        ai_coding_labor_mult = safe_get(prog, 'ai_coding_labor_multiplier', 1.0)
+    Uses trapezoidal integration of training_compute_growth_rate and
+    normalizes values at the reference year.
+    """
+    if len(time_series) <= 1:
+        return
 
-        # Get input time series from World state (interpolated values)
-        human_labor = safe_get(prog, 'human_labor', 0.0)
-        inference_compute = safe_get(prog, 'inference_compute')
-        experiment_compute = safe_get(prog, 'experiment_compute')
+    initial_progress = time_series[0].get('progress', 0.0) or 0.0
+    years = np.array([p['year'] for p in time_series])
+    tc_growth_rates = np.array([p.get('trainingComputeGrowthRate', 0.0) or 0.0 for p in time_series])
 
-        # Get experiment capacity from World state
-        experiment_capacity = safe_get(prog, 'experiment_capacity')
+    # Trapezoidal integration of training_compute_growth_rate
+    training_compute = np.zeros(len(time_series))
+    dt = np.diff(years)
+    avg_growth_rates = (tc_growth_rates[:-1] + tc_growth_rates[1:]) / 2.0
+    increments = avg_growth_rates * dt
+    training_compute[1:] = np.cumsum(increments)
 
-        # Get training_compute_growth_rate and ai_research_taste_sd from World state
-        training_compute_growth_rate = safe_get(prog, 'training_compute_growth_rate', 0.0)
-        ai_research_taste_sd = safe_get(prog, 'ai_research_taste_sd', 0.0)
+    # Normalize training_compute at reference year
+    tc_at_ref = float(np.interp(TRAINING_COMPUTE_REFERENCE_YEAR, years, training_compute))
+    training_compute = training_compute - tc_at_ref + TRAINING_COMPUTE_REFERENCE_OOMS
 
-        point = {
-            'year': year,
-            'progress': progress,
-            'researchStock': safe_get(prog, 'research_stock'),
-            'automationFraction': safe_get(prog, 'automation_fraction'),
-            'aiCodingLaborMultiplier': ai_coding_labor_mult,
-            'aiSwProgressMultRefPresentDay': safe_get(prog, 'ai_sw_progress_mult_ref_present_day', 1.0),
-            'softwareProgressRate': software_progress_rate,
-            'overallProgressRate': overall_progress_rate,
-            'researchEffort': safe_get(prog, 'research_effort'),
-            'codingLabor': safe_get(prog, 'coding_labor'),
-            'serialCodingLabor': serial_coding_labor,
-            'serialCodingLaborMultiplier': serial_coding_labor_multiplier,
-            'humanLabor': human_labor,
-            'inferenceCompute': inference_compute,
-            'experimentCompute': experiment_compute,
-            'experimentCapacity': experiment_capacity,
-            'aiResearchTaste': safe_get(prog, 'ai_research_taste'),
-            'aggregateResearchTaste': safe_get(prog, 'aggregate_research_taste', 1.0),
-            'trainingComputeGrowthRate': training_compute_growth_rate,
-            'aiResearchTasteSd': ai_research_taste_sd,
-        }
+    # Compute software_efficiency (raw, before normalization)
+    tc_at_start_normalized = training_compute[0]
+    progress_arr = np.array([p.get('progress', 0.0) or 0.0 for p in time_series])
+    software_efficiency_raw = progress_arr - initial_progress - (training_compute - tc_at_start_normalized)
 
-        # Compute horizon from progress if not provided by simulation
-        horizon = prog.get('horizon_length')
-        if horizon is not None and math.isfinite(horizon):
-            point['horizonLength'] = horizon
-        elif progress is not None:
-            # Compute horizon from progress using the formula
-            computed_horizon = compute_horizon_from_progress(
-                progress, present_horizon, present_doubling_time,
-                doubling_difficulty_growth_factor, anchor_progress=0.0
-            )
-            point['horizonLength'] = computed_horizon if math.isfinite(computed_horizon) else None
-        else:
-            point['horizonLength'] = None
+    # Normalize software_efficiency at reference year
+    sw_eff_at_ref = float(np.interp(TRAINING_COMPUTE_REFERENCE_YEAR, years, software_efficiency_raw))
+    software_efficiency = software_efficiency_raw - sw_eff_at_ref
 
-        # effectiveCompute will be computed after training_compute normalization
-        point['effectiveCompute'] = None
+    # Compute effective_compute = training_compute + software_efficiency
+    effective_compute = training_compute + software_efficiency
 
-        time_series.append(point)
+    # Normalize effective_compute at reference year
+    eff_at_ref = float(np.interp(TRAINING_COMPUTE_REFERENCE_YEAR, years, effective_compute))
+    effective_compute = effective_compute - eff_at_ref + TRAINING_COMPUTE_REFERENCE_OOMS
 
-    # Compute training_compute from the stored training_compute_growth_rate time series
-    # This matches the reference model's approach in metrics_computation.py
-    if len(time_series) > 1:
-        initial_progress = time_series[0].get('progress', 0.0) or 0.0
-        years = np.array([p['year'] for p in time_series])
-        tc_growth_rates = np.array([p.get('trainingComputeGrowthRate', 0.0) or 0.0 for p in time_series])
+    # Update time series points
+    for i, point in enumerate(time_series):
+        point['trainingCompute'] = training_compute[i] if math.isfinite(training_compute[i]) else None
+        point['softwareEfficiency'] = software_efficiency[i] if math.isfinite(software_efficiency[i]) else None
+        point['effectiveCompute'] = effective_compute[i] if math.isfinite(effective_compute[i]) else None
 
-        # Trapezoidal integration of training_compute_growth_rate
-        training_compute = np.zeros(len(time_series))
-        if len(time_series) > 1:
-            dt = np.diff(years)
-            avg_growth_rates = (tc_growth_rates[:-1] + tc_growth_rates[1:]) / 2.0
-            increments = avg_growth_rates * dt
-            training_compute[1:] = np.cumsum(increments)
 
-        # Normalize training_compute at reference year (like reference model)
-        tc_at_ref = float(np.interp(TRAINING_COMPUTE_REFERENCE_YEAR, years, training_compute))
-        training_compute = training_compute - tc_at_ref + TRAINING_COMPUTE_REFERENCE_OOMS
+def _compute_progress_at_aa(time_series: list, ac_time_horizon_minutes: float) -> float:
+    """
+    Compute progress_at_aa by finding where horizon reaches AC threshold.
 
-        # Compute software_efficiency (raw, before normalization)
-        # software_efficiency = progress - initial_progress - training_compute_raw
-        # But training_compute is already normalized, so we need to un-normalize it first
-        tc_at_start_normalized = training_compute[0]
+    AC (Automated Coder) is defined as when the AI's time horizon reaches
+    ac_time_horizon_minutes (typically 12,000,000 minutes).
 
-        # Raw software efficiency (before normalization)
-        progress_arr = np.array([p.get('progress', 0.0) or 0.0 for p in time_series])
-        software_efficiency_raw = progress_arr - initial_progress - (training_compute - tc_at_start_normalized)
+    Args:
+        time_series: List of time series points with 'progress' and 'horizonLength'
+        ac_time_horizon_minutes: AC threshold in minutes
 
-        # Normalize software_efficiency at reference year (like reference model)
-        sw_eff_at_ref = float(np.interp(TRAINING_COMPUTE_REFERENCE_YEAR, years, software_efficiency_raw))
-        software_efficiency = software_efficiency_raw - sw_eff_at_ref
+    Returns:
+        Progress value at AC, or 100.0 as fallback
+    """
+    if not time_series:
+        return 100.0
 
-        # Compute effective_compute = training_compute + software_efficiency
-        effective_compute = training_compute + software_efficiency
+    # Find where horizon reaches the AC threshold
+    # Horizon increases with progress, so we're looking for where horizon >= threshold
+    for point in time_series:
+        horizon = point.get('horizonLength')
+        progress = point.get('progress')
+        if horizon is not None and progress is not None:
+            if math.isfinite(horizon) and math.isfinite(progress):
+                if horizon >= ac_time_horizon_minutes:
+                    return progress
 
-        # Normalize effective_compute at reference year (like reference model)
-        eff_at_ref = float(np.interp(TRAINING_COMPUTE_REFERENCE_YEAR, years, effective_compute))
-        effective_compute = effective_compute - eff_at_ref + TRAINING_COMPUTE_REFERENCE_OOMS
+    # Fallback: if horizon never reaches threshold in trajectory, use last progress value
+    # or 100.0 if no valid data
+    for point in reversed(time_series):
+        progress = point.get('progress')
+        if progress is not None and math.isfinite(progress):
+            return progress
 
-        # Add training_compute, software_efficiency, and effective_compute to each point
-        for i, point in enumerate(time_series):
-            tc = training_compute[i]
-            sw_eff = software_efficiency[i]
-            eff_comp = effective_compute[i]
+    return 100.0
 
-            point['trainingCompute'] = tc if math.isfinite(tc) else None
-            point['softwareEfficiency'] = sw_eff if math.isfinite(sw_eff) else None
-            point['effectiveCompute'] = eff_comp if math.isfinite(eff_comp) else None
 
-    # Get software R&D params for milestones
-    sw_params = params.get('software_r_and_d', {})
+def _build_milestones(sw_params: dict, time_series: list = None) -> dict:
+    """Build the milestones dictionary with targets for AC, SAR, SIAR, TED-AI, ASI."""
+    # Try to get progress_at_aa from params first
+    progress_at_aa = sw_params.get('progress_at_aa')
 
-    # Build milestones - include AC, SAR, SIAR, TED-AI, ASI
-    progress_at_aa = sw_params.get('progress_at_aa') or 100.0
-    strat_ai_m2b = sw_params.get('strat_ai_m2b', 2.0)
+    # If not set (None), compute from time series using horizon threshold
+    if progress_at_aa is None and time_series:
+        ac_time_horizon_minutes = sw_params.get('ac_time_horizon_minutes', 12000000.0)
+        progress_at_aa = _compute_progress_at_aa(time_series, ac_time_horizon_minutes)
+        logger.debug(f"Computed progress_at_aa from horizon: {progress_at_aa:.2f} (threshold: {ac_time_horizon_minutes})")
+    elif progress_at_aa is None:
+        progress_at_aa = 100.0  # Final fallback
+        logger.debug(f"Using fallback progress_at_aa: {progress_at_aa}")
+
     ted_ai_m2b = sw_params.get('ted_ai_m2b', 3.0)
 
-    milestones = {
+    return {
         'AC': {
             'interpolation_type': 'linear',
             'metric': 'progress',
@@ -310,13 +322,21 @@ def extract_sw_progress_from_raw(raw_result: dict) -> dict:
         },
     }
 
-    # Compute milestone times and progress_multiplier by interpolation
+
+def _compute_milestone_times(milestones: dict, time_series: list) -> None:
+    """
+    Compute milestone times and progress_multiplier by interpolation.
+    Updates milestones dict in place.
+    """
+    if not time_series:
+        return
+
     years_arr = np.array([p['year'] for p in time_series])
     progress_arr = np.array([p.get('progress', 0) or 0 for p in time_series])
     ai_research_taste_sd_arr = np.array([p.get('aiResearchTasteSd', 0) or 0 for p in time_series])
     ai_sw_mult_arr = np.array([p.get('aiSwProgressMultRefPresentDay', 1) or 1 for p in time_series])
 
-    for milestone_name, milestone in milestones.items():
+    for milestone in milestones.values():
         metric = milestone.get('metric')
         target = milestone.get('target')
 
@@ -330,10 +350,8 @@ def extract_sw_progress_from_raw(raw_result: dict) -> dict:
         # Check if target is reached within trajectory
         if len(metric_arr) > 0 and metric_arr[-1] >= target:
             if metric_arr[0] >= target:
-                # Target already reached at start
                 milestone_time = years_arr[0]
             else:
-                # Interpolate to find crossing time
                 try:
                     milestone_time = float(np.interp(target, metric_arr, years_arr))
                 except Exception:
@@ -341,12 +359,50 @@ def extract_sw_progress_from_raw(raw_result: dict) -> dict:
 
             if milestone_time is not None:
                 milestone['time'] = milestone_time
-                # Compute progress_multiplier at milestone time
                 try:
-                    progress_mult = float(np.interp(milestone_time, years_arr, ai_sw_mult_arr))
-                    milestone['progress_multiplier'] = progress_mult
+                    milestone['progress_multiplier'] = float(np.interp(milestone_time, years_arr, ai_sw_mult_arr))
                 except Exception:
                     pass
+
+
+def extract_sw_progress_from_raw(raw_result: dict) -> dict:
+    """
+    Extract software progress time series from raw simulation result.
+
+    This transforms the raw World trajectory into the format expected
+    by the frontend for software progress visualization.
+
+    Args:
+        raw_result: Output from run_simulation_internal()
+
+    Returns:
+        dict with time_series, milestones, exp_capacity_params, horizon_params
+    """
+    times = raw_result['times']
+    trajectory = raw_result['trajectory']
+    params = raw_result['params']
+
+    sw_params = params.get('software_r_and_d', {})
+    horizon_params = {
+        'present_horizon': sw_params.get('present_horizon', 26.0),
+        'present_doubling_time': sw_params.get('present_doubling_time', 0.458),
+        'doubling_difficulty_growth_factor': sw_params.get('doubling_difficulty_growth_factor', 0.92),
+    }
+
+    # Extract time series points from trajectory
+    time_series = []
+    for i, world in enumerate(trajectory):
+        point = _extract_time_series_point(times[i], world, horizon_params)
+        if point is not None:
+            time_series.append(point)
+
+    # Compute training_compute, software_efficiency, effective_compute
+    _compute_training_and_efficiency(time_series)
+
+    # Build milestones and compute their times
+    # Pass time_series to compute progress_at_aa from horizon data if not in params
+    milestones = _build_milestones(sw_params, time_series)
+    _compute_milestone_times(milestones, time_series)
 
     return {
         'success': True,

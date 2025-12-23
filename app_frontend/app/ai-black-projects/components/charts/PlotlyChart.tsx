@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
+import { CHART_MARGINS } from '../chartConfig';
 
 // Dynamically import Plotly to avoid SSR issues
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
@@ -58,7 +59,7 @@ export function PlotlyChart({
   }
 
   const defaultLayout: Partial<Plotly.Layout> = {
-    margin: { l: 50, r: 20, t: 10, b: 50 },
+    margin: CHART_MARGINS.default,
     paper_bgcolor: 'transparent',
     plot_bgcolor: 'transparent',
     font: { family: 'inherit', size: 11 },

@@ -143,11 +143,12 @@ compute:
   survival_rate_parameters:
     initial_annual_hazard_rate: 0.01  # Per year (base p50 value)
     annual_hazard_rate_increase_per_year: 0.0035  # Per year^2 (base p50 value)
-    # Multiplier applied to both hazard rates (discrete model uses metalog p25=0.1, p50=1.0, p75=6.0)
-    # Using lognormal with ci80=[0.1, 6.0] to better match discrete model's spread
+    # Multiplier applied to both hazard rates (matches reference model's metalog with p25=0.1, p50=1.0, p75=6.0)
     hazard_rate_multiplier:
-      dist: lognormal
-      ci80: [0.1, 6.0]
+      dist: metalog
+      p25: 0.1
+      p50: 1.0
+      p75: 6.0
 
   # US compute parameters
   us_compute:
@@ -162,11 +163,12 @@ compute:
   prc_compute:
     # Discrete model uses fixed 100k H100e in 2025
     total_prc_compute_tpp_h100e_in_2025: 100000.0
-    # Growth rate: discrete uses metalog with p10=1.3, p50=2.2, p90=3.0
-    # Approximate with lognormal using ci80=[1.3, 3.0]
+    # Growth rate: matches reference model's metalog with p10=1.3, p50=2.2, p90=3.0
     annual_growth_rate_of_prc_compute_stock:
-      dist: lognormal
-      ci80: [1.3, 3.0]  # Matches discrete model metalog (p10=1.3, p50=2.2, p90=3.0)
+      dist: metalog
+      p10: 1.3
+      p50: 2.2
+      p90: 3.0
     proportion_of_compute_in_largest_ai_sw_developer: 0.5
     prc_architecture_efficiency_relative_to_state_of_the_art: 1.0
     # Domestic production capability

@@ -2,7 +2,7 @@
 
 import { PlotlyChart } from './PlotlyChart';
 import { hexToRgba } from '../colors';
-import { CHART_FONT_SIZES } from '../chartConfig';
+import { CHART_FONT_SIZES, CHART_MARGINS } from '../chartConfig';
 
 interface TimeSeriesChartProps {
   years?: number[];
@@ -72,7 +72,7 @@ export function TimeSeriesChart({
   }
 
   const layout: Partial<Plotly.Layout> = {
-    margin: { l: 60, r: 20, t: title ? 30 : 10, b: 50 },
+    margin: title ? CHART_MARGINS.withTitle : CHART_MARGINS.noTitle,
     xaxis: {
       title: { text: xLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
       tickfont: { size: CHART_FONT_SIZES.tickLabel },

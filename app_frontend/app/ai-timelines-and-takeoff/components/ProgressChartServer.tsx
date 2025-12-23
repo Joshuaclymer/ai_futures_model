@@ -7,6 +7,7 @@ import { GDocContent } from '@/components/GDocContent';
 import { convertParametersToAPIFormat, ParameterRecord } from '@/utils/monteCarlo';
 
 const DEFAULT_SEED = 12345;
+const SIMULATION_START_YEAR = 2026;
 const SIMULATION_END_YEAR = 2045;
 
 // Use local API in development, production API in production
@@ -27,8 +28,7 @@ async function fetchInitialChartData(): Promise<ComputeApiResponse> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         parameters: apiParameters,
-        time_range: [2012, SIMULATION_END_YEAR],
-        initial_progress: 0.0
+        time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
       }),
     });
 

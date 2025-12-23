@@ -2,6 +2,7 @@
 
 import { PlotlyChart } from '../../charts';
 import { COLOR_PALETTE, rgba } from '../../colors';
+import { CHART_MARGINS, CHART_HEIGHTS } from '../../chartConfig';
 
 // ===== DETECTION LATENCY DATA =====
 // This is actual data from the Flask app - Monte Carlo simulations and nuclear case studies
@@ -143,8 +144,8 @@ export function DetectionLatencyChart() {
       bgcolor: 'rgba(255,255,248,0.9)',
       font: { size: 8 }
     },
-    margin: { l: 50, r: 20, t: 10, b: 50 },
-    height: 240,
+    margin: CHART_MARGINS.default,
+    height: CHART_HEIGHTS.historical,
   };
 
   return <PlotlyChart data={traces} layout={layout} />;
@@ -217,8 +218,8 @@ export function IntelligenceAccuracyChart() {
       bgcolor: 'rgba(255,255,248,0.9)',
       font: { size: 8 }
     },
-    margin: { l: 50, r: 20, t: 10, b: 50 },
-    height: 240,
+    margin: CHART_MARGINS.default,
+    height: CHART_HEIGHTS.historical,
     annotations: data.estimatesVsReality.labels.map(lbl => ({
       x: data.estimatesVsReality.groundTruths[lbl.index],
       y: data.estimatesVsReality.estimates[lbl.index],

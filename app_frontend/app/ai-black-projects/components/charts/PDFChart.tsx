@@ -2,7 +2,7 @@
 
 import { PlotlyChart } from './PlotlyChart';
 import { hexToRgba } from '../colors';
-import { CHART_FONT_SIZES } from '../chartConfig';
+import { CHART_FONT_SIZES, CHART_MARGINS } from '../chartConfig';
 
 interface PDFChartProps {
   samples: number[];
@@ -147,7 +147,7 @@ export function PDFChart({
       tickformat: isProbability ? '.0%' : undefined,
       gridcolor: 'rgba(128, 128, 128, 0.2)',
     },
-    margin: { l: 45, r: 10, t: 10, b: 35 },
+    margin: CHART_MARGINS.compact,
     bargap: 0.05,
   };
 

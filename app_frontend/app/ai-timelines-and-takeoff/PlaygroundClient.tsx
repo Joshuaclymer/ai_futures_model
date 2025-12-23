@@ -57,6 +57,7 @@ interface SmallChartDef {
   isDataInLogForm?: boolean;
 }
 
+const SIMULATION_START_YEAR = 2026;
 const SIMULATION_END_YEAR = 2045;
 // Use relative URL to go through Next.js proxy (configured in next.config.ts)
 // This avoids CORS issues and works in both dev and production
@@ -191,6 +192,7 @@ export default function PlaygroundClient({
       : null
   );
   const [mainLoading, setMainLoading] = useState(false);
+  const [mainlineLoaded, setMainlineLoaded] = useState(false);
   const [sampleTrajectories, setSampleTrajectories] = useState<SampleTrajectoryWithParams[]>(convertedInitialSamples);
   const [samplingConfig, setSamplingConfig] = useState<SamplingConfig | null>(null);
   const [enabledSamplingParams, setEnabledSamplingParams] = useState<Set<string>>(new Set());
@@ -338,6 +340,7 @@ export default function PlaygroundClient({
     const controller = new AbortController();
     currentRequestRef.current = controller;
     setMainLoading(true);
+    setMainlineLoaded(false);
     
     try {
       const apiParameters = convertParametersToAPIFormat(params as unknown as ParameterRecord);
@@ -346,8 +349,7 @@ export default function PlaygroundClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           parameters: apiParameters,
-          time_range: [2012, SIMULATION_END_YEAR],
-          initial_progress: 0.0
+          time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
         }),
         signal: controller.signal,
       });
@@ -356,11 +358,10 @@ export default function PlaygroundClient({
       const data = await response.json();
       
       if (data.success && data.time_series) {
+        console.log('[Mainline] Loaded - showing chart data now, MC samples will start next');
         setChartData(processInitialData(data));
+        setMainlineLoaded(true);
         if (data.milestones) {
-          // Log raw milestone times for debugging
-          console.log('[PlaygroundClient] Raw AC time:', data.milestones['AC']?.time);
-          console.log('[PlaygroundClient] Raw SAR time:', data.milestones['SAR-level-experiment-selection-skill']?.time);
           setMilestones(data.milestones as MilestoneMap);
         }
       }
@@ -381,8 +382,7 @@ export default function PlaygroundClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           parameters: apiParams,
-          time_range: [2012, SIMULATION_END_YEAR],
-          initial_progress: 0.0
+          time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
         }),
         signal,
       });
@@ -419,8 +419,10 @@ export default function PlaygroundClient({
   }, []);
 
   // Fetch sample trajectories when parameters change
+  // Samples are fetched SEQUENTIALLY to avoid overwhelming the backend with parallel calibrations
+  // Wait for mainline to load first so user sees mainline data before MC samples start
   useEffect(() => {
-    if (!samplingConfig) return;
+    if (!samplingConfig || !mainlineLoaded) return;
 
     if (hasUsedInitialSamplesRef.current && sampleTrajectories.length > 0) {
       hasUsedInitialSamplesRef.current = false;
@@ -434,42 +436,45 @@ export default function PlaygroundClient({
     const abortController = new AbortController();
     sampleTrajectoriesAbortRef.current = abortController;
 
-    const fetchAllSamples = async () => {
+    const fetchSamplesSequentially = async () => {
+      console.log(`[MC Samples] Starting to fetch ${numSamples} samples sequentially...`);
       const userParams = convertParametersForSampling(parameters);
 
-      const samplePromises = Array.from({ length: numSamples }, async () => {
+      // Fetch samples one at a time to avoid overwhelming backend with parallel calibrations
+      // Each sample appears on the chart as soon as it's ready
+      for (let i = 0; i < numSamples; i++) {
+        if (abortController.signal.aborted) break;
+
         const sampleParams = generateParameterSampleWithUserValues(samplingConfig, userParams, enabledSamplingParams);
-        
+
         try {
           const trajectory = await fetchSampleTrajectory(sampleParams, abortController.signal);
-          
-          if (abortController.signal.aborted) return null;
-          
+
+          if (abortController.signal.aborted) break;
+
           if (trajectory) {
-            setSampleTrajectories(prev => [...prev, { 
+            console.log(`[MC Sample ${i + 1}/${numSamples}] Loaded and added to chart`);
+            setSampleTrajectories(prev => [...prev, {
               trajectory: trajectory.map((p: { year: number; horizonLength: number; effectiveCompute: number; automationFraction?: number; trainingCompute?: number; aiSwProgressMultRefPresentDay?: number }) => ({
                 ...p,
                 horizonFormatted: formatWorkTimeDuration(p.horizonLength),
-              })) as ChartDataPoint[], 
+              })) as ChartDataPoint[],
               params: sampleParams as Record<string, number | string | boolean>
             }]);
           }
-          return trajectory;
         } catch {
-          return null;
+          // Continue to next sample on error
         }
-      });
-
-      await Promise.allSettled(samplePromises);
+      }
     };
 
     setSampleTrajectories([]);
-    fetchAllSamples();
+    fetchSamplesSequentially();
 
     return () => {
       abortController.abort();
     };
-  }, [samplingConfig, fetchSampleTrajectory, resampleTrigger, enabledSamplingParams, parameters, convertParametersForSampling, numSamples]);
+  }, [samplingConfig, mainlineLoaded, fetchSampleTrajectory, resampleTrigger, enabledSamplingParams, parameters, convertParametersForSampling, numSamples]);
 
   // Handle parameter change
   const handleParameterChange = useCallback((param: keyof ParametersType, value: number) => {
@@ -495,7 +500,7 @@ export default function PlaygroundClient({
     setResampleTrigger(prev => prev + 1);
   }, [fetchComputeData, parameters]);
 
-  // URL sync
+  // URL sync and initial fetch
   useEffect(() => {
     const urlState = decodeFullStateFromParams(searchParams);
     if (urlState) {
@@ -505,6 +510,9 @@ export default function PlaygroundClient({
       setEnableExperimentAutomation(urlState.enableExperimentAutomation);
       setEnableSoftwareProgress(urlState.enableSoftwareProgress);
       fetchComputeData(urlState.parameters);
+    } else if (chartData.length === 0) {
+      // No URL state and no initial data - fetch with default parameters
+      fetchComputeData(parameters);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

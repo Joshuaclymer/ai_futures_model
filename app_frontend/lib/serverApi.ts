@@ -1,4 +1,3 @@
-import { cacheLife } from 'next/cache';
 import { promises as fs } from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
@@ -12,6 +11,7 @@ import {
   initializeCorrelationSampling 
 } from '@/utils/sampling';
 
+const SIMULATION_START_YEAR = 2026;
 const SIMULATION_END_YEAR = 2045;
 const VISIBLE_CHART_START_YEAR = 2018;
 const NUM_SAMPLES = 10;
@@ -89,8 +89,7 @@ async function fetchSingleTrajectory(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         parameters: apiParameters,
-        time_range: [2012, SIMULATION_END_YEAR],
-        initial_progress: 0.0
+        time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
       }),
     });
 
@@ -109,11 +108,8 @@ async function fetchSingleTrajectory(
   }
 }
 
-// Cached function to fetch compute data - cache key includes parameters
+// Fetch compute data (no caching for development)
 export async function fetchComputeData(parameters: ParametersType): Promise<ComputeApiResponse> {
-  'use cache';
-  cacheLife('hours');
-
   try {
     const apiParameters = convertParametersToAPIFormat(parameters as unknown as ParameterRecord);
     
@@ -122,8 +118,7 @@ export async function fetchComputeData(parameters: ParametersType): Promise<Comp
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         parameters: apiParameters,
-        time_range: [2012, SIMULATION_END_YEAR],
-        initial_progress: 0.0
+        time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
       }),
     });
 
@@ -140,13 +135,11 @@ export async function fetchComputeData(parameters: ParametersType): Promise<Comp
   }
 }
 
-// Cached function to fetch sample trajectories with a seed
+// Fetch sample trajectories with a seed (no caching for development)
 export async function fetchSampleTrajectories(
   baseParameters: ParametersType,
   seed: number
 ): Promise<SampleTrajectory[]> {
-  'use cache';
-  cacheLife('hours');
 
   const samplingConfig = await loadSamplingConfig();
   if (!samplingConfig) {

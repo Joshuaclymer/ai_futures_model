@@ -4,8 +4,8 @@ import { useMemo } from 'react';
 import { COLOR_PALETTE } from '@/types/blackProject';
 import { CCDFChart, TimeSeriesChart, PlotlyChart } from '../charts';
 import { hexToRgba } from '../colors';
-import { CHART_FONT_SIZES } from '../chartConfig';
-import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamValue } from '../ui';
+import { CHART_FONT_SIZES, CHART_MARGINS } from '../chartConfig';
+import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamValue, Dashboard, DashboardItem } from '../ui';
 import { Parameters, SimulationData } from '../../types';
 
 interface DatacenterSectionProps {
@@ -194,7 +194,7 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
       borderwidth: 0,
     },
     hovermode: 'closest',
-    margin: { l: 55, r: 55, t: 10, b: 50 },
+    margin: CHART_MARGINS.dualAxis,
   };
 
   // Get CCDF data for capacity - handle both [{x, y}, ...] and {x: [], y: []} formats
@@ -265,22 +265,19 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
       {/* Top Section: Dashboard + Plots */}
       <div className="flex flex-wrap gap-5 items-start">
         {/* Dashboard */}
-        <div className="bp-dashboard w-60 flex-shrink-0">
-          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 20 }}>Median outcome</div>
-          <div className="space-y-5">
-            <div className="bp-dashboard-item">
-              <div className="bp-dashboard-value" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
-                {dashboardValues.capacity}
-              </div>
-              <div className="bp-dashboard-label">Datacenter capacity built before detection</div>
-              <div className="text-xs text-gray-400">Detection means a ≥4x update</div>
-            </div>
-            <div className="bp-dashboard-item">
-              <div className="bp-dashboard-value-small">{dashboardValues.time}</div>
-              <div className="bp-dashboard-label-light">Years operational before detection</div>
-            </div>
-          </div>
-        </div>
+        <Dashboard className="w-60">
+          <DashboardItem
+            value={dashboardValues.capacity}
+            label="Datacenter capacity built before detection"
+            sublabel="Detection means a ≥4x update"
+            valueColor={COLOR_PALETTE.datacenters_and_energy}
+          />
+          <DashboardItem
+            value={dashboardValues.time}
+            label="Years operational before detection"
+            size="small"
+          />
+        </Dashboard>
 
         {/* Capacity CCDF Plot */}
         <div className="bp-plot-container flex-1 min-w-[280px]">

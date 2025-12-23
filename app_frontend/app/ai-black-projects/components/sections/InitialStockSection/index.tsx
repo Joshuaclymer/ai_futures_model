@@ -5,30 +5,9 @@ import { COLOR_PALETTE } from '@/types/blackProject';
 import { PlotlyChart } from '../../charts';
 import { hexToRgba, DETECTION_THRESHOLD_COLORS } from '../../colors';
 import { CHART_FONT_SIZES } from '../../chartConfig';
-import { ParamValue } from '../../ui';
+import { ParamValue, Dashboard, DashboardItem } from '../../ui';
 import { Parameters, SimulationData } from '../../../types';
-
-// Type for initial stock data from API
-interface TimeSeriesPercentiles {
-  p25: number[];
-  median: number[];
-  p75: number[];
-}
-
-interface InitialStockData {
-  initial_prc_stock_samples: number[];
-  initial_compute_stock_samples: number[];
-  initial_energy_samples: number[];
-  diversion_proportion: number;
-  lr_prc_accounting_samples: number[];
-  initial_black_project_detection_probs: Record<string, number>;
-  prc_compute_years: number[];
-  prc_compute_over_time: TimeSeriesPercentiles;
-  prc_domestic_compute_over_time: { median: number[] };
-  proportion_domestic_by_year: number[];
-  largest_company_compute_over_time?: number[];
-  state_of_the_art_energy_efficiency_relative_to_h100: number;
-}
+import { parseInitialStockData, InitialStockData } from '../../../utils/typeGuards';
 
 interface InitialStockSectionProps {
   data: SimulationData | null;
@@ -150,7 +129,7 @@ export function InitialStockSection({
   // Use API data from data.initial_stock, with null fallback when not available
   const initialStock: InitialStockData | null = useMemo(() => {
     if (data?.initial_stock) {
-      return data.initial_stock as unknown as InitialStockData;
+      return parseInitialStockData(data.initial_stock);
     }
     return null;
   }, [data]);
@@ -245,7 +224,14 @@ export function InitialStockSection({
     const proportionDomestic = initialStock?.proportion_domestic_by_year;
     const largestCompany = initialStock?.largest_company_compute_over_time;
 
-    if (!years?.length || !overTime?.median?.length) return [];
+    console.log('[prcComputeOverTimeData] years length:', years?.length);
+    console.log('[prcComputeOverTimeData] overTime:', overTime);
+    console.log('[prcComputeOverTimeData] overTime.median length:', overTime?.median?.length);
+
+    if (!years?.length || !overTime?.median?.length) {
+      console.log('[prcComputeOverTimeData] Returning empty - missing data');
+      return [];
+    }
 
     const traces: Plotly.Data[] = [];
 
@@ -368,21 +354,19 @@ export function InitialStockSection({
       {/* Dashboard and Detection Plots */}
       <div className="flex flex-wrap gap-5 items-stretch mb-2">
         {/* Dashboard */}
-        <div className="dashboard" style={{ flex: '0 0 auto', width: 240, padding: 20 }}>
-          <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 20 }}>
-            Median outcome
-          </div>
-          <div className="dashboard-item" style={{ marginBottom: 20 }}>
-            <div className="dashboard-value">{dashboardValues.medianDarkCompute}</div>
-            <div style={{ fontSize: 18, color: '#666', marginBottom: 5 }}>{dashboardValues.medianEnergy}</div>
-            <div className="dashboard-label">Initial PRC dark compute stock</div>
-          </div>
-          <div className="dashboard-item">
-            <div className="dashboard-value-small">{dashboardValues.detectionProb}</div>
-            <div className="dashboard-label-light">Probability of detection</div>
-            <div className="dashboard-sublabel">Detection means a {'\u2265'}4x likelihood ratio</div>
-          </div>
-        </div>
+        <Dashboard style={{ flex: '0 0 auto' }}>
+          <DashboardItem
+            value={dashboardValues.medianDarkCompute}
+            secondary={dashboardValues.medianEnergy}
+            label="Initial PRC dark compute stock"
+          />
+          <DashboardItem
+            value={dashboardValues.detectionProb}
+            label="Probability of detection"
+            sublabel={`Detection means a \u22654x likelihood ratio`}
+            size="small"
+          />
+        </Dashboard>
 
         {/* Detection Probability Bar Chart */}
         <div className="plot-container" style={{ flex: '1 1 200px', minWidth: 200, padding: 20 }}>

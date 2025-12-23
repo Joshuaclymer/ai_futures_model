@@ -2,7 +2,7 @@
 
 import { PlotlyChart } from './PlotlyChart';
 import { COLOR_PALETTE, hexToRgba } from '../colors';
-import { CHART_FONT_SIZES } from '../chartConfig';
+import { CHART_FONT_SIZES, CHART_MARGINS } from '../chartConfig';
 
 interface EnergyStackedAreaChartProps {
   years: number[];
@@ -146,7 +146,7 @@ export function EnergyStackedAreaChart({
       range: [0, yMax],
       automargin: true,
     },
-    margin: { l: 45, r: 10, t: 10, b: 35 },
+    margin: CHART_MARGINS.compact,
     hovermode: 'x unified',
     showlegend: true,
     legend: {

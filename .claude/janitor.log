@@ -1,0 +1,26 @@
+I've scanned the codebase and updated `code_cleanliness_status.md` with my findings. Here's a summary of what I found:
+
+**Key Updates:**
+
+1. **Inline styles** - Updated the existing entry with more detail: found 116 occurrences across 17 files. The worst offenders are:
+   - DatacenterSection.tsx (34 inline styles)
+   - CovertFabSection (27)
+   - InitialStockSection (17)
+   - Tooltip (10)
+
+2. **New backend issues identified:**
+   - 2 TODO comments in `black_project_simulation.py` (lines 256 and 266)
+   - `sys.path.insert` used in 12+ files - fragile path manipulation that could benefit from proper Python packaging
+
+3. **New issues section** added with:
+   - **Low priority:** Hardcoded absolute paths in scripts, untracked pycache files showing in git status
+   - **Medium priority:** The sys.path manipulation pattern and the high inline style count in DatacenterSection
+
+**Current state:**
+- CSS file reduced from 1284 to 792 lines (improvement complete)
+- Section files are under the 1000-line limit but trending upward (CovertFabSection at 707 lines)
+- Many improvements already completed from previous scans
+Error: --resume requires a valid session ID when used with --print
+Usage: claude -p --resume <session-id>
+Session IDs must be in UUID format (e.g., 550e8400-e29b-41d4-a716-446655440000)
+Provided value "janitor" is not a valid UUID

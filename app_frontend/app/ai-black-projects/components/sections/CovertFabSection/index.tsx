@@ -3,7 +3,7 @@
 import { TimeSeriesChart, CCDFChart, PlotlyChart, PDFChart } from '../../charts';
 import { COLOR_PALETTE, DETECTION_THRESHOLD_COLORS, hexToRgba } from '../../colors';
 import { CHART_FONT_SIZES } from '../../chartConfig';
-import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamLink, ParamValue } from '../../ui';
+import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamLink, ParamValue, Dashboard, DashboardItem } from '../../ui';
 import { Parameters, SimulationData } from '../../../types';
 
 // Consistent loading indicator style (matches "No data available" style)
@@ -45,7 +45,7 @@ export interface CovertFabApiData {
   chips_per_wafer?: number;
   architecture_efficiency?: number;
   h100_power?: number;
-  transistor_density?: { node: string; density: number; wattsPerTpp?: number }[];
+  transistor_density?: { node: string; density: number; wattsPerTpp?: number; probability?: number }[];
   compute_per_month?: TimeSeriesData;
   watts_per_tpp_curve?: {
     densityRelative: number[];
@@ -62,35 +62,33 @@ interface CovertFabSectionProps {
 }
 
 
-// Dashboard component
-function Dashboard({ dashboard }: { dashboard?: DashboardData }) {
+// CovertFab Dashboard wrapper using shared Dashboard component
+function CovertFabDashboard({ dashboard }: { dashboard?: DashboardData }) {
   if (!dashboard) return <div className="bp-dashboard" style={{ width: '240px' }}><LoadingIndicator /></div>;
   return (
-    <div className="bp-dashboard" style={{ width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '20px' }}>
-      <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 20 }}>
-        Median outcome
-      </div>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        <div className="bp-dashboard-item">
-          <div className="bp-dashboard-value">{dashboard.production}</div>
-          <div className="bp-dashboard-label" style={{ fontWeight: 600 }}>Production before detection</div>
-          <div style={{ fontSize: '20px', color: '#666', marginTop: '4px' }}>{dashboard.energy}</div>
-          <div className="bp-dashboard-sublabel" style={{ fontSize: '10px', color: '#777' }}>Detection means &ge;5x update</div>
-        </div>
-        <div className="bp-dashboard-item">
-          <div className="bp-dashboard-value-small">{dashboard.probFabBuilt}</div>
-          <div className="bp-dashboard-label-light">Probability covert fab is built</div>
-        </div>
-        <div className="bp-dashboard-item">
-          <div className="bp-dashboard-value-small">{dashboard.yearsOperational}</div>
-          <div className="bp-dashboard-label-light">Years operational before detection</div>
-        </div>
-        <div className="bp-dashboard-item">
-          <div className="bp-dashboard-value-small">{dashboard.processNode}</div>
-          <div className="bp-dashboard-label-light">Process node</div>
-        </div>
-      </div>
-    </div>
+    <Dashboard>
+      <DashboardItem
+        value={dashboard.production}
+        secondary={dashboard.energy}
+        label="Production before detection"
+        sublabel="Detection means ≥5x update"
+      />
+      <DashboardItem
+        value={dashboard.probFabBuilt}
+        label="Probability covert fab is built"
+        size="small"
+      />
+      <DashboardItem
+        value={dashboard.yearsOperational}
+        label="Years operational before detection"
+        size="small"
+      />
+      <DashboardItem
+        value={dashboard.processNode}
+        label="Process node"
+        size="small"
+      />
+    </Dashboard>
   );
 }
 
@@ -364,16 +362,24 @@ function WaferStartsPlot({ samples }: { samples?: number[] }) {
   );
 }
 
-// Transistor Density Bar Plot by Process Node
-function TransistorDensityPlot({ data }: { data?: { node: string; density: number }[] }) {
+// Transistor Density Bar Plot by Process Node - shows probability distribution
+function TransistorDensityPlot({ data }: { data?: { node: string; density: number; probability?: number }[] }) {
   if (!data || data.length === 0) return <LoadingIndicator />;
+
+  // If probability data is available, show probability distribution
+  const hasProbability = data.some(d => d.probability !== undefined && d.probability > 0);
+
   const traces: Plotly.Data[] = [
     {
-      x: data.map(d => d.node),
-      y: data.map(d => d.density),
+      // X-axis: show density with node label (e.g., "0.06x (28nm)")
+      x: data.map(d => hasProbability ? `${d.density.toFixed(2)}x (${d.node})` : d.node),
+      // Y-axis: show probability if available, otherwise density
+      y: data.map(d => hasProbability ? (d.probability || 0) : d.density),
       type: 'bar' as const,
       marker: { color: COLOR_PALETTE.fab },
-      hovertemplate: '%{x}: %{y:.2f}x H100<extra></extra>',
+      hovertemplate: hasProbability
+        ? '%{x}: %{y:.1%} probability<extra></extra>'
+        : '%{x}: %{y:.2f}x H100<extra></extra>',
     },
   ];
 
@@ -382,15 +388,17 @@ function TransistorDensityPlot({ data }: { data?: { node: string; density: numbe
       data={traces}
       layout={{
         xaxis: {
-          title: { text: 'Process Node', font: { size: CHART_FONT_SIZES.axisTitle } },
+          title: { text: hasProbability ? '' : 'Process Node', font: { size: CHART_FONT_SIZES.axisTitle } },
           tickfont: { size: CHART_FONT_SIZES.tickLabel },
+          tickangle: hasProbability ? -30 : 0,
         },
         yaxis: {
-          title: { text: 'Density (rel. to H100)', font: { size: CHART_FONT_SIZES.axisTitle } },
+          title: { text: hasProbability ? 'Probability' : 'Density (rel. to H100)', font: { size: CHART_FONT_SIZES.axisTitle } },
           tickfont: { size: CHART_FONT_SIZES.tickLabel },
+          range: hasProbability ? [0, 1] : undefined,
         },
         bargap: 0.3,
-        margin: { l: 50, r: 10, t: 10, b: 50 },
+        margin: { l: 50, r: 10, t: 10, b: hasProbability ? 70 : 50 },
       }}
     />
   );
@@ -413,24 +421,52 @@ function ComputePerMonthPlot({ data }: { data?: TimeSeriesData }) {
   );
 }
 
-// Watts per TPP Curve Plot
+// H100 reference transistor density (M/mm²)
+const H100_TRANSISTOR_DENSITY = 98.28;
+
+// Watts per TPP Curve Plot - computes curve dynamically from parameters
 function WattsPerTppPlot({
-  curveData,
-  simDensities
+  simDensities,
+  transistorDensityAtEndOfDennard,
+  exponentBeforeDennard,
+  exponentAfterDennard,
 }: {
-  curveData?: CovertFabApiData['watts_per_tpp_curve'];
-  simDensities?: { node: string; density: number; wattsPerTpp?: number }[]
+  simDensities?: { node: string; density: number; wattsPerTpp?: number }[];
+  transistorDensityAtEndOfDennard: number; // M/mm²
+  exponentBeforeDennard: number; // e.g., -1.0
+  exponentAfterDennard: number; // e.g., -0.33
 }) {
-  if (!curveData || !simDensities) return <div className="text-gray-400 text-sm">No data available</div>;
+  if (!simDensities) return <div className="text-gray-400 text-sm">No data available</div>;
 
   // Filter points that have wattsPerTpp data
   const validPoints = simDensities.filter(d => d.wattsPerTpp !== undefined);
 
+  // Convert Dennard scaling end from M/mm² to relative density (rel. to H100)
+  const dennardScalingEnd = transistorDensityAtEndOfDennard / H100_TRANSISTOR_DENSITY;
+
+  // Compute curve dynamically based on parameters
+  // W/TPP = density^exponent, normalized so W/TPP = 1 at density = 1 (H100)
+  const densityPoints = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0];
+
+  const computeWattsPerTpp = (density: number): number => {
+    if (density < dennardScalingEnd) {
+      // Before Dennard scaling: steeper exponent
+      // Need to ensure continuity at dennardScalingEnd
+      const wattsAtDennard = Math.pow(dennardScalingEnd, exponentAfterDennard);
+      return wattsAtDennard * Math.pow(density / dennardScalingEnd, exponentBeforeDennard);
+    } else {
+      // After Dennard scaling: shallower exponent
+      return Math.pow(density, exponentAfterDennard);
+    }
+  };
+
+  const wattsPerTppPoints = densityPoints.map(computeWattsPerTpp);
+
   const traces: Plotly.Data[] = [
     // Curve
     {
-      x: curveData.densityRelative,
-      y: curveData.wattsPerTppRelative,
+      x: densityPoints,
+      y: wattsPerTppPoints,
       type: 'scatter' as const,
       mode: 'lines' as const,
       line: { color: '#7DD4C0', width: 2 },
@@ -449,6 +485,10 @@ function WattsPerTppPlot({
     }] : []),
   ];
 
+  // Compute y-axis range based on actual data
+  const yMin = Math.min(...wattsPerTppPoints.filter(y => y > 0));
+  const yMax = Math.max(...wattsPerTppPoints);
+
   return (
     <PlotlyChart
       data={traces}
@@ -462,10 +502,45 @@ function WattsPerTppPlot({
         yaxis: {
           title: { text: 'Watts per TPP (rel. to H100)', font: { size: CHART_FONT_SIZES.axisTitle } },
           type: 'log',
+          range: [Math.log10(Math.max(0.01, yMin * 0.5)), Math.log10(yMax * 2)],
           tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         showlegend: false,
         margin: { l: 60, r: 10, t: 10, b: 50 },
+        shapes: [
+          // Vertical dashed line for "End of Dennard Scaling"
+          {
+            type: 'line',
+            x0: dennardScalingEnd,
+            x1: dennardScalingEnd,
+            y0: yMin * 0.5,
+            y1: yMax * 2,
+            xref: 'x',
+            yref: 'y',
+            line: {
+              color: '#888888',
+              width: 1.5,
+              dash: 'dash',
+            },
+          },
+        ],
+        annotations: [
+          // Label for "End of Dennard Scaling"
+          {
+            x: Math.log10(dennardScalingEnd),
+            y: Math.log10(yMax * 0.8),
+            xref: 'x',
+            yref: 'y',
+            text: 'End of Dennard<br>Scaling',
+            showarrow: false,
+            font: {
+              size: 10,
+              color: '#666666',
+            },
+            xanchor: 'right',
+            xshift: -5,
+          },
+        ],
       }}
     />
   );
@@ -509,7 +584,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
   const waferStartsSamples = covertFabData?.wafer_starts_samples;
   const transistorDensityData = covertFabData?.transistor_density;
   const computePerMonthData = covertFabData?.compute_per_month;
-  const wattsPerTppCurveData = covertFabData?.watts_per_tpp_curve;
+  // wattsPerTppCurveData no longer needed - curve computed dynamically from parameters
   const energyPerMonthData = covertFabData?.energy_per_month;
   const chipsPerWafer = covertFabData?.chips_per_wafer;
   const archEfficiency = covertFabData?.architecture_efficiency;
@@ -532,7 +607,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
 
       {/* Top section: Dashboard + 2 plots */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginBottom: '10px', alignItems: 'stretch' }}>
-        <Dashboard dashboard={dashboard} />
+        <CovertFabDashboard dashboard={dashboard} />
 
         <div className="bp-plot-container" style={{ flex: '1 1 200px', minWidth: '200px', padding: '20px', display: 'flex', flexDirection: 'column' }}>
           <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
@@ -662,7 +737,12 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
               <>Energy efficiency follows W/TPP ∝ (density)^exponent. Exponent is <ParamValue paramKey="wattsTppDensityExponentBeforeDennard" parameters={parameters} /> before Dennard scaling ended (2006) and <ParamValue paramKey="wattsTppDensityExponentAfterDennard" parameters={parameters} /> after.</>
             }
           >
-            <WattsPerTppPlot curveData={wattsPerTppCurveData} simDensities={transistorDensityData} />
+            <WattsPerTppPlot
+              simDensities={transistorDensityData}
+              transistorDensityAtEndOfDennard={parameters.transistorDensityAtEndOfDennardScaling}
+              exponentBeforeDennard={parameters.wattsTppDensityExponentBeforeDennard}
+              exponentAfterDennard={parameters.wattsTppDensityExponentAfterDennard}
+            />
           </BreakdownItem>
 
           <Operator>&times;</Operator>

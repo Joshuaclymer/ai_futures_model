@@ -18,12 +18,13 @@ export default function DatacenterTestClient() {
   const [error, setError] = useState<string | null>(null);
   const [parameters] = useState(defaultParameters);
 
-  // Fetch data from dummy API endpoint
+  // Fetch data from Flask backend dummy API endpoint
   useEffect(() => {
     async function fetchData() {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/black-project-dummy?agreement_year=2027');
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5329';
+        const response = await fetch(`${BACKEND_URL}/api/black-project-dummy?agreement_year=2027`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -45,7 +46,7 @@ export default function DatacenterTestClient() {
       {/* Status info */}
       <div className="mb-6 p-4 bg-white border rounded">
         <div className="text-sm text-gray-600">
-          <strong>Data source:</strong> /api/black-project-dummy
+          <strong>Data source:</strong> Flask backend at localhost:5329/api/black-project-dummy
         </div>
         {isLoading && <div className="text-blue-600 mt-2">Loading...</div>}
         {error && <div className="text-red-600 mt-2">Error: {error}</div>}

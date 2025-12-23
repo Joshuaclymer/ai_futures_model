@@ -225,6 +225,7 @@ const interpolateChartDataPoints = (
 };
 
 const VISIBLE_CHART_START_YEAR = 2019;
+const SIMULATION_START_YEAR = 2026;
 const SIMULATION_END_YEAR = 2045; // Simulation end year (matches sampling_config.yaml)
 const CODING_AUTOMATION_MARKER_COLOR = '#6b7280';
 // Benchmark data will be loaded dynamically from YAML file
@@ -1149,8 +1150,7 @@ export default function ProgressChart({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             parameters: apiParameters,
-            time_range: [2012, SIMULATION_END_YEAR],
-            initial_progress: 0.0,
+            time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
             enable_profiling: profilingEnabled
           }),
           signal,
@@ -1281,8 +1281,7 @@ export default function ProgressChart({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             parameters: apiParameters,
-            time_range: [2012, SIMULATION_END_YEAR],
-            initial_progress: 0.0
+            time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
           }),
           signal,
           priority: 'low'
@@ -1486,7 +1485,7 @@ export default function ProgressChart({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sliderParams: allParams,
-          timeRange: [2012, SIMULATION_END_YEAR]
+          timeRange: [SIMULATION_START_YEAR, SIMULATION_END_YEAR]
         }),
         signal: abortController.signal
       });

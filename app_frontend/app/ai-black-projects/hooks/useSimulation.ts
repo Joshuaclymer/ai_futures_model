@@ -3,6 +3,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Parameters, SimulationData, defaultParameters } from '../types';
 
+// Flask backend URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5329';
+
 // Configuration for API behavior
 const USE_REAL_BACKEND = true;
 const FALLBACK_TO_DUMMY = false; // DISABLED - only use real backend data
@@ -66,10 +69,14 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
 
   // Fetch from real backend
   const fetchFromRealBackend = async (params: Parameters, signal: AbortSignal) => {
-    const response = await fetch('/api/black-project', {
+    const response = await fetch(`${BACKEND_URL}/api/run-black-project-simulation`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
+      body: JSON.stringify({
+        parameters: params,
+        num_simulations: params.numSimulations || 100,
+        time_range: [params.agreementYear || 2027, (params.agreementYear || 2027) + (params.numYearsToSimulate || 10)],
+      }),
       signal,
     });
 
@@ -97,7 +104,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
       try {
         // Step 1: Fetch defaults from backend YAML
         console.log('[useSimulation] Fetching defaults from YAML...');
-        const defaultsResponse = await fetch('/api/black-project-defaults', {
+        const defaultsResponse = await fetch(`${BACKEND_URL}/api/black-project-defaults`, {
           signal: controller.signal,
         });
 

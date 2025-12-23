@@ -42,11 +42,11 @@ from black_project_backend.util import _cache as discrete_cache
 from world_updaters.black_project import initialize_black_project
 from world_updaters.compute.black_compute import (
     compute_lr_over_time_vs_num_workers,
-    calculate_survival_rate,
     calculate_concealed_capacity_gw,
     calculate_datacenter_capacity_gw,
     calculate_operating_compute,
 )
+from world_updaters.compute.chip_survival import calculate_survival_rate
 from parameters.black_project_parameters import (
     BlackProjectParameters,
     BlackProjectProperties,
@@ -289,6 +289,8 @@ def create_dummy_prc_nation(compute_stock_h100e: float, energy_efficiency: float
         ai_research_taste=torch.tensor(0.0),
         ai_research_taste_sd=torch.tensor(0.0),
         aggregate_research_taste=torch.tensor(0.0),
+        initial_progress=torch.tensor(0.0),
+        software_efficiency=torch.tensor(0.0),
     )
 
     prc_compute = Compute(

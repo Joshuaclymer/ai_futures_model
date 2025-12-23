@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Parameters } from '../../types';
 import { Slider, CollapsibleSection } from '../ui';
 import { HEADER_HEIGHT } from '../Header';
+import './ParameterSidebar.css';
 
 interface ParameterSidebarProps {
   parameters: Parameters;

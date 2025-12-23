@@ -319,15 +319,18 @@ def run_local_detection_model():
         bp_perception.mean_detection_time_for_1000_workers
     )
     mu = compute_mean_detection_time(int(bp_props.total_labor), A, B)
-    variance = bp_perception.variance_of_detection_time_given_num_workers
+    variance_param = bp_perception.variance_of_detection_time_given_num_workers
 
-    # Correct Gamma parameterization: theta = variance/mean, k = mean^2/variance
-    theta = variance / mu
-    k = (mu ** 2) / variance
+    # Gamma parameterization matching discrete reference model:
+    # variance_param is used directly as scale (theta)
+    # k = mu / theta gives mean = k * theta = mu
+    theta = variance_param
+    k = mu / theta
+    gamma_variance = mu * theta  # Actual Gamma variance = k * theta^2 = mu * theta
 
     print(f"\nExpected Detection Time (Gamma distribution):")
     print(f"  Mean: {mu:.4f} years")
-    print(f"  Variance: {variance:.4f}")
+    print(f"  Gamma variance: {gamma_variance:.4f}")
     print(f"  Shape k: {k:.4f}")
     print(f"  Scale theta: {theta:.4f}")
 

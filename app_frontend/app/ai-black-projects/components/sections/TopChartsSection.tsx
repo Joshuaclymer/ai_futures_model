@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { CCDFChart } from '../charts';
 import { COLOR_PALETTE } from '../colors';
 import { SimulationData, MultiThresholdCCDF } from '../../types';
+import './TopChartsSection.css';
 
 interface TopChartsSectionProps {
   data: SimulationData | null;
