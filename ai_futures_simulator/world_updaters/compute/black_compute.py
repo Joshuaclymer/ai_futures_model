@@ -33,33 +33,64 @@ def calculate_fab_construction_duration(
     prc_compute_params: "PRCComputeParameters" = None,
     construction_time_for_5k_wafers: float = None,
     construction_time_for_100k_wafers: float = None,
+    construction_workers_per_1000_wafers_per_month: float = None,
+    construction_time_multiplier: float = None,
 ) -> float:
     """
     Calculate fab construction duration based on labor and target capacity.
 
-    Uses log-linear interpolation between reference points.
+    Uses a fixed-proportions production function where construction time depends on:
+    1. Fab capacity: Larger fabs take longer to build (log-linear relationship)
+    2. Construction labor: Fewer workers than required extends construction time
+    3. Uncertainty multiplier: Sampled from lognormal (median=1.0, relative_sigma=0.35)
+
+    This matches the discrete model's estimate_construction_duration function.
     """
-    # Get construction times from params or use defaults
+    # Get construction times and labor requirements from params or use defaults
     if prc_compute_params is not None:
         construction_time_for_5k_wafers = prc_compute_params.construction_time_for_5k_wafers_per_month
         construction_time_for_100k_wafers = prc_compute_params.construction_time_for_100k_wafers_per_month
+        construction_time_multiplier = prc_compute_params.fab_construction_time_multiplier
+        # Convert from wafers_per_worker to workers_per_1000_wafers
+        # wafers_per_worker = 14.1 means we need 14.1 workers per 1000 wafers/month
+        construction_workers_per_1000_wafers_per_month = 14.1  # Default from discrete model
     else:
         construction_time_for_5k_wafers = construction_time_for_5k_wafers or 1.4
         construction_time_for_100k_wafers = construction_time_for_100k_wafers or 2.41
+        construction_workers_per_1000_wafers_per_month = construction_workers_per_1000_wafers_per_month or 14.1
+        construction_time_multiplier = construction_time_multiplier or 1.0
 
     if target_wafer_starts_per_month <= 0:
         return 2.0  # Default
 
-    # Log-linear interpolation
-    log_5k = math.log(5000)
-    log_100k = math.log(100000)
-    log_target = math.log(target_wafer_starts_per_month)
+    # Step 1: Log-linear interpolation for base construction duration given capacity
+    # Uses log10 to match discrete model formula: time = slope * log10(wafers) + intercept
+    log10_5k = math.log10(5000)
+    log10_100k = math.log10(100000)
+    log10_target = math.log10(target_wafer_starts_per_month)
 
-    # Linear interpolation in log space
-    t = (log_target - log_5k) / (log_100k - log_5k) if log_100k != log_5k else 0.5
-    t = max(0, min(1, t))  # Clamp
+    # Calculate slope and intercept for log-linear extrapolation
+    slope = (construction_time_for_100k_wafers - construction_time_for_5k_wafers) / (log10_100k - log10_5k)
+    intercept = construction_time_for_5k_wafers - slope * log10_5k
 
-    return construction_time_for_5k_wafers + t * (construction_time_for_100k_wafers - construction_time_for_5k_wafers)
+    # Calculate base construction duration from capacity
+    construction_duration = slope * log10_target + intercept
+
+    # Step 2: Calculate construction labor requirement given wafer capacity
+    # The discrete model uses: workers_needed = (workers_per_1000_wafers / 1000) * wafer_capacity
+    construction_labor_requirement = (
+        construction_workers_per_1000_wafers_per_month / 1000.0
+    ) * target_wafer_starts_per_month
+
+    # Step 3: If actual labor < required labor, extend construction duration proportionally
+    if fab_construction_labor < construction_labor_requirement and fab_construction_labor > 0:
+        construction_duration *= (construction_labor_requirement / fab_construction_labor)
+
+    # Step 4: Apply uncertainty multiplier (sampled from lognormal in monte carlo mode)
+    # This matches discrete model which samples from lognormal with relative_sigma=0.35
+    construction_duration *= construction_time_multiplier
+
+    return construction_duration
 
 
 def calculate_fab_wafer_starts_per_month(
@@ -191,33 +222,6 @@ def calculate_datacenter_operating_labor(
 # COMPUTE METRIC CALCULATIONS
 # =============================================================================
 
-def calculate_survival_rate(
-    years_since_acquisition: float,
-    initial_hazard_rate: float,
-    hazard_rate_increase_per_year: float,
-) -> float:
-    """Calculate chip survival rate using Weibull-like hazard model."""
-    if years_since_acquisition <= 0:
-        return 1.0
-
-    # Cumulative hazard: integral of h(t) = h0 + h1*t
-    # H(t) = h0*t + h1*t^2/2
-    cumulative_hazard = (
-        initial_hazard_rate * years_since_acquisition +
-        hazard_rate_increase_per_year * years_since_acquisition ** 2 / 2
-    )
-
-    return math.exp(-cumulative_hazard)
-
-
-def calculate_functional_compute(
-    all_compute_h100e: float,
-    survival_rate: float,
-) -> float:
-    """Calculate functional compute after attrition."""
-    return all_compute_h100e * survival_rate
-
-
 def calculate_operating_compute(
     functional_compute_h100e: float,
     datacenter_capacity_gw: float,
@@ -300,9 +304,22 @@ def sample_detection_time(
     labor: int,
     mean_detection_time_100_workers: float,
     mean_detection_time_1000_workers: float,
-    variance_theta: float
+    variance: float
 ) -> float:
-    """Sample a detection time from the Gamma distribution for a given labor level."""
+    """
+    Sample a detection time from the Gamma distribution for a given labor level.
+
+    The Gamma distribution is parameterized by:
+    - Mean = k * theta
+    - Variance = k * theta^2
+
+    The 'variance' parameter is used directly as the scale parameter (theta).
+    This matches the discrete reference model where variance_theta is passed
+    directly to scipy.stats.gamma as the scale parameter.
+    With k = mu / theta, we get:
+    - Mean = k * theta = mu
+    - Variance = k * theta^2 = mu * theta
+    """
     if labor <= 1:
         return float('inf')
 
@@ -312,9 +329,13 @@ def sample_detection_time(
     )
 
     mu = compute_mean_detection_time(labor, A, B)
-    k = mu / variance_theta  # shape parameter
 
-    return float(np.random.gamma(k, variance_theta))
+    # The 'variance' parameter is used directly as theta (scale parameter)
+    # This matches the discrete reference model's parameterization
+    theta = variance
+    k = mu / theta
+
+    return float(np.random.gamma(k, theta))
 
 
 def sample_us_estimate_with_error(true_quantity: float, median_error: float) -> float:
@@ -417,14 +438,55 @@ def compute_lr_from_prc_compute_accounting(
     )
 
 
+def compute_lr_from_sme_inventory(
+    reported_scanner_count: float,
+    diversion_proportion: float,
+    us_estimate_scanners: float,
+    median_error: float
+) -> float:
+    """
+    Calculate likelihood ratio from SME (lithography scanner) inventory accounting.
+
+    If a covert project exists, some scanners were diverted, so:
+    - reported_scanners = true_scanners * (1 - diversion_proportion)
+    - true_scanners = reported_scanners / (1 - diversion_proportion)
+
+    Args:
+        reported_scanner_count: Number of scanners reported (after diversion)
+        diversion_proportion: Fraction of scanners diverted to black project
+        us_estimate_scanners: US intelligence estimate of scanner count
+        median_error: Median relative error in US estimates (e.g., 0.07 for 7%)
+
+    Returns:
+        Likelihood ratio P(evidence | project exists) / P(evidence | no project)
+    """
+    if reported_scanner_count < 1e-10 or diversion_proportion <= 0:
+        return 1.0
+
+    true_scanners_if_exists = reported_scanner_count / (1 - diversion_proportion)
+
+    return lr_from_discrepancy_in_us_estimate(
+        true_if_project_exists=true_scanners_if_exists,
+        true_if_no_project=reported_scanner_count,
+        us_estimate=us_estimate_scanners,
+        median_error=median_error
+    )
+
+
 def compute_lr_over_time_vs_num_workers(
     labor_by_year: Dict[float, int],
     mean_detection_time_100_workers: float,
     mean_detection_time_1000_workers: float,
-    variance_theta: float
+    variance: float
 ) -> Tuple[Dict[float, float], float]:
     """
     Calculate likelihood ratios over time accounting for variable labor.
+
+    Args:
+        labor_by_year: Dict mapping year (relative to project start) to labor count
+        mean_detection_time_100_workers: Mean detection time for 100 workers
+        mean_detection_time_1000_workers: Mean detection time for 1000 workers
+        variance: Scale parameter (theta) for the Gamma distribution, used directly
 
     Returns:
         Tuple of (lr_by_year dict, sampled_detection_time)
@@ -442,8 +504,12 @@ def compute_lr_over_time_vs_num_workers(
     # For simplicity, use the average labor level
     avg_labor = sum(labor_by_year.values()) / len(labor_by_year)
     mu = A / (np.log10(max(avg_labor, 2)) ** B)
-    k = mu / variance_theta
-    time_of_detection = float(np.random.gamma(k, variance_theta))
+
+    # The 'variance' parameter is used directly as theta (scale parameter)
+    # This matches the discrete reference model's parameterization
+    theta = variance
+    k = mu / theta
+    time_of_detection = float(np.random.gamma(k, theta))
 
     # Calculate likelihood ratios for each year
     lr_by_year = {}
@@ -456,9 +522,9 @@ def compute_lr_over_time_vs_num_workers(
                 lr_by_year[year] = 1.0
                 continue
 
-            mu = A / (np.log10(labor) ** B)
-            k = mu / variance_theta
-            p_not_detected = stats.gamma.sf(year, a=k, scale=variance_theta)
+            mu_year = A / (np.log10(labor) ** B)
+            k_year = mu_year / theta
+            p_not_detected = stats.gamma.sf(year, a=k_year, scale=theta)
             lr_by_year[year] = max(p_not_detected, 0.001)
 
     return lr_by_year, time_of_detection
@@ -469,9 +535,21 @@ def compute_detection_probability(
     labor: int,
     mean_detection_time_100_workers: float,
     mean_detection_time_1000_workers: float,
-    variance_theta: float
+    variance: float
 ) -> float:
-    """Compute the probability of detection by a given time."""
+    """
+    Compute the probability of detection by a given time.
+
+    Args:
+        years_since_start: Time since project started
+        labor: Number of workers
+        mean_detection_time_100_workers: Mean detection time for 100 workers
+        mean_detection_time_1000_workers: Mean detection time for 1000 workers
+        variance: Scale parameter (theta) for the Gamma distribution, used directly
+
+    Returns:
+        Probability of detection by the given time
+    """
     if labor <= 1 or years_since_start <= 0:
         return 0.0
 
@@ -481,6 +559,229 @@ def compute_detection_probability(
     )
 
     mu = compute_mean_detection_time(labor, A, B)
-    k = mu / variance_theta
 
-    return float(stats.gamma.cdf(years_since_start, a=k, scale=variance_theta))
+    # The 'variance' parameter is used directly as theta (scale parameter)
+    theta = variance
+    k = mu / theta
+
+    return float(stats.gamma.cdf(years_since_start, a=k, scale=theta))
+
+
+# =============================================================================
+# CONTINUOUS DETECTION MODEL (HAZARD RATE APPROACH)
+# =============================================================================
+
+def compute_gamma_hazard_rate(
+    t: float,
+    k: float,
+    theta: float,
+    min_hazard: float = 1e-10,
+    max_hazard: float = 100.0
+) -> float:
+    """
+    Compute the hazard rate h(t) for a Gamma(k, theta) distribution.
+
+    The hazard rate is h(t) = f(t) / S(t) where:
+    - f(t) is the PDF
+    - S(t) = 1 - F(t) is the survival function
+
+    For the detection model, this represents the instantaneous rate of detection
+    at time t, given that detection has not occurred yet.
+
+    Args:
+        t: Time since project start (years)
+        k: Shape parameter (k = mu / theta)
+        theta: Scale parameter (variance parameter from detection config)
+        min_hazard: Minimum hazard rate to return (prevents numerical issues)
+        max_hazard: Maximum hazard rate to return (caps extreme values)
+
+    Returns:
+        Hazard rate h(t)
+    """
+    if t <= 0 or k <= 0 or theta <= 0:
+        return min_hazard
+
+    # Use scipy's gamma distribution functions
+    pdf = stats.gamma.pdf(t, a=k, scale=theta)
+    survival = stats.gamma.sf(t, a=k, scale=theta)  # sf = survival function = 1 - cdf
+
+    if survival < 1e-15:
+        # If survival is essentially 0, detection is certain
+        return max_hazard
+
+    hazard = pdf / survival
+    return float(np.clip(hazard, min_hazard, max_hazard))
+
+
+def compute_worker_detection_hazard_rate(
+    t: float,
+    labor: int,
+    mean_detection_time_100_workers: float,
+    mean_detection_time_1000_workers: float,
+    variance: float
+) -> float:
+    """
+    Compute the instantaneous hazard rate for worker-based detection.
+
+    This is the continuous derivative of the log-likelihood ratio contribution
+    from worker-based intelligence detection. The hazard rate h(t) represents
+    the rate at which evidence accumulates against the project.
+
+    Args:
+        t: Time since project start (years)
+        labor: Number of workers in the black project
+        mean_detection_time_100_workers: Mean detection time for 100 workers
+        mean_detection_time_1000_workers: Mean detection time for 1000 workers
+        variance: Scale parameter (theta) for the Gamma distribution, used directly
+
+    Returns:
+        Hazard rate h(t) for worker-based detection
+    """
+    if labor <= 1 or t <= 0:
+        return 0.0
+
+    A, B = compute_detection_constants(
+        mean_detection_time_100_workers,
+        mean_detection_time_1000_workers
+    )
+
+    mu = compute_mean_detection_time(labor, A, B)
+    if mu <= 0:
+        return 0.0
+
+    # The 'variance' parameter is used directly as theta (scale parameter)
+    theta = variance
+    k = mu / theta
+
+    return compute_gamma_hazard_rate(t, k, theta)
+
+
+def compute_log_survival_probability(
+    t: float,
+    labor: int,
+    mean_detection_time_100_workers: float,
+    mean_detection_time_1000_workers: float,
+    variance: float
+) -> float:
+    """
+    Compute log(S(t)) where S(t) is the survival probability for worker detection.
+
+    The survival probability S(t) = P(detection time > t) is the probability
+    that the project has NOT been detected by time t. The log of this is
+    used as the log-likelihood ratio contribution from worker-based evidence.
+
+    Args:
+        t: Time since project start (years)
+        labor: Number of workers in the black project
+        mean_detection_time_100_workers: Mean detection time for 100 workers
+        mean_detection_time_1000_workers: Mean detection time for 1000 workers
+        variance: Scale parameter (theta) for the Gamma distribution, used directly
+
+    Returns:
+        log(S(t)) - this is negative and becomes more negative over time
+    """
+    if labor <= 1 or t <= 0:
+        return 0.0  # log(1) = 0, no evidence accumulation
+
+    A, B = compute_detection_constants(
+        mean_detection_time_100_workers,
+        mean_detection_time_1000_workers
+    )
+
+    mu = compute_mean_detection_time(labor, A, B)
+    if mu <= 0:
+        return 0.0
+
+    # The 'variance' parameter is used directly as theta (scale parameter)
+    theta = variance
+    k = mu / theta
+
+    # Survival function S(t) = 1 - CDF(t)
+    survival = stats.gamma.sf(t, a=k, scale=theta)
+
+    if survival < 1e-15:
+        return -35.0  # log(1e-15) ≈ -34.5, cap to prevent -inf
+
+    return float(np.log(survival))
+
+
+def compute_cumulative_log_lr(
+    t: float,
+    labor: int,
+    mean_detection_time_100_workers: float,
+    mean_detection_time_1000_workers: float,
+    variance: float,
+    static_log_lr: float = 0.0,
+    detected: bool = False,
+    detection_log_lr: float = np.log(100.0)
+) -> float:
+    """
+    Compute the cumulative log-likelihood ratio at time t.
+
+    The total LR combines:
+    1. Static evidence (resource accounting, SME inventory, etc.) - constant
+    2. Worker-based evidence - evolves over time based on survival probability
+    3. Detection event - if detected, LR jumps to detection_log_lr
+
+    Args:
+        t: Time since project start (years)
+        labor: Number of workers in the black project
+        mean_detection_time_100_workers: Mean detection time for 100 workers
+        mean_detection_time_1000_workers: Mean detection time for 1000 workers
+        variance: Scale parameter (theta) for the Gamma distribution, used directly
+        static_log_lr: Log-LR from static evidence sources (computed at init)
+        detected: Whether detection has occurred
+        detection_log_lr: Log-LR to assign after detection (default log(100))
+
+    Returns:
+        Cumulative log-likelihood ratio
+    """
+    if detected:
+        # After detection, LR is high (evidence strongly supports project exists)
+        return static_log_lr + detection_log_lr
+
+    # Before detection, worker evidence is based on survival probability
+    # LR_workers = S(t) because no detection = evidence against project
+    # As time passes without detection, this becomes more evidence against
+    log_survival = compute_log_survival_probability(
+        t, labor,
+        mean_detection_time_100_workers,
+        mean_detection_time_1000_workers,
+        variance
+    )
+
+    return static_log_lr + log_survival
+
+
+def compute_posterior_probability(
+    cumulative_log_lr: float,
+    prior_odds: float
+) -> float:
+    """
+    Compute posterior probability of project existing from log-LR.
+
+    Using Bayes' theorem:
+    posterior_odds = prior_odds * likelihood_ratio
+    posterior_prob = posterior_odds / (1 + posterior_odds)
+
+    Args:
+        cumulative_log_lr: Cumulative log-likelihood ratio
+        prior_odds: Prior odds of project existing (odds = p / (1-p))
+
+    Returns:
+        Posterior probability P(project exists | evidence)
+    """
+    # Compute posterior odds in log space to avoid overflow
+    log_prior_odds = np.log(prior_odds) if prior_odds > 0 else -35.0
+    log_posterior_odds = log_prior_odds + cumulative_log_lr
+
+    # Convert to probability
+    # P = odds / (1 + odds) = 1 / (1 + 1/odds) = 1 / (1 + exp(-log_odds))
+    # This is the sigmoid function
+    if log_posterior_odds > 35:
+        return 1.0
+    elif log_posterior_odds < -35:
+        return 0.0
+
+    posterior_odds = np.exp(log_posterior_odds)
+    return float(posterior_odds / (1 + posterior_odds))

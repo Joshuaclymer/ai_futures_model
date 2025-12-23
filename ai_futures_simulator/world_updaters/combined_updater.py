@@ -36,24 +36,35 @@ class CombinedUpdater(WorldUpdater):
 
         # If no updaters provided, create default set based on params
         if updaters is None:
-            from world_updaters.software_r_and_d import SoftwareRAndD
-            from world_updaters.ai_software_developers import AISoftwareDeveloperUpdater
-            from world_updaters.compute.nation_compute import NationComputeUpdater
+            from world_updaters.compute import ComputeUpdater
             updaters = [
-                SoftwareRAndD(params),
-                AISoftwareDeveloperUpdater(params),
-                NationComputeUpdater(params),
+                ComputeUpdater(params),  # Handles nation compute, chip survival, and AI sw developer compute
             ]
+
+            # Add software R&D updater only if enabled (calibration is slow)
+            # Append at end so it runs AFTER ComputeUpdater, ensuring the time-series
+            # interpolated values (used in R&D computation) are stored on the developer
+            # entity for serialization rather than the nation-based compute values.
+            if (params.software_r_and_d is not None and
+                params.software_r_and_d.update_software_progress):
+                from world_updaters.software_r_and_d import SoftwareRAndD
+                updaters.append(SoftwareRAndD(params))
 
             # Add black project updater if enabled in params
             if (params.black_project is not None and
                 params.black_project.run_a_black_project):
                 from world_updaters.black_project import BlackProjectUpdater
+                # Get perception params for detection model
+                perception_params = None
+                if (params.perceptions is not None and
+                    hasattr(params.perceptions, 'black_project_perception_parameters')):
+                    perception_params = params.perceptions.black_project_perception_parameters
                 updaters.append(BlackProjectUpdater(
                     params=params,
                     black_project_params=params.black_project,
                     compute_params=params.compute,
                     energy_params=params.datacenter_and_energy,
+                    perception_params=perception_params,
                 ))
 
             # Add perceptions updater if enabled in params

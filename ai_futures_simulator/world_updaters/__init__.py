@@ -6,4 +6,9 @@ Each WorldUpdater can contribute to d(state)/dt or directly set state/metric val
 
 from world_updaters.combined_updater import WorldUpdater, CombinedUpdater
 from world_updaters.software_r_and_d import SoftwareRAndD
-from world_updaters.ai_software_developers import AISoftwareDeveloperUpdater
+from world_updaters.compute import ComputeUpdater
+from world_updaters.ai_researchers import (
+    NationResearcherUpdater,
+    AISoftwareDeveloperResearcherUpdater,
+    BlackProjectResearcherUpdater,
+)

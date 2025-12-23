@@ -19,9 +19,14 @@ LAST_YEAR_IN_HISTORY = 2026
 
 def initialize_world_for_year(params: SimulationParameters, year: int) -> World:
     """Initialize the world state for a specific year."""
-    # Initialize USA with AI developer
+    # Initialize AI developer
     us_developer = initialize_us_frontier_lab(params, year)
-    usa = initialize_usa(params, year, ai_software_developers=[us_developer])
+
+    # Compute total operating compute from developer
+    total_compute = sum(c.functional_tpp_h100e for c in us_developer.operating_compute) if us_developer.operating_compute else 0.0
+
+    # Initialize USA with total compute
+    usa = initialize_usa(params, year, total_compute=total_compute)
 
     # Initialize PRC
     prc = initialize_prc(params, year)

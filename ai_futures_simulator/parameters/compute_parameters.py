@@ -20,11 +20,16 @@ class ExogenousComputeTrends:
 class USComputeParameters:
     us_frontier_project_compute_tpp_h100e_in_2025: float
     us_frontier_project_compute_annual_growth_rate: float # annual multiplier
+    proportion_of_compute_in_largest_ai_sw_developer: float
+    # Training compute slowdown parameters (to match old model's behavior)
+    slowdown_year: float  # Year when training compute growth rate slows down
+    post_slowdown_training_compute_growth_rate: float  # OOMs/year after slowdown
 
 @dataclass
 class PRCComputeParameters:
     total_prc_compute_tpp_h100e_in_2025: float
     annual_growth_rate_of_prc_compute_stock: float
+    proportion_of_compute_in_largest_ai_sw_developer: float
     prc_architecture_efficiency_relative_to_state_of_the_art : float # This should be 1.0
 
     proportion_of_prc_chip_stock_produced_domestically_2026: float
@@ -44,15 +49,33 @@ class PRCComputeParameters:
     wafers_per_month_per_lithography_scanner: float
     construction_time_for_5k_wafers_per_month: float
     construction_time_for_100k_wafers_per_month: float
-    
+
     # Converting between number of workers and fab capacity (for black projects)
     fab_wafers_per_month_per_operating_worker: float
     fab_wafers_per_month_per_construction_worker_under_standard_timeline: float
 
+    # Fab construction time uncertainty multiplier (sampled from lognormal, median=1.0)
+    # Discrete model applies relative_sigma=0.35 to computed duration
+    fab_construction_time_multiplier: float = 1.0
+
 @dataclass
 class SurvivalRateParameters:
-    initial_annual_hazard_rate: float  # Per year (median estimate)
-    annual_hazard_rate_increase_per_year: float  # Per year^2 (median estimate)
+    # Base hazard rate parameters (p50 values)
+    initial_annual_hazard_rate: float  # Per year (base value, will be multiplied by hazard_rate_multiplier)
+    annual_hazard_rate_increase_per_year: float  # Per year^2 (base value, will be multiplied by hazard_rate_multiplier)
+    # Multiplier applied to both hazard rates (sampled from distribution in Monte Carlo mode)
+    # Discrete model uses metalog with p25=0.1, p50=1.0, p75=6.0
+    hazard_rate_multiplier: float = 1.0  # Default to 1.0 (no change from base values)
+
+    @property
+    def effective_initial_hazard_rate(self) -> float:
+        """Initial hazard rate after applying multiplier."""
+        return self.initial_annual_hazard_rate * self.hazard_rate_multiplier
+
+    @property
+    def effective_hazard_rate_increase(self) -> float:
+        """Hazard rate increase per year after applying multiplier."""
+        return self.annual_hazard_rate_increase_per_year * self.hazard_rate_multiplier
 
 @dataclass
 class ComputeParameters:

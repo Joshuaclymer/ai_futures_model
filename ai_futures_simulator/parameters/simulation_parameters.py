@@ -44,6 +44,11 @@ from parameters.perceptions_parameters import (
     PerceptionsParameters,
     BlackProjectPerceptionsParameters,
 )
+from parameters.ai_researcher_headcount_parameters import (
+    AIResearcherHeadcountParameters,
+    USResearcherParameters,
+    PRCResearcherParameters,
+)
 
 
 @dataclass
@@ -84,6 +89,7 @@ class SimulationParameters:
     compute: ComputeParameters
     datacenter_and_energy: DataCenterAndEnergyParameters
     policy: PolicyParameters
+    ai_researcher_headcount: Optional[AIResearcherHeadcountParameters] = None
     black_project: Optional[BlackProjectParameters] = None
     perceptions: Optional[PerceptionsParameters] = None
 
@@ -115,6 +121,14 @@ class SimulationParameters:
             result["perceptions"] = {
                 "update_perceptions": self.perceptions.update_perceptions,
                 "black_project_perception_parameters": self.perceptions.black_project_perception_parameters.__dict__,
+            }
+        # Add AI researcher headcount parameters if present
+        if self.ai_researcher_headcount:
+            result["ai_researcher_headcount"] = {
+                "us_researchers": self.ai_researcher_headcount.us_researchers.__dict__,
+                "prc_researchers": self.ai_researcher_headcount.prc_researchers.__dict__,
+                "initial_global_ai_researcher_headcount": self.ai_researcher_headcount.initial_global_ai_researcher_headcount,
+                "annual_growth_rate_of_ai_researcher_headcount": self.ai_researcher_headcount.annual_growth_rate_of_ai_researcher_headcount,
             }
         return result
 
@@ -178,6 +192,7 @@ class ModelParameters:
     compute: Dict[str, Any] = field(default_factory=dict)
     datacenter_and_energy: Dict[str, Any] = field(default_factory=dict)
     policy: Dict[str, Any] = field(default_factory=dict)
+    ai_researcher_headcount: Optional[Dict[str, Any]] = None
     black_project: Optional[Dict[str, Any]] = None
     perceptions: Optional[Dict[str, Any]] = None
 
@@ -206,6 +221,7 @@ class ModelParameters:
             compute=config.get("compute", {}),
             datacenter_and_energy=config.get("datacenter_and_energy", {}),
             policy=config.get("policy", {}),
+            ai_researcher_headcount=config.get("ai_researcher_headcount"),
             black_project=config.get("black_project"),
             perceptions=config.get("perceptions"),
             correlation_matrix=config.get("correlation_matrix"),
@@ -311,12 +327,34 @@ class ModelParameters:
                 ),
             )
 
+        # Build AI researcher headcount parameters if present
+        ai_researcher_headcount = None
+        if self.ai_researcher_headcount is not None:
+            sampled_researchers = self._sample_nested_dict(self.ai_researcher_headcount, rng)
+            ai_researcher_headcount = AIResearcherHeadcountParameters(
+                us_researchers=USResearcherParameters(**sampled_researchers.get("us_researchers", {})),
+                prc_researchers=PRCResearcherParameters(**sampled_researchers.get("prc_researchers", {})),
+                initial_global_ai_researcher_headcount=sampled_researchers.get(
+                    "initial_global_ai_researcher_headcount", 90000.0
+                ),
+                annual_growth_rate_of_ai_researcher_headcount=sampled_researchers.get(
+                    "annual_growth_rate_of_ai_researcher_headcount", 1.12
+                ),
+                proportion_of_global_ai_researchers_in_us=sampled_researchers.get(
+                    "proportion_of_global_ai_researchers_in_us", 0.55
+                ),
+                proportion_of_global_ai_researchers_in_prc=sampled_researchers.get(
+                    "proportion_of_global_ai_researchers_in_prc", 0.44
+                ),
+            )
+
         return SimulationParameters(
             settings=settings,
             software_r_and_d=software_r_and_d,
             compute=compute,
             datacenter_and_energy=datacenter_and_energy,
             policy=policy,
+            ai_researcher_headcount=ai_researcher_headcount,
             black_project=black_project,
             perceptions=perceptions,
         )

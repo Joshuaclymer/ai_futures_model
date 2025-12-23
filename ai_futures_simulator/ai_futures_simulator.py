@@ -153,58 +153,36 @@ class AIFuturesSimulator(nn.Module):
         rtol = getattr(settings, 'ode_rtol', DEFAULT_ODE_RTOL)
         atol = getattr(settings, 'ode_atol', DEFAULT_ODE_ATOL)
 
-        # Phase 1: Discover events dynamically
-        segments = self._discover_events(
-            combined, initial_world.to_state_tensor(), initial_world,
-            start_time, end_time, rtol, atol
+        # Integrate all eval points at once, then check for discrete events
+        eval_times = torch.linspace(start_time, end_time, settings.n_eval_points)
+
+        # Single odeint call for all eval times
+        initial_state = initial_world.to_state_tensor()
+        states = odeint(
+            combined, initial_state, eval_times,
+            method='dopri5', rtol=rtol, atol=atol
         )
 
-        # Phase 2: Collect trajectory at eval points using discovered segments
-        eval_times = torch.linspace(start_time, end_time, settings.n_eval_points)
+        # Convert states to World objects and apply discrete events
         trajectory = []
-        eval_idx = 0
+        current_template = initial_world
 
-        for seg_idx in range(len(segments)):
-            seg_start, seg_state, seg_template = segments[seg_idx]
-            seg_end = segments[seg_idx + 1][0] if seg_idx + 1 < len(segments) else end_time
+        for i in range(len(eval_times)):
+            t = eval_times[i]
+            state_tensor = states[i]
 
-            combined.set_world_template(seg_template)
+            world = World.from_state_tensor(state_tensor, current_template)
 
-            # Find eval points within this segment
-            segment_eval_times = []
-            segment_eval_indices = []
-            while eval_idx < len(eval_times):
-                t = eval_times[eval_idx].item()
-                if t > seg_end or (t == seg_end and seg_idx + 1 < len(segments)):
-                    break
-                if t >= seg_start:
-                    segment_eval_times.append(t)
-                    segment_eval_indices.append(eval_idx)
-                eval_idx += 1
+            # Check for and apply discrete events
+            updated = combined.set_state_attributes(t, world)
+            if updated is not None:
+                world = updated
+                current_template = world
+                combined.set_world_template(world)
 
-            if not segment_eval_times:
-                continue
-
-            # Build time list for integration
-            times_list = segment_eval_times.copy()
-            if times_list[0] > seg_start:
-                times_list = [seg_start] + times_list
-
-            times_tensor = torch.tensor(times_list)
-            states = odeint(
-                combined, seg_state, times_tensor,
-                method='dopri5', rtol=rtol, atol=atol
-            )
-
-            # Extract states at eval points
-            state_offset = 1 if times_list[0] == seg_start and segment_eval_times[0] > seg_start else 0
-            for i, eval_i in enumerate(segment_eval_indices):
-                state_tensor = states[i + state_offset]
-                t = eval_times[eval_i]
-
-                world = World.from_state_tensor(state_tensor, seg_template)
-                world = combined.set_metric_attributes(t, world)
-                trajectory.append(world)
+            # Compute metrics
+            world = combined.set_metric_attributes(t, world)
+            trajectory.append(world)
 
         return SimulationResult(
             times=eval_times,
@@ -262,7 +240,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="AI Futures Simulator")
     parser.add_argument(
-        "--config",
+        "--params",
         type=str,
         default="parameters/modal_parameters.yaml",
         help="Path to YAML config file (default: parameters/modal_parameters.yaml)"
@@ -273,9 +251,9 @@ if __name__ == "__main__":
     print("=" * 60)
 
     # Load parameters from YAML
-    config_path = Path(args.config)
-    print(f"\nLoading parameters from: {config_path}")
-    model_params = ModelParameters.from_yaml(config_path)
+    params_path = Path(args.params)
+    print(f"\nLoading parameters from: {params_path}")
+    model_params = ModelParameters.from_yaml(params_path)
     simulator = AIFuturesSimulator(model_parameters=model_params)
 
     print("Running simulation...")

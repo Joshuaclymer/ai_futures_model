@@ -2,11 +2,29 @@
 Compute-related world updaters and utility functions.
 
 This module contains:
+- ComputeUpdater: Combined updater that orchestrates all compute updates
 - NationComputeUpdater: Updates compute stock for nations
+- AISoftwareDeveloperComputeUpdater: Updates compute for AI software developers
+- Chip survival utilities: Functions for modeling chip attrition
 - Black project compute utilities: Functions for covert compute calculations
 """
 
+from world_updaters.compute.update_compute import ComputeUpdater
 from world_updaters.compute.nation_compute import NationComputeUpdater
+from world_updaters.compute.ai_sw_developer_compute import AISoftwareDeveloperComputeUpdater
+from world_updaters.compute.chip_survival import (
+    # Core attrition model functions
+    calculate_hazard_rate,
+    calculate_attrition_rate,
+    calculate_compute_derivative,
+    calculate_average_age_derivative,
+    calculate_production_rate_from_growth,
+    calculate_derivatives_with_attrition,
+    # Legacy functions for single-cohort survival
+    calculate_survival_rate,
+    calculate_functional_compute,
+    calculate_survival_rate_from_params,
+)
 from world_updaters.compute.black_compute import (
     # Fab calculations
     calculate_fab_construction_duration,
@@ -18,9 +36,7 @@ from world_updaters.compute.black_compute import (
     calculate_concealed_capacity_gw,
     calculate_datacenter_capacity_gw,
     calculate_datacenter_operating_labor,
-    # Compute calculations
-    calculate_survival_rate,
-    calculate_functional_compute,
+    # Compute calculations (operating compute only - survival moved to chip_survival.py)
     calculate_operating_compute,
     # Labor utility
     get_black_project_total_labor,
@@ -38,7 +54,22 @@ from world_updaters.compute.black_compute import (
 )
 
 __all__ = [
+    # Combined updater
+    'ComputeUpdater',
+    # Individual updaters
     'NationComputeUpdater',
+    'AISoftwareDeveloperComputeUpdater',
+    # Chip attrition model functions
+    'calculate_hazard_rate',
+    'calculate_attrition_rate',
+    'calculate_compute_derivative',
+    'calculate_average_age_derivative',
+    'calculate_production_rate_from_growth',
+    'calculate_derivatives_with_attrition',
+    # Legacy single-cohort survival functions
+    'calculate_survival_rate',
+    'calculate_functional_compute',
+    'calculate_survival_rate_from_params',
     # Fab calculations
     'calculate_fab_construction_duration',
     'calculate_fab_wafer_starts_per_month',
@@ -50,8 +81,6 @@ __all__ = [
     'calculate_datacenter_capacity_gw',
     'calculate_datacenter_operating_labor',
     # Compute calculations
-    'calculate_survival_rate',
-    'calculate_functional_compute',
     'calculate_operating_compute',
     # Labor utility
     'get_black_project_total_labor',

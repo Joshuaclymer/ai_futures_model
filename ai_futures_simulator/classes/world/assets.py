@@ -17,8 +17,8 @@ class Assets():
 @dataclass
 class Compute(Assets, TensorDataclass):
     """Represents the stock of a single type of chip."""
-    all_tpp_h100e: float = field(metadata={'is_state': True})
     functional_tpp_h100e: float = field(metadata={'is_state': True})
+    tpp_h100e_including_attrition: float = field(metadata={'is_state': True})
     watts_per_h100e: float = field(metadata={'is_state': True})
     average_functional_chip_age_years : float = field(metadata={'is_state': True})
 
@@ -28,7 +28,7 @@ class Datacenters(TensorDataclass):
 
 @dataclass
 class Fabs(TensorDataclass):
-    monthly_production_compute: Compute = field(metadata={'is_state': True})
+    monthly_compute_production: Compute = field(metadata={'is_state': True})
 
 @dataclass
 class ProcessNode():

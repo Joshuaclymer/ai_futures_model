@@ -2,7 +2,7 @@
 Software R&D world updater.
 
 Updates AI software progress for all AI developers in the world.
-Uses the full AI takeoff model logic by importing from ai_takeoff_model.
+Uses the full AI takeoff model logic by importing from the progress_model package.
 """
 
 import sys
@@ -10,27 +10,25 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Add new version of takeoff model to path (contains the progress_model package)
-# Path: ai_futures_simulator/ai_futures_simulator/world_updaters/software_r_and_d.py
-# Need to go up 3 levels to reach ai_futures_simulator/ then into new_version_of_takeoff_model/
-AI_FUTURES_CALCULATOR_PATH = Path(__file__).resolve().parent.parent.parent / "new_version_of_takeoff_model" / "ai-futures-calculator"
-if str(AI_FUTURES_CALCULATOR_PATH) not in sys.path:
-    sys.path.insert(0, str(AI_FUTURES_CALCULATOR_PATH))
+# Add progress_model package to path
+PROGRESS_MODEL_PATH = Path(__file__).resolve().parent.parent.parent / "new_version_of_takeoff_model" / "ai-futures-calculator"
+if str(PROGRESS_MODEL_PATH) not in sys.path:
+    sys.path.insert(0, str(PROGRESS_MODEL_PATH))
 
 import torch
 from torch import Tensor
 
 from classes.world.world import World
+from classes.world.entities import AISoftwareDeveloper
 from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.simulation_parameters import SimulationParameters
 from parameters.calibrate import calibrate_from_params, CalibratedParameters
 
-# Import key functions from the new progress_model package
+# Import key functions from the progress_model package
 from progress_model import (
     compute_coding_labor_deprecated as compute_coding_labor,
     compute_research_effort,
     compute_software_progress_rate,
-    compute_overall_progress_rate,
     compute_automation_fraction,
     compute_ai_research_taste,
     compute_aggregate_research_taste,
@@ -40,18 +38,24 @@ from progress_model import (
 )
 import model_config as cfg
 
+# Load historical time series data for interpolation
+# This is the same data used by the reference ProgressModel
+_HISTORICAL_CSV_PATH = PROGRESS_MODEL_PATH / "input_data.csv"
+_historical_time_series = None
 
-def _load_time_series_data() -> TimeSeriesData:
-    """Load time-varying inputs from the same CSV used by ai-futures-calculator."""
-    csv_path = AI_FUTURES_CALCULATOR_PATH / "input_data.csv"
-    df = pd.read_csv(csv_path)
-    return TimeSeriesData(
-        time=df['time'].values,
-        L_HUMAN=df['L_HUMAN'].values,
-        inference_compute=df['inference_compute'].values,
-        experiment_compute=df['experiment_compute'].values,
-        training_compute_growth_rate=df['training_compute_growth_rate'].values
-    )
+def _load_historical_time_series() -> TimeSeriesData:
+    """Load the historical time series data for compute interpolation."""
+    global _historical_time_series
+    if _historical_time_series is None:
+        df = pd.read_csv(_HISTORICAL_CSV_PATH)
+        _historical_time_series = TimeSeriesData(
+            time=df['time'].values,
+            L_HUMAN=df['L_HUMAN'].values,
+            inference_compute=df['inference_compute'].values,
+            experiment_compute=df['experiment_compute'].values,
+            training_compute_growth_rate=df['training_compute_growth_rate'].values,
+        )
+    return _historical_time_series
 
 
 class SoftwareRAndD(WorldUpdater):
@@ -63,7 +67,12 @@ class SoftwareRAndD(WorldUpdater):
     - CES production functions for coding labor and experiment capacity
     - Automation fraction based on progress
     - AI research taste dynamics
-    - Training compute growth with slowdown
+
+    Inputs (human_labor, inference_compute, experiment_compute) are obtained
+    from the AISoftwareDeveloper's properties:
+    - human_labor = human_ai_capability_researchers
+    - inference_compute = ai_r_and_d_inference_compute_tpp_h100e
+    - experiment_compute = ai_r_and_d_training_compute_tpp_h100e
 
     Parameters are calibrated at initialization using parameters/calibrate.py.
     """
@@ -73,9 +82,6 @@ class SoftwareRAndD(WorldUpdater):
         self.params = params
         self.r_and_d = params.software_r_and_d
 
-        # Load time-varying inputs (same as old backend)
-        self._time_series = _load_time_series_data()
-
         # Run calibration to get computed parameter values
         # Pass start_year so r_software is calibrated correctly for the requested time range
         start_year = float(params.settings.simulation_start_year)
@@ -84,55 +90,126 @@ class SoftwareRAndD(WorldUpdater):
         # Create a TakeoffParameters object with calibrated values
         self._takeoff_params = self._create_takeoff_params()
 
-    def _interpolate_inputs(self, t: float) -> tuple:
+    def _get_inputs_from_developer(self, dev: AISoftwareDeveloper, current_time: float = None) -> tuple:
         """
-        Interpolate time-varying inputs at time t.
-        Uses log-space interpolation for exponentially growing quantities
-        to match the reference model's behavior and prevent scalloping.
+        Get R&D inputs from the AISoftwareDeveloper entity.
 
         Returns (human_labor, inference_compute, experiment_compute, training_compute_growth_rate).
+
+        If current_time is provided:
+        - For years in the historical range (up to 2026): interpolate from the historical
+          time series CSV (same as reference ProgressModel)
+        - For years after 2026: apply growth from 2026 base values using slowdown logic
         """
-        ts = self._time_series
+        import math
 
-        # Use log-space interpolation for exponentially growing quantities
-        # This prevents scalloping on log plots and handles exponential growth better
-        if ts.can_use_log_L_HUMAN:
-            human_labor = float(np.exp(np.interp(t, ts.time, ts.log_L_HUMAN)))
-        else:
-            human_labor = float(np.interp(t, ts.time, ts.L_HUMAN))
+        # Load historical time series for interpolation
+        ts = _load_historical_time_series()
 
+        # Default values from developer entity (for fallback)
+        human_labor_default = float(dev.human_ai_capability_researchers)
+        inference_compute_default = float(dev.ai_r_and_d_inference_compute_tpp_h100e)
+        experiment_compute_default = float(dev.ai_r_and_d_training_compute_tpp_h100e)
+        training_compute_growth_rate_default = float(dev.training_compute_growth_rate)
+
+        if current_time is None:
+            return (human_labor_default, inference_compute_default,
+                    experiment_compute_default, training_compute_growth_rate_default)
+
+        # Get time bounds from historical data
+        time_min = float(ts.time.min())  # ~2012
+        time_max = float(ts.time.max())  # ~2026
+
+        # Use log-space interpolation for exponentially growing compute values
+        # (matches reference model's approach)
         if ts.can_use_log_inference_compute:
-            inference_compute = float(np.exp(np.interp(t, ts.time, ts.log_inference_compute)))
+            inference_compute = float(np.exp(np.interp(
+                min(current_time, time_max), ts.time, ts.log_inference_compute
+            )))
         else:
-            inference_compute = float(np.interp(t, ts.time, ts.inference_compute))
+            inference_compute = float(np.interp(
+                min(current_time, time_max), ts.time, ts.inference_compute
+            ))
 
         if ts.can_use_log_experiment_compute:
-            experiment_compute = float(np.exp(np.interp(t, ts.time, ts.log_experiment_compute)))
+            experiment_compute = float(np.exp(np.interp(
+                min(current_time, time_max), ts.time, ts.log_experiment_compute
+            )))
         else:
-            experiment_compute = float(np.interp(t, ts.time, ts.experiment_compute))
+            experiment_compute = float(np.interp(
+                min(current_time, time_max), ts.time, ts.experiment_compute
+            ))
 
-        # Training compute growth rate is not exponential, use linear interpolation
-        training_compute_growth_rate = float(np.interp(t, ts.time, ts.training_compute_growth_rate))
+        # Interpolate human labor and training_compute_growth_rate as well
+        if ts.can_use_log_L_HUMAN:
+            human_labor = float(np.exp(np.interp(
+                min(current_time, time_max), ts.time, ts.log_L_HUMAN
+            )))
+        else:
+            human_labor = float(np.interp(
+                min(current_time, time_max), ts.time, ts.L_HUMAN
+            ))
+
+        training_compute_growth_rate = float(np.interp(
+            min(current_time, time_max), ts.time, ts.training_compute_growth_rate
+        ))
+
+        # For years after the historical data range, apply growth from the end point
+        if current_time > time_max:
+            elapsed_time = current_time - time_max
+
+            # Get slowdown parameters from compute config
+            slowdown_year = 2028.0  # Default
+            pre_slowdown_rate = math.log10(4.0)  # ~0.602 OOMs/year (4x/year)
+            post_slowdown_rate = 0.25  # From parameters
+
+            # Try to get from parameters
+            if self.params.compute is not None:
+                us_params = getattr(self.params.compute, 'USComputeParameters', None)
+                if us_params is not None:
+                    slowdown_year = getattr(us_params, 'slowdown_year', slowdown_year)
+                    post_slowdown_rate = getattr(us_params, 'post_slowdown_training_compute_growth_rate', post_slowdown_rate)
+                    annual_growth = getattr(us_params, 'us_frontier_project_compute_annual_growth_rate', 4.0)
+                    pre_slowdown_rate = math.log10(annual_growth)
+
+            # Compute growth factor with proper slowdown handling
+            if current_time < slowdown_year:
+                # Before slowdown: simple growth
+                growth_factor = 10 ** (pre_slowdown_rate * elapsed_time)
+            else:
+                # After slowdown: growth at pre_slowdown_rate until slowdown,
+                # then at post_slowdown_rate from slowdown to current_time
+                pre_slowdown_duration = max(0, slowdown_year - time_max)
+                post_slowdown_duration = current_time - max(slowdown_year, time_max)
+                growth_factor = (
+                    10 ** (pre_slowdown_rate * pre_slowdown_duration) *
+                    10 ** (post_slowdown_rate * post_slowdown_duration)
+                )
+
+            inference_compute *= growth_factor
+            experiment_compute *= growth_factor
 
         return human_labor, inference_compute, experiment_compute, training_compute_growth_rate
 
-    def _interpolate_horizon_by_year(self, year: float) -> float:
+    def _compute_horizon_from_progress(self, progress: float) -> float:
         """
-        Interpolate horizon length by year using calibration trajectory.
-        This uses the ProgressModel's computed horizon values, ensuring consistency.
+        Compute horizon length from progress using the calibrated horizon_trajectory function.
+
+        The horizon_trajectory function maps progress -> horizon_length (minutes).
+        This is the correct way to compute horizon since it depends on progress level,
+        not time directly.
         """
         cal = self._calibrated
-        if cal.trajectory_years is None or cal.trajectory_horizon_lengths is None:
+        if cal.horizon_trajectory is None:
             return float('inf')
 
-        # Clamp year to trajectory range
-        min_year = float(cal.trajectory_years[0])
-        max_year = float(cal.trajectory_years[-1])
-        year_clamped = max(min_year, min(max_year, year))
-
-        # Interpolate horizon length
-        horizon = float(np.interp(year_clamped, cal.trajectory_years, cal.trajectory_horizon_lengths))
-        return horizon
+        try:
+            horizon = float(cal.horizon_trajectory(progress))
+            if np.isfinite(horizon) and horizon > 0:
+                return horizon
+            return float('inf')
+        except Exception:
+            return float('inf')
 
     def _interpolate_automation_by_year(self, year: float) -> float:
         """
@@ -194,6 +271,8 @@ class SoftwareRAndD(WorldUpdater):
 
     # Fields that should NOT be passed to TakeoffParameters
     _EXCLUDED_FIELDS = {
+        # Mode flags specific to our simulator
+        'update_software_progress',
         # Fields computed internally by TakeoffParameters.__post_init__
         'automation_model',
         'taste_distribution',
@@ -324,13 +403,13 @@ class SoftwareRAndD(WorldUpdater):
         human_labor: float,
         inference_compute: float,
         experiment_compute: float,
-        training_compute_growth_rate: float,
+        training_compute_growth_rate: float = 0.0,
     ) -> tuple:
         """
         Compute instantaneous rates using the full takeoff model.
 
         Returns:
-            (d(progress)/dt, d(research_stock)/dt)
+            (d(progress)/dt, d(research_stock)/dt, software_progress_rate)
         """
         params = self._takeoff_params
 
@@ -358,14 +437,13 @@ class SoftwareRAndD(WorldUpdater):
             research_stock, research_effort, params.r_software
         )
 
-        # Compute overall progress rate (software + training compute)
-        progress_rate = compute_overall_progress_rate(
-            software_progress_rate, training_compute_growth_rate
-        )
+        # Progress rate = software progress rate + training compute growth rate
+        # Training compute growth adds directly to progress (OOMs/year)
+        progress_rate = software_progress_rate + training_compute_growth_rate
 
         # d(research_stock)/dt = research_effort
         research_stock_rate = research_effort
-        return progress_rate, research_stock_rate
+        return progress_rate, research_stock_rate, software_progress_rate
 
     def contribute_state_derivatives(
         self,
@@ -376,27 +454,29 @@ class SoftwareRAndD(WorldUpdater):
         Compute contribution to d(state)/dt for all AI developers.
 
         For each developer:
-        - d(progress)/dt = overall_progress_rate (training + software)
+        - d(progress)/dt = software_progress_rate
         - d(research_stock)/dt = research_effort
-        - d(log_compute)/dt = log_compute_growth_rate
         """
+        # Skip if software progress updates are disabled
+        if not self.r_and_d.update_software_progress:
+            return StateDerivative.zeros(world)
+
         d_world = World.zeros(world)
         d_world.current_time = torch.tensor(1.0)
 
         current_time = self._tensor_to_float(t)
 
-        # Get time-varying inputs from interpolation (same as old backend)
-        human_labor, inference_compute, experiment_compute, training_compute_growth_rate = \
-            self._interpolate_inputs(current_time)
-
         for dev_id, dev in world.ai_software_developers.items():
             d_dev = d_world.ai_software_developers[dev_id]
+
+            # Get inputs from developer entity (with time-varying compute scaling)
+            human_labor, inference_compute, experiment_compute, training_compute_growth_rate = self._get_inputs_from_developer(dev, current_time)
 
             progress = self._tensor_to_float(dev.ai_software_progress.progress)
             research_stock = self._tensor_to_float(dev.ai_software_progress.research_stock)
 
             # Compute rates using full model
-            progress_rate, research_stock_rate = self._compute_rates(
+            progress_rate, research_stock_rate, _ = self._compute_rates(
                 progress, research_stock,
                 human_labor, inference_compute, experiment_compute,
                 training_compute_growth_rate
@@ -415,21 +495,32 @@ class SoftwareRAndD(WorldUpdater):
         """
         Compute derived metrics for all AI developers.
         """
+        # Skip if software progress updates are disabled
+        if not self.r_and_d.update_software_progress:
+            return world
+
         current_time = self._tensor_to_float(t)
         params = self._takeoff_params
 
-        # Get time-varying inputs from interpolation (same as old backend)
-        human_labor, inference_compute, experiment_compute, training_compute_growth_rate = \
-            self._interpolate_inputs(current_time)
-
         for dev_id, dev in world.ai_software_developers.items():
+            # Get inputs from developer entity (with time-varying compute scaling)
+            human_labor, inference_compute, experiment_compute, training_compute_growth_rate = self._get_inputs_from_developer(dev, current_time)
+
+            # Update the developer entity with interpolated values so they show in frontend charts
+            # Use plain floats (not tensors) since these fields are typed as float in the dataclass
+            dev.human_ai_capability_researchers = float(human_labor)
+            dev.training_compute_growth_rate = float(training_compute_growth_rate)
+            # Update the compute properties directly - these are what the frontend reads
+            dev.ai_r_and_d_inference_compute_tpp_h100e = float(inference_compute)
+            dev.ai_r_and_d_training_compute_tpp_h100e = float(experiment_compute)
+            # Also update operating_compute for consistency
+            if dev.operating_compute:
+                total_compute = inference_compute + experiment_compute
+                dev.operating_compute[0].functional_tpp_h100e = torch.tensor(total_compute)
+                dev.operating_compute[0].tpp_h100e_including_attrition = torch.tensor(total_compute)
+
             progress = self._tensor_to_float(dev.ai_software_progress.progress)
             research_stock = self._tensor_to_float(dev.ai_software_progress.research_stock)
-
-            # Store input time series values in the world state
-            dev.ai_software_progress.human_labor = torch.tensor(human_labor)
-            dev.ai_software_progress.inference_compute = torch.tensor(inference_compute)
-            dev.ai_software_progress.experiment_compute = torch.tensor(experiment_compute)
 
             # Compute automation fraction using year-based interpolation
             # This ensures consistency with ProgressModel's values
@@ -445,10 +536,6 @@ class SoftwareRAndD(WorldUpdater):
             dev.ai_software_progress.aggregate_research_taste = torch.tensor(aggregate_research_taste)
 
             # Compute serial_coding_labor using _compute_coding_labor which handles optimal_ces mode
-            # This matches how the reference model computes serial_coding_labor in metrics_computation.py:
-            # - optimal_ces mode: L_opt = automation_model.coding_labor_optimal_ces(H, C, logE, params)
-            #                     serial_coding_labor = (L_opt ** parallel_penalty) * normalization
-            # - simple_ces mode: uses compute_coding_labor() directly
             serial_coding_labor = self._compute_coding_labor(progress, human_labor, inference_compute)
             dev.ai_software_progress.serial_coding_labor = torch.tensor(serial_coding_labor)
 
@@ -462,7 +549,6 @@ class SoftwareRAndD(WorldUpdater):
             dev.ai_software_progress.coding_labor = torch.tensor(coding_labor)
 
             # Compute human-only serial coding labor for multiplier calculation
-            # In reference: human_only_serial_coding_labor = L_HUMAN ** parallel_penalty
             human_only_serial_coding_labor = (human_labor ** params.parallel_penalty) * params.coding_labor_normalization
             serial_coding_labor_multiplier = serial_coding_labor / human_only_serial_coding_labor if human_only_serial_coding_labor > 0 else 1.0
             dev.ai_software_progress.serial_coding_labor_multiplier = torch.tensor(serial_coding_labor_multiplier)
@@ -488,31 +574,31 @@ class SoftwareRAndD(WorldUpdater):
             )
             dev.ai_software_progress.software_progress_rate = torch.tensor(sw_rate)
 
-            # Overall progress rate
-            overall_rate = compute_overall_progress_rate(sw_rate, training_compute_growth_rate)
-            dev.ai_software_progress.progress_rate = torch.tensor(overall_rate)
+            # Progress rate = software progress rate + training compute growth rate
+            overall_progress_rate = sw_rate + training_compute_growth_rate
+            dev.ai_software_progress.progress_rate = torch.tensor(overall_progress_rate)
 
             # AI coding labor multiplier: coding_labor / human_labor
-            # This measures how much AI amplifies the effective coding labor vs human-only
             ai_mult = coding_labor / human_labor if human_labor > 0 and coding_labor > human_labor else 1.0
             dev.ai_software_progress.ai_coding_labor_multiplier = torch.tensor(ai_mult)
 
-            # Horizon length using year-based interpolation
-            # This ensures consistency with ProgressModel's values
-            horizon_length = self._interpolate_horizon_by_year(current_time)
+            # Horizon length computed from progress (not year interpolation)
+            # Horizon is a function of progress level, not time directly
+            horizon_length = self._compute_horizon_from_progress(progress)
             if np.isfinite(horizon_length) and horizon_length > 0:
                 dev.ai_software_progress.horizon_length = torch.tensor(horizon_length)
 
             # AI software progress multiplier (ref present day) using year-based interpolation
-            # This is the metric shown on the "Takeoff Period: AI Software R&D Uplift" chart
             ai_sw_mult = self._interpolate_ai_sw_progress_mult_by_year(current_time)
             dev.ai_software_progress.ai_sw_progress_mult_ref_present_day = torch.tensor(ai_sw_mult)
 
-            # Store training_compute_growth_rate for use in computing training_compute at API layer
-            dev.ai_software_progress.training_compute_growth_rate = torch.tensor(training_compute_growth_rate)
+            # Compute software_efficiency = progress - initial_progress
+            # This represents the cumulative contribution from software improvements (in OOMs)
+            initial_progress = self._tensor_to_float(dev.ai_software_progress.initial_progress) if dev.ai_software_progress.initial_progress is not None else 0.0
+            software_efficiency = progress - initial_progress
+            dev.ai_software_progress.software_efficiency = torch.tensor(software_efficiency)
 
             # Compute ai_research_taste_sd from ai_research_taste
-            # This is needed for computing milestones (SAR, SIAR, TED-AI, ASI)
             ai_research_taste_sd = params.taste_distribution.get_sd_of_taste(ai_research_taste)
             if not np.isfinite(ai_research_taste_sd):
                 ai_research_taste_sd = 0.0

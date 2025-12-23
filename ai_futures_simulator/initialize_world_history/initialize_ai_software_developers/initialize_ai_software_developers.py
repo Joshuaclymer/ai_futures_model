@@ -2,9 +2,11 @@
 AI Software Developer initialization.
 
 Initializes AISoftwareDeveloper entities for a given year using historical data.
+This uses data from the internal CSV which is part of ai_futures_simulator.
 """
 
 import csv
+import math
 from pathlib import Path
 
 from classes.world.entities import AISoftwareDeveloper, ComputeAllocation
@@ -12,7 +14,7 @@ from classes.world.assets import Compute
 from parameters.simulation_parameters import SimulationParameters
 from initialize_world_history.initialize_ai_software_progress import initialize_ai_software_progress
 
-# Load historical data from CSV
+# Load historical data from CSV (internal to ai_futures_simulator)
 _DATA_PATH = Path(__file__).resolve().parent / "largest_ai_developer.csv"
 _historical_data = {}
 with open(_DATA_PATH, 'r') as f:
@@ -22,6 +24,7 @@ with open(_DATA_PATH, 'r') as f:
             'human_researchers': float(row['L_HUMAN']),
             'inference_compute': float(row['inference_compute']),
             'experiment_compute': float(row['experiment_compute']),
+            'training_compute_growth_rate': float(row['training_compute_growth_rate']),
         }
 
 
@@ -29,26 +32,40 @@ def initialize_us_frontier_lab(params: SimulationParameters, year: int) -> AISof
     """Initialize a US frontier AI lab for a given year using historical data."""
     data = _historical_data[year]
     inference_compute = data['inference_compute']
-    human_researchers = int(data['human_researchers'])
+    experiment_compute = data['experiment_compute']
+    human_researchers = float(data['human_researchers'])
+    training_compute_growth_rate = data['training_compute_growth_rate']
+
+    # Total compute is the sum of inference and experiment compute
+    # The allocation fractions will recover the original values
+    total_compute = inference_compute + experiment_compute
+    inference_fraction = inference_compute / total_compute if total_compute > 0 else 0.1
+    training_fraction = experiment_compute / total_compute if total_compute > 0 else 0.1
 
     # Create the compute object for operating compute
     compute = Compute(
-        all_tpp_h100e=inference_compute,
-        functional_tpp_h100e=inference_compute,  # Initially all compute is functional
+        tpp_h100e_including_attrition=total_compute,
+        functional_tpp_h100e=total_compute,  # Initially all compute is functional
         watts_per_h100e=700.0,  # ~700W per H100e
         average_functional_chip_age_years=0.0,  # New chips
     )
+
+    # Only initialize ai_software_progress if updates are enabled
+    ai_software_progress = None
+    if params.software_r_and_d and params.software_r_and_d.update_software_progress:
+        ai_software_progress = initialize_ai_software_progress(params, year)
 
     return AISoftwareDeveloper(
         id="us_frontier_lab",
         operating_compute=[compute],  # List of Compute objects
         compute_allocation=ComputeAllocation(
-            fraction_for_ai_r_and_d_inference=0.1,
-            fraction_for_ai_r_and_d_training=0.1,
-            fraction_for_external_deployment=0.3,
-            fraction_for_alignment_research=0.1,
-            fraction_for_frontier_training=0.4,
+            fraction_for_ai_r_and_d_inference=inference_fraction,
+            fraction_for_ai_r_and_d_training=training_fraction,
+            fraction_for_external_deployment=0.0,  # No external deployment in R&D model
+            fraction_for_alignment_research=0.0,
+            fraction_for_frontier_training=0.0,
         ),
         human_ai_capability_researchers=human_researchers,
-        ai_software_progress=initialize_ai_software_progress(params, year),
+        ai_software_progress=ai_software_progress,
+        training_compute_growth_rate=training_compute_growth_rate,
     )

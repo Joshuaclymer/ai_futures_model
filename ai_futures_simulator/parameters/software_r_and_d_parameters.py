@@ -24,7 +24,7 @@ class SoftwareRAndDParameters:
     # =========================================================================
     # MODE FLAGS
     # =========================================================================
-    human_only: bool
+    update_software_progress: bool
 
     # =========================================================================
     # PRODUCTION FUNCTION PARAMETERS (CES)
@@ -128,7 +128,7 @@ def get_default_software_r_and_d_parameters() -> SoftwareRAndDParameters:
     """
     return SoftwareRAndDParameters(
         # Mode flags
-        human_only=False,
+        update_software_progress=True,
 
         # Production function (CES)
         rho_coding_labor=-2.0,

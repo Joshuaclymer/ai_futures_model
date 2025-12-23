@@ -87,6 +87,8 @@ def create_minimal_ai_software_progress() -> AISoftwareProgress:
         ai_research_taste=torch.tensor(0.0),
         ai_research_taste_sd=torch.tensor(0.0),
         aggregate_research_taste=torch.tensor(0.0),
+        initial_progress=torch.tensor(0.0),
+        software_efficiency=torch.tensor(0.0),
     )
 
 
@@ -128,6 +130,7 @@ def create_minimal_world(year: float = 2030.0) -> World:
         ),
         ai_software_progress=create_minimal_ai_software_progress(),
         human_ai_capability_researchers=100,
+        training_compute_growth_rate=0.6,  # ~4x/year = log10(4)
         log_compute=torch.tensor(math.log(1000.0)),
         log_researchers=torch.tensor(math.log(100.0)),
     )

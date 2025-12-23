@@ -28,8 +28,14 @@ class BlackProjectProperties:
     max_fraction_of_total_national_energy_consumption: float
 
     # Fab configuration
-    build_a_black_fab: bool
-    black_fab_max_process_node: float
+    black_fab_min_process_node: float  # Min process node required (nm), e.g., 28nm
+    prc_localization_year_for_min_node: float  # Year PRC achieves localization for min node
+    # Note: build_a_black_fab is derived: True if localization_year <= black_project_start_year
+
+    # Datacenter construction timing (has default, so must come after non-default fields)
+    # How many years before black_project_start_year to begin datacenter construction
+    # Discrete model uses 1.0 (starts 1 year before agreement)
+    years_before_black_project_start_to_begin_datacenter_construction: float = 1.0
 
 @dataclass
 class BlackProjectParameters:

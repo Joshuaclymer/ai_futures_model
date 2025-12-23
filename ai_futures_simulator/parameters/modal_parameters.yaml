@@ -36,7 +36,7 @@ software_r_and_d:
   # =========================================================================
   # MODE FLAGS
   # =========================================================================
-  human_only: false
+  update_software_progress: true
 
   # =========================================================================
   # PRODUCTION FUNCTION PARAMETERS (CES)
@@ -141,23 +141,33 @@ compute:
 
   # Chip survival/attrition parameters
   survival_rate_parameters:
-    initial_annual_hazard_rate: 0.05  # Per year
-    annual_hazard_rate_increase_per_year: 0.02  # Per year^2
+    initial_annual_hazard_rate: 0.01  # Per year (base p50 value)
+    annual_hazard_rate_increase_per_year: 0.0035  # Per year^2 (base p50 value)
+    # Multiplier applied to both hazard rates (discrete model uses metalog p25=0.1, p50=1.0, p75=6.0)
+    # Using lognormal with ci80=[0.1, 6.0] to better match discrete model's spread
+    hazard_rate_multiplier:
+      dist: lognormal
+      ci80: [0.1, 6.0]
 
   # US compute parameters
   us_compute:
     us_frontier_project_compute_tpp_h100e_in_2025: 120325.0
     us_frontier_project_compute_annual_growth_rate: 4.0  # ~4x per year
+    proportion_of_compute_in_largest_ai_sw_developer: 0.3
+    # Training compute slowdown (matches old model's behavior from new_simulator_default.csv)
+    slowdown_year: 2028.0
+    post_slowdown_training_compute_growth_rate: 0.25  # OOMs/year (10^0.25 ≈ 1.78x/year)
 
   # PRC compute parameters (with uncertainty for Monte Carlo)
   prc_compute:
-    total_prc_compute_tpp_h100e_in_2025:
-      dist: lognormal
-      ci80: [70000, 140000]  # 80% CI around ~100k H100e
+    # Discrete model uses fixed 100k H100e in 2025
+    total_prc_compute_tpp_h100e_in_2025: 100000.0
+    # Growth rate: discrete uses metalog with p10=1.3, p50=2.2, p90=3.0
+    # Approximate with lognormal using ci80=[1.3, 3.0]
     annual_growth_rate_of_prc_compute_stock:
-      dist: uniform
-      min: 1.8
-      max: 2.6  # 1.8x to 2.6x growth rate
+      dist: lognormal
+      ci80: [1.3, 3.0]  # Matches discrete model metalog (p10=1.3, p50=2.2, p90=3.0)
+    proportion_of_compute_in_largest_ai_sw_developer: 0.5
     prc_architecture_efficiency_relative_to_state_of_the_art: 1.0
     # Domestic production capability
     proportion_of_prc_chip_stock_produced_domestically_2026: 0.10
@@ -174,6 +184,8 @@ compute:
     wafers_per_month_per_lithography_scanner: 1000.0
     construction_time_for_5k_wafers_per_month: 1.4
     construction_time_for_100k_wafers_per_month: 2.41
+    # Fab construction time multiplier (default 1.0, sampled from lognormal in monte carlo mode)
+    fab_construction_time_multiplier: 1.0
     # Worker-to-capacity conversion parameters (for black projects)
     fab_wafers_per_month_per_operating_worker: 24.64
     fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
@@ -186,8 +198,8 @@ datacenter_and_energy:
     energy_efficiency_of_compute_stock_relative_to_state_of_the_art: 0.20
     total_prc_energy_consumption_gw: 1100.0
     # Datacenter worker-to-capacity conversion parameters (for black projects)
-    data_center_mw_per_year_per_construction_worker: 1.0
-    data_center_mw_per_operating_worker: 10.0
+    data_center_mw_per_year_per_construction_worker: 0.13  # Reference: 0.13
+    data_center_mw_per_operating_worker: 1.0  # Reference: 1 operating worker per MW
     # H100 power consumption in watts (~700W typical for H100)
     h100_power_watts: 700.0
 
@@ -213,22 +225,27 @@ black_project:
     fraction_of_labor_devoted_to_black_fab_operation: 0.049      # 550/11300
     fraction_of_labor_devoted_to_ai_research: 0.044              # 500/11300
     # Diverted resources (with uncertainty)
-    fraction_of_initial_compute_stock_to_divert_at_black_project_start:
-      dist: uniform
-      min: 0.03
-      max: 0.08  # 3% to 8% diversion
-    fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start:
-      dist: uniform
-      min: 0.3
-      max: 0.7  # 30% to 70% diversion
+    fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05  # Reference: 5%
+    fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 0.01  # Reference: 1% diversion
     fraction_of_lithography_scanners_to_divert_at_black_project_start:
       dist: uniform
       min: 0.05
       max: 0.15  # 5% to 15% diversion
     max_fraction_of_total_national_energy_consumption: 0.05
+    # Datacenter construction timing
+    # Discrete model starts construction 1 year before black project start
+    years_before_black_project_start_to_begin_datacenter_construction: 1.0
     # Fab configuration
-    build_a_black_fab: true
-    black_fab_max_process_node: 28.0
+    # Fab is built if prc_localization_year_for_min_node <= black_project_start_year
+    black_fab_min_process_node: 28.0  # Minimum required process node (nm)
+    # PRC localization year - sampled from distribution matching discrete model
+    # Based on discrete model: 28nm has 0% at 2025, 60% at 2031 (linear interpolation)
+    # Linear interpolation gives ~10% per year from 2026-2031, 40% never
+    # For black_project_start_year=2029: P(localization <= 2029) = 40%
+    prc_localization_year_for_min_node:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]  # 9999 = never achieved
+      p: [0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.40]  # 40% by 2029, 60% by 2031, 40% never
 
 # =============================================================================
 # PERCEPTIONS PARAMETERS
@@ -242,40 +259,17 @@ perceptions:
   # Black project detection parameters (with uncertainty for Monte Carlo)
   black_project_perception_parameters:
     # Prior odds that a covert project exists (odds = p / (1-p))
-    prior_odds_of_covert_project:
-      dist: uniform
-      min: 0.05
-      max: 0.2  # 5% to 20% prior probability
+    prior_odds_of_covert_project: 0.25  # Reference: 20% probability = 0.25 odds
     # US intelligence estimation error (median absolute relative error)
-    intelligence_median_error_in_estimate_of_compute_stock:
-      dist: uniform
-      min: 0.05
-      max: 0.15  # 5% to 15% error
-    intelligence_median_error_in_estimate_of_fab_stock:
-      dist: uniform
-      min: 0.05
-      max: 0.15  # 5% to 15% error
-    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity:
-      dist: uniform
-      min: 0.05
-      max: 0.15  # 5% to 15% error
-    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity:
-      dist: uniform
-      min: 0.005
-      max: 0.02  # 0.5% to 2% error (satellites are more accurate)
+    intelligence_median_error_in_estimate_of_compute_stock: 0.07  # Reference: 7%
+    intelligence_median_error_in_estimate_of_fab_stock: 0.07  # Reference: 7%
+    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.05  # Reference: 5%
+    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.05  # Reference: 5%
     # Worker detection model (Gamma distribution parameters)
-    mean_detection_time_for_100_workers:
-      dist: uniform
-      min: 5.0
-      max: 9.0  # 5 to 9 years
-    mean_detection_time_for_1000_workers:
-      dist: uniform
-      min: 2.5
-      max: 4.5  # 2.5 to 4.5 years
-    variance_of_detection_time_given_num_workers:
-      dist: uniform
-      min: 2.5
-      max: 5.0  # Variance range
+    # Detection time ~ Gamma(k, theta) where k = mean/sigma, theta = sigma
+    mean_detection_time_for_100_workers: 6.95  # Reference: 6.95 years
+    mean_detection_time_for_1000_workers: 3.42  # Reference: 3.42 years
+    variance_of_detection_time_given_num_workers: 15.05  # This is σ² where σ=3.88 is the scale parameter
     # Likelihood ratio thresholds for detection
     detection_threshold: 100.0
     detection_thresholds: [1, 2, 4]

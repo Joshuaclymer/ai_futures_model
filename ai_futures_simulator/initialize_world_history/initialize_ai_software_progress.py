@@ -48,7 +48,7 @@ def initialize_ai_software_progress(
         # State variables
         progress=torch.tensor(initial_progress),
         research_stock=torch.tensor(initial_research_stock),
-        # Metrics (initial values, will be recomputed by updaters)
+        # Required metrics (initial values, will be recomputed by updaters)
         ai_coding_labor_multiplier=torch.tensor(1.0),
         ai_sw_progress_mult_ref_present_day=torch.tensor(1.0),
         progress_rate=torch.tensor(0.0),
@@ -60,5 +60,7 @@ def initialize_ai_software_progress(
         ai_research_taste=torch.tensor(0.0),
         ai_research_taste_sd=torch.tensor(0.0),
         aggregate_research_taste=torch.tensor(1.0),
-        horizon_length=None,
+        # Optional fields
+        initial_progress=torch.tensor(initial_progress),  # For computing software_efficiency
+        software_efficiency=torch.tensor(0.0),  # Initially 0 since no progress yet
     )
