@@ -30,6 +30,8 @@ from world_updaters.compute.black_compute import (
     calculate_fab_construction_duration,
     calculate_fab_wafer_starts_per_month,
     calculate_fab_h100e_per_chip,
+    calculate_transistor_density_from_process_node,
+    calculate_watts_per_tpp_from_transistor_density,
     calculate_fab_watts_per_chip,
     calculate_fab_annual_production_h100e,
     # Datacenter calculations
@@ -74,6 +76,8 @@ __all__ = [
     'calculate_fab_construction_duration',
     'calculate_fab_wafer_starts_per_month',
     'calculate_fab_h100e_per_chip',
+    'calculate_transistor_density_from_process_node',
+    'calculate_watts_per_tpp_from_transistor_density',
     'calculate_fab_watts_per_chip',
     'calculate_fab_annual_production_h100e',
     # Datacenter calculations

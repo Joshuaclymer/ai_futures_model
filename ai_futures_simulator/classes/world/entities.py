@@ -150,6 +150,11 @@ class AIBlackProject(AISoftwareDeveloper):
     survival_rate: float = field(init=False)  # Current chip survival rate
     initial_compute_surviving_h100e: float = field(init=False)  # Initial diverted compute * survival rate
 
+    ## Energy consumption by source (point-in-time, for energy stacked charts)
+    initial_stock_energy_gw: float = field(init=False)  # Energy consumed by initial diverted compute (GW)
+    fab_compute_energy_gw: float = field(init=False)  # Energy consumed by fab-produced compute (GW)
+    total_compute_energy_gw: float = field(init=False)  # Total energy consumption (GW)
+
     ## LR components (for detection breakdown) - all point-in-time metrics
     lr_prc_accounting: float = field(init=False)  # From chip stock discrepancy (static)
     lr_sme_inventory: float = field(init=False)  # From SME diversion (static)

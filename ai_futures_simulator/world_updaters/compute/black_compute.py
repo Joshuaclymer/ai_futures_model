@@ -14,7 +14,7 @@ import numpy as np
 from scipy import stats
 import torch
 from torch import Tensor
-from typing import Dict, Tuple, List, Optional, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from classes.world.assets import Compute, Fabs, Datacenters
 
@@ -133,17 +133,72 @@ def calculate_fab_h100e_per_chip(
     return density_ratio * arch_efficiency
 
 
-def calculate_fab_watts_per_chip(
+def calculate_transistor_density_from_process_node(
     fab_process_node_nm: float,
     exogenous_trends: "ExogenousComputeTrends" = None,
     h100_reference_nm: float = 4.0,
-    h100_watts: float = 700.0,
+    h100_transistor_density_m_per_mm2: float = 98.28,
+    transistor_density_scaling_exponent: float = None,
+) -> float:
+    """
+    Calculate transistor density from process node.
+
+    Uses the formula: density = H100_DENSITY * (process_node / H100_NODE)^(-exponent)
+
+    This matches the discrete model's calculate_transistor_density_from_process_node().
+
+    Args:
+        fab_process_node_nm: Process node in nanometers
+        exogenous_trends: Optional ExogenousComputeTrends for parameter values
+        h100_reference_nm: H100 reference node (default 4nm)
+        h100_transistor_density_m_per_mm2: H100 transistor density (default 98.28 M/mm²)
+        transistor_density_scaling_exponent: Scaling exponent (default 1.49)
+
+    Returns:
+        Transistor density in M/mm²
+    """
+    if exogenous_trends is not None:
+        transistor_density_scaling_exponent = exogenous_trends.transistor_density_scaling_exponent
+    else:
+        transistor_density_scaling_exponent = transistor_density_scaling_exponent or 1.49
+
+    node_ratio = fab_process_node_nm / h100_reference_nm
+    return h100_transistor_density_m_per_mm2 * (node_ratio ** (-transistor_density_scaling_exponent))
+
+
+def calculate_watts_per_tpp_from_transistor_density(
+    transistor_density_m_per_mm2: float,
+    exogenous_trends: "ExogenousComputeTrends" = None,
+    h100_transistor_density_m_per_mm2: float = 98.28,
+    h100_watts_per_tpp: float = 0.326493,
     transistor_density_at_end_of_dennard: float = None,
     watts_per_tpp_exponent_before_dennard: float = None,
     watts_per_tpp_exponent_after_dennard: float = None,
 ) -> float:
-    """Calculate watts per chip based on process node and Dennard scaling."""
-    # Get params from exogenous_trends or use defaults
+    """
+    Calculate watts per TPP from transistor density using Dennard scaling model.
+
+    Uses a piecewise power law with different exponents before/after Dennard scaling ended:
+    - Before Dennard: watts_per_tpp scales with density^exponent_before (steeper, ~-1.0)
+    - After Dennard: watts_per_tpp scales with density^exponent_after (shallower, ~-0.33)
+
+    The transition point is anchored to the H100 (post-Dennard) and the pre-Dennard
+    line is connected to ensure continuity.
+
+    This matches the discrete model's predict_watts_per_tpp_from_transistor_density().
+
+    Args:
+        transistor_density_m_per_mm2: Transistor density in M/mm²
+        exogenous_trends: Optional ExogenousComputeTrends for parameter values
+        h100_transistor_density_m_per_mm2: H100 transistor density (default 98.28)
+        h100_watts_per_tpp: H100 watts per TPP (default 0.326493)
+        transistor_density_at_end_of_dennard: Density at Dennard transition (default 10.0)
+        watts_per_tpp_exponent_before_dennard: Exponent before Dennard ended (default -1.0)
+        watts_per_tpp_exponent_after_dennard: Exponent after Dennard ended (default -0.33)
+
+    Returns:
+        Watts per TPP for the given transistor density
+    """
     if exogenous_trends is not None:
         transistor_density_at_end_of_dennard = exogenous_trends.transistor_density_at_end_of_dennard_scaling_m_per_mm2
         watts_per_tpp_exponent_before_dennard = exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended
@@ -153,20 +208,101 @@ def calculate_fab_watts_per_chip(
         watts_per_tpp_exponent_before_dennard = watts_per_tpp_exponent_before_dennard or -1.0
         watts_per_tpp_exponent_after_dennard = watts_per_tpp_exponent_after_dennard or -0.33
 
-    # Calculate transistor density for this node
-    # Using inverse relationship: smaller nm = higher density
-    density = (h100_reference_nm / fab_process_node_nm) ** 2  # Rough approximation
+    # Calculate watts_per_tpp at the Dennard transition point using post-Dennard relationship
+    transition_density_ratio = transistor_density_at_end_of_dennard / h100_transistor_density_m_per_mm2
+    transition_watts_per_tpp = h100_watts_per_tpp * (transition_density_ratio ** watts_per_tpp_exponent_after_dennard)
 
-    if density < transistor_density_at_end_of_dennard:
-        # Before Dennard scaling ended
+    if transistor_density_m_per_mm2 < transistor_density_at_end_of_dennard:
+        # Before Dennard scaling ended - anchor to transition point
         exponent = watts_per_tpp_exponent_before_dennard
+        density_ratio = transistor_density_m_per_mm2 / transistor_density_at_end_of_dennard
+        return transition_watts_per_tpp * (density_ratio ** exponent)
     else:
-        # After Dennard scaling ended
+        # After Dennard scaling ended - anchor to H100
         exponent = watts_per_tpp_exponent_after_dennard
+        density_ratio = transistor_density_m_per_mm2 / h100_transistor_density_m_per_mm2
+        return h100_watts_per_tpp * (density_ratio ** exponent)
 
-    # Scale watts relative to H100
-    watts_scaling = (fab_process_node_nm / h100_reference_nm) ** abs(exponent)
-    return h100_watts * watts_scaling
+
+def calculate_fab_watts_per_chip(
+    fab_process_node_nm: float,
+    year: float,
+    exogenous_trends: "ExogenousComputeTrends" = None,
+    h100_reference_nm: float = 4.0,
+    h100_release_year: float = 2022.0,
+    h100_transistor_density_m_per_mm2: float = 98.28,
+    h100_watts_per_tpp: float = 0.326493,
+    h100_tpp_per_chip: float = 2144.0,
+    transistor_density_scaling_exponent: float = None,
+    architecture_efficiency_improvement_per_year: float = None,
+    transistor_density_at_end_of_dennard: float = None,
+    watts_per_tpp_exponent_before_dennard: float = None,
+    watts_per_tpp_exponent_after_dennard: float = None,
+) -> float:
+    """
+    Calculate watts per chip based on process node and year.
+
+    This matches the discrete model's calculation in get_monthly_production_rate():
+    1. Calculate h100e_per_chip (from density ratio and architecture efficiency)
+    2. Calculate tpp_per_chip = h100e_per_chip * H100_TPP_PER_CHIP
+    3. Calculate transistor_density from process node
+    4. Calculate watts_per_tpp from transistor density
+    5. watts_per_chip = tpp_per_chip * watts_per_tpp
+
+    Args:
+        fab_process_node_nm: Process node in nanometers (e.g., 28 for 28nm)
+        year: Current simulation year (for architecture efficiency calculation)
+        exogenous_trends: Optional ExogenousComputeTrends for parameter values
+        h100_reference_nm: H100 reference node (default 4nm)
+        h100_release_year: H100 release year (default 2022)
+        h100_transistor_density_m_per_mm2: H100 transistor density (default 98.28)
+        h100_watts_per_tpp: H100 watts per TPP (default 0.326493)
+        h100_tpp_per_chip: H100 TPP per chip (default 2144.0)
+        transistor_density_scaling_exponent: Scaling exponent (default 1.49)
+        architecture_efficiency_improvement_per_year: Yearly improvement (default 1.23)
+        transistor_density_at_end_of_dennard: Density at Dennard transition (default 10.0)
+        watts_per_tpp_exponent_before_dennard: Exponent before Dennard ended (default -1.0)
+        watts_per_tpp_exponent_after_dennard: Exponent after Dennard ended (default -0.33)
+
+    Returns:
+        Watts per chip for the given process node and year
+    """
+    # Step 1: Calculate h100e_per_chip (performance relative to H100)
+    h100e_per_chip = calculate_fab_h100e_per_chip(
+        fab_process_node_nm=fab_process_node_nm,
+        year=year,
+        exogenous_trends=exogenous_trends,
+        h100_reference_nm=h100_reference_nm,
+        transistor_density_scaling_exponent=transistor_density_scaling_exponent,
+        architecture_efficiency_improvement_per_year=architecture_efficiency_improvement_per_year,
+        h100_release_year=h100_release_year,
+    )
+
+    # Step 2: Calculate TPP per chip
+    tpp_per_chip = h100e_per_chip * h100_tpp_per_chip
+
+    # Step 3: Calculate transistor density from process node
+    transistor_density = calculate_transistor_density_from_process_node(
+        fab_process_node_nm=fab_process_node_nm,
+        exogenous_trends=exogenous_trends,
+        h100_reference_nm=h100_reference_nm,
+        h100_transistor_density_m_per_mm2=h100_transistor_density_m_per_mm2,
+        transistor_density_scaling_exponent=transistor_density_scaling_exponent,
+    )
+
+    # Step 4: Calculate watts per TPP
+    watts_per_tpp = calculate_watts_per_tpp_from_transistor_density(
+        transistor_density_m_per_mm2=transistor_density,
+        exogenous_trends=exogenous_trends,
+        h100_transistor_density_m_per_mm2=h100_transistor_density_m_per_mm2,
+        h100_watts_per_tpp=h100_watts_per_tpp,
+        transistor_density_at_end_of_dennard=transistor_density_at_end_of_dennard,
+        watts_per_tpp_exponent_before_dennard=watts_per_tpp_exponent_before_dennard,
+        watts_per_tpp_exponent_after_dennard=watts_per_tpp_exponent_after_dennard,
+    )
+
+    # Step 5: Calculate watts per chip
+    return tpp_per_chip * watts_per_tpp
 
 
 def calculate_fab_annual_production_h100e(
@@ -473,6 +609,95 @@ def compute_lr_from_sme_inventory(
     )
 
 
+def _build_composite_detection_distribution(
+    labor_by_year: Dict[float, int],
+    A: float,
+    B: float,
+    variance_theta: float
+) -> List[Tuple]:
+    """
+    Build composite distribution for detection time accounting for variable labor.
+
+    This matches the discrete reference model's approach which builds probability
+    ranges for each year based on varying labor levels.
+
+    Args:
+        labor_by_year: Dict mapping year (relative to project start) to labor count
+        A, B: Detection time constants
+        variance_theta: Scale parameter (theta) for the Gamma distribution
+
+    Returns:
+        List of tuples (year_start, year_end, labor, k, theta, cum_start, cum_end)
+    """
+    if not labor_by_year:
+        return []
+
+    sorted_years = sorted(labor_by_year.keys())
+
+    # Build composite distribution by calculating cumulative probabilities
+    cumulative_prob = 0.0
+    prob_ranges = []
+
+    for i, year in enumerate(sorted_years):
+        labor = labor_by_year[year]
+
+        if labor <= 0:
+            continue
+
+        # Calculate gamma parameters for this labor level
+        mu = A / (np.log10(labor) ** B)
+        k = mu / variance_theta
+
+        # Determine the time range for this period
+        year_start = year
+        year_end = sorted_years[i + 1] if i + 1 < len(sorted_years) else year + 100
+
+        # Calculate probability mass in this interval using CDF differences
+        cdf_start = stats.gamma.cdf(year_start, a=k, scale=variance_theta)
+        cdf_end = stats.gamma.cdf(year_end, a=k, scale=variance_theta)
+        prob_mass = cdf_end - cdf_start
+
+        cum_prob_end = cumulative_prob + prob_mass
+        prob_ranges.append((year_start, year_end, labor, k, variance_theta, cumulative_prob, cum_prob_end))
+        cumulative_prob = cum_prob_end
+
+    return prob_ranges
+
+
+def _sample_detection_time_from_composite(prob_ranges: List[Tuple]) -> float:
+    """
+    Sample a detection time from the precomputed composite distribution.
+
+    This matches the discrete reference model's approach.
+
+    Args:
+        prob_ranges: Precomputed probability ranges from _build_composite_detection_distribution
+
+    Returns:
+        Sampled detection time in years
+    """
+    if not prob_ranges:
+        return float('inf')
+
+    u = np.random.uniform(0, 1)
+
+    # Find which range the sample falls into
+    time_of_detection = float('inf')
+    for year_start, year_end, _, k, theta, cum_start, cum_end in prob_ranges:
+        if cum_start <= u < cum_end:
+            # Map u within this range back to the gamma distribution
+            if cum_end > cum_start:
+                u_normalized = (u - cum_start) / (cum_end - cum_start)
+                cdf_start = stats.gamma.cdf(year_start, a=k, scale=theta)
+                cdf_target = cdf_start + u_normalized * (stats.gamma.cdf(year_end, a=k, scale=theta) - cdf_start)
+                time_of_detection = stats.gamma.ppf(cdf_target, a=k, scale=theta)
+            else:
+                time_of_detection = year_start
+            break
+
+    return time_of_detection
+
+
 def compute_lr_over_time_vs_num_workers(
     labor_by_year: Dict[float, int],
     mean_detection_time_100_workers: float,
@@ -481,6 +706,10 @@ def compute_lr_over_time_vs_num_workers(
 ) -> Tuple[Dict[float, float], float]:
     """
     Calculate likelihood ratios over time accounting for variable labor.
+
+    This function uses the same composite distribution approach as the discrete
+    reference model to properly account for varying labor levels over time when
+    sampling the detection time.
 
     Args:
         labor_by_year: Dict mapping year (relative to project start) to labor count
@@ -500,21 +729,24 @@ def compute_lr_over_time_vs_num_workers(
         mean_detection_time_1000_workers
     )
 
-    # Sample detection time from composite distribution
-    # For simplicity, use the average labor level
-    avg_labor = sum(labor_by_year.values()) / len(labor_by_year)
-    mu = A / (np.log10(max(avg_labor, 2)) ** B)
+    # Build composite distribution that accounts for varying labor
+    # This matches the discrete reference model's approach
+    prob_ranges = _build_composite_detection_distribution(
+        labor_by_year=labor_by_year,
+        A=A,
+        B=B,
+        variance_theta=variance
+    )
 
-    # The 'variance' parameter is used directly as theta (scale parameter)
-    # This matches the discrete reference model's parameterization
-    theta = variance
-    k = mu / theta
-    time_of_detection = float(np.random.gamma(k, theta))
+    # Sample detection time from the composite distribution
+    time_of_detection = _sample_detection_time_from_composite(prob_ranges)
 
     # Calculate likelihood ratios for each year
+    # The LR is the survival probability: P(not detected by year | project exists)
     lr_by_year = {}
     for year in sorted_years:
         if year >= time_of_detection:
+            # Detection has occurred by this year
             lr_by_year[year] = 100.0
         else:
             labor = labor_by_year[year]
@@ -522,10 +754,14 @@ def compute_lr_over_time_vs_num_workers(
                 lr_by_year[year] = 1.0
                 continue
 
-            mu_year = A / (np.log10(labor) ** B)
-            k_year = mu_year / theta
-            p_not_detected = stats.gamma.sf(year, a=k_year, scale=theta)
-            lr_by_year[year] = max(p_not_detected, 0.001)
+            # Calculate survival probability using gamma distribution for current labor level
+            mu = A / (np.log10(labor) ** B)
+            k = mu / variance
+
+            # LR = P(evidence | project exists) / P(evidence | no project)
+            # P(evidence | no project) = 1.0 (no detection evidence if no project)
+            p_not_detected = stats.gamma.sf(year, a=k, scale=variance)
+            lr_by_year[year] = max(p_not_detected, 0.001)  # Floor at 0.001 to match discrete
 
     return lr_by_year, time_of_detection
 
