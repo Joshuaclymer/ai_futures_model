@@ -95,7 +95,7 @@ export function PDFChart({
 
     for (let i = 0; i < binEdges.length - 1; i++) {
       binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
-      binWidths.push(binEdges[i + 1] / numBins);
+      binWidths.push(binEdges[i + 1] - binEdges[i]);
     }
   }
 
