@@ -471,9 +471,29 @@ def initialize_black_project(
     # Get preparation start year directly from parameter
     preparation_start_year = black_project_params.black_project_start_year
 
-    # Derive build_a_black_fab from localization year comparison
-    # Fab is built if PRC achieves required process node by black project start
-    build_a_black_fab = props.prc_localization_year_for_min_node <= preparation_start_year
+    # Determine which process nodes are localized by black project start
+    # Check each node from most advanced (7nm) to least advanced (28nm)
+    localization_years = {
+        7: props.prc_localization_year_7nm,
+        14: props.prc_localization_year_14nm,
+        28: props.prc_localization_year_28nm,
+    }
+
+    # Find best available node (smallest nm = most advanced) that is localized by prep start
+    best_available_node = None
+    best_node_localization_year = 9999
+    for node_nm in [7, 14, 28]:  # Check from most to least advanced
+        if localization_years[node_nm] <= preparation_start_year:
+            best_available_node = node_nm
+            best_node_localization_year = localization_years[node_nm]
+            break
+
+    # Fab is built if best available node meets minimum requirement
+    min_node_nm = props.black_fab_min_process_node
+    build_a_black_fab = (best_available_node is not None and best_available_node <= min_node_nm)
+
+    # The actual process node used is the best available (if fab is built)
+    actual_process_node_nm = best_available_node if build_a_black_fab else None
 
     # Calculate labor values from total_labor and fractions
     total_labor = props.total_labor
@@ -551,7 +571,7 @@ def initialize_black_project(
     )
 
     # Fab h100e per chip calculation
-    process_node_nm = props.black_fab_min_process_node if build_a_black_fab else 28.0  # Default to 28nm if no fab
+    process_node_nm = actual_process_node_nm if build_a_black_fab else 28.0  # Use best available node, default to 28nm if no fab
     fab_h100e_per_chip = calculate_fab_h100e_per_chip(
         fab_process_node_nm=process_node_nm,
         year=preparation_start_year,
@@ -651,7 +671,8 @@ def initialize_black_project(
     # This matches discrete model: total_prc_scanners * diversion_proportion
     if build_a_black_fab:
         # Calculate years since PRC achieved localization for this process node
-        localization_year = props.prc_localization_year_for_min_node
+        # Use the localization year for the actual process node being used
+        localization_year = best_node_localization_year
         years_since_localization = max(0, preparation_start_year - localization_year)
 
         # Calculate total accumulated PRC scanners using linear production ramp-up
@@ -805,7 +826,8 @@ def initialize_black_project(
 
     # Compute LR from SME (lithography scanner) inventory accounting
     # Calculate total PRC scanners at preparation start (needed for LR even if fab not built)
-    localization_year = props.prc_localization_year_for_min_node
+    # Use the best available node's localization year (or 28nm if no fab)
+    localization_year = best_node_localization_year if build_a_black_fab else localization_years.get(28, 9999)
     years_since_localization = max(0, preparation_start_year - localization_year)
     n = years_since_localization
     first_year_prod = prc_compute.prc_lithography_scanners_produced_in_first_year
@@ -851,8 +873,15 @@ def initialize_black_project(
     # Fab production metrics (initialized, updated during simulation)
     project._set_frozen_field('fab_cumulative_production_h100e', 0.0)
     project._set_frozen_field('fab_monthly_production_h100e', 0.0)
-    project._set_frozen_field('fab_architecture_efficiency', exogenous_trends.state_of_the_art_architecture_efficiency_improvement_per_year ** (preparation_start_year - 2022.0))
-    project._set_frozen_field('fab_transistor_density_relative_to_h100', (4.0 / process_node_nm) ** 2)
+    # Architecture efficiency uses agreement_year (ai_slowdown_start_year) to match reference model
+    # This represents state-of-the-art architecture efficiency at the time of agreement
+    agreement_year = policy_params.ai_slowdown_start_year
+    project._set_frozen_field('fab_architecture_efficiency',
+        exogenous_trends.state_of_the_art_architecture_efficiency_improvement_per_year ** (agreement_year - 2022.0))
+    # Use correct scaling exponent (1.49) to match reference model
+    # transistor_density = (H100_node / fab_node) ^ scaling_exponent
+    project._set_frozen_field('fab_transistor_density_relative_to_h100',
+        (4.0 / process_node_nm) ** exogenous_trends.transistor_density_scaling_exponent)
 
     # Survival and initial compute metrics
     project._set_frozen_field('survival_rate', 1.0)  # Initial survival rate
