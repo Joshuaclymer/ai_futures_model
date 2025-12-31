@@ -134,7 +134,7 @@ def get_global_compute_production_between_years(start_year: float, end_year: flo
 
 def run_black_project_simulations(
     frontend_params: dict,
-    num_mc_simulations: int = 10,
+    num_simulations: int = 100,
     time_range: list = None,
 ) -> Dict[str, Any]:
     """
@@ -147,9 +147,8 @@ def run_black_project_simulations(
     """
     start_time = time.perf_counter()
 
-    # Load model parameters from YAML (use black_project_parameters.yaml for faster simulations)
-    # This config has update_software_progress: false which speeds up from ~4s to ~0.2s per sim
-    config_path = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "black_project_parameters.yaml"
+    # Load model parameters from YAML - use dedicated black project monte carlo config
+    config_path = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "black_project_monte_carlo_parameters.yaml"
     logger.info(f"[black-project] Loading config from: {config_path}")
 
     try:
@@ -167,10 +166,9 @@ def run_black_project_simulations(
     simulator = AIFuturesSimulator(model_parameters=model_params)
 
     # Run Monte Carlo simulations
-    total_sims = num_mc_simulations + 1  # +1 for central simulation
-    logger.info(f"[black-project] Running {total_sims} simulations...")
+    logger.info(f"[black-project] Running {num_simulations} simulations...")
 
-    simulation_results = simulator.run_simulations(num_simulations=total_sims)
+    simulation_results = simulator.run_simulations(num_simulations=num_simulations)
 
     elapsed = time.perf_counter() - start_time
     logger.info(f"[black-project] Completed {len(simulation_results)} simulations in {elapsed:.2f}s")
@@ -194,6 +192,35 @@ def to_float(value, default: float = 0.0) -> float:
     if np.isinf(result) or np.isnan(result):
         return default
     return result
+
+
+def _is_fab_built(bp_props, black_project_start_year: float) -> bool:
+    """
+    Determine if a fab is built based on localization years and minimum process node requirement.
+
+    A fab is built if the best available process node (that is localized by black_project_start_year)
+    meets the minimum requirement specified in black_fab_min_process_node.
+    """
+    if bp_props is None:
+        return True
+
+    min_node = bp_props.black_fab_min_process_node
+
+    # Check each node from most advanced to least advanced
+    localization_years = {
+        7: bp_props.prc_localization_year_7nm,
+        14: bp_props.prc_localization_year_14nm,
+        28: bp_props.prc_localization_year_28nm,
+    }
+
+    # Find best available node that is localized by start year
+    for node_nm in [7, 14, 28]:
+        if localization_years[node_nm] <= black_project_start_year:
+            # Found a localized node - check if it meets minimum requirement
+            return node_nm <= min_node
+
+    # No node is localized by start year
+    return False
 
 
 def compute_detection_times(all_data: List[Dict], years: List[float], agreement_year: float) -> List[float]:
@@ -1047,78 +1074,103 @@ def extract_black_project_plot_data(
         },
 
         # Covert fab section (new format expected by CovertFabSection)
-        "covert_fab": {
-            "dashboard": (lambda: {
-                # Compute dashboard values from actual simulation data
-                "production": f"{int(np.median([d['black_project']['fab_cumulative_production_h100e'][-1] if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') else 0 for d in all_data]) / 1000):.0f}K H100e" if all_data else "0K H100e",
-                "energy": f"{np.median([d['black_project']['datacenter_capacity_gw'][-1] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') else 0 for d in all_data]):.2f} GW" if all_data else "0.00 GW",
-                "probFabBuilt": f"{100 * sum(1 for d in all_data if d['black_project'] and any(d['black_project'].get('fab_is_operational', []))) / max(1, num_sims):.1f}%",
-                "yearsOperational": f"{np.median([sum(1 for op in d['black_project'].get('fab_is_operational', []) if op) * 0.25 if d['black_project'] else 0 for d in all_data]):.1f} yrs",
-                "processNode": "28nm",  # TODO: extract from params
-            })(),
+        # IMPORTANT: Filter to only include simulations where a covert fab was actually built
+        # A fab is considered "built" if fab_is_operational is True at any point
+        "covert_fab": (lambda: {
+            # Filter to simulations where fab was built
+            "fab_built_data": (fab_built_data := [
+                d for d in all_data
+                if d['black_project'] and any(d['black_project'].get('fab_is_operational', []))
+            ]),
+            "num_fab_built": len(fab_built_data),
+            "dashboard": {
+                # Production/energy computed from fab-built simulations only
+                "production": f"{int(np.median([d['black_project']['fab_cumulative_production_h100e'][-1] if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') else 0 for d in fab_built_data]) / 1000):.0f}K H100e" if fab_built_data else "0K H100e",
+                "energy": f"{np.median([d['black_project']['datacenter_capacity_gw'][-1] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') else 0 for d in fab_built_data]):.2f} GW" if fab_built_data else "0.00 GW",
+                # probFabBuilt uses ALL simulations (it's the probability across all sims)
+                "probFabBuilt": f"{100 * len(fab_built_data) / max(1, num_sims):.1f}%",
+                # yearsOperational uses fab-built simulations only
+                "yearsOperational": f"{np.median([sum(1 for op in d['black_project'].get('fab_is_operational', []) if op) * 0.25 if d['black_project'] else 0 for d in fab_built_data]):.1f} yrs" if fab_built_data else "0.0 yrs",
+                "processNode": f"{int(np.median([d['black_project'].get('fab_process_node_nm', 28) for d in fab_built_data if d['black_project']]))}nm" if fab_built_data else "28nm",
+            },
             "compute_ccdf": {
                 lr: compute_ccdf([
                     d['black_project']['fab_cumulative_production_h100e'][-1]
                     if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e')
                     else 0.0
-                    for d in all_data
+                    for d in fab_built_data  # Only fab-built simulations
                 ])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             "time_series_data": {
                 "years": years,
-                "lr_combined": get_percentiles_with_fallback(
-                    lambda d: d['black_project']['cumulative_lr'] if d['black_project'] and d['black_project'].get('cumulative_lr') else [],
-                    lambda: make_fallback_time_series(1.0, 1.3, 0.2)
-                ),
-                "h100e_flow": get_percentiles_with_fallback(
-                    lambda d: d['black_project']['fab_cumulative_production_h100e'] if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') else [],
-                    lambda: make_fallback_time_series(5000, 1.2, 0.3)
-                ),
+                # Use fab-built simulations for time series
+                "lr_combined": (lambda data: {
+                    "median": np.percentile([[d['black_project']['cumulative_lr'][i] if d['black_project'] and d['black_project'].get('cumulative_lr') and i < len(d['black_project']['cumulative_lr']) else 1.0 for i in range(len(years))] for d in data], 50, axis=0).tolist() if data else [1.0] * len(years),
+                    "p25": np.percentile([[d['black_project']['cumulative_lr'][i] if d['black_project'] and d['black_project'].get('cumulative_lr') and i < len(d['black_project']['cumulative_lr']) else 1.0 for i in range(len(years))] for d in data], 25, axis=0).tolist() if data else [1.0] * len(years),
+                    "p75": np.percentile([[d['black_project']['cumulative_lr'][i] if d['black_project'] and d['black_project'].get('cumulative_lr') and i < len(d['black_project']['cumulative_lr']) else 1.0 for i in range(len(years))] for d in data], 75, axis=0).tolist() if data else [1.0] * len(years),
+                })(fab_built_data),
+                "h100e_flow": (lambda data: {
+                    "median": np.percentile([[d['black_project']['fab_cumulative_production_h100e'][i] if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') and i < len(d['black_project']['fab_cumulative_production_h100e']) else 0.0 for i in range(len(years))] for d in data], 50, axis=0).tolist() if data else [0.0] * len(years),
+                    "p25": np.percentile([[d['black_project']['fab_cumulative_production_h100e'][i] if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') and i < len(d['black_project']['fab_cumulative_production_h100e']) else 0.0 for i in range(len(years))] for d in data], 25, axis=0).tolist() if data else [0.0] * len(years),
+                    "p75": np.percentile([[d['black_project']['fab_cumulative_production_h100e'][i] if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') and i < len(d['black_project']['fab_cumulative_production_h100e']) else 0.0 for i in range(len(years))] for d in data], 75, axis=0).tolist() if data else [0.0] * len(years),
+                })(fab_built_data),
             },
             "is_operational": {
                 "years": years,
-                # Compute fraction of simulations with operational fab at each time point
+                # Compute fraction of fab-built simulations with operational fab at each time point
+                # This shows WHEN the fab becomes operational among simulations that have a fab
                 **{k: [
-                    sum(1 for d in all_data if d['black_project'] and d['black_project'].get('fab_is_operational') and i < len(d['black_project']['fab_is_operational']) and d['black_project']['fab_is_operational'][i]) / max(1, num_sims)
+                    sum(1 for d in fab_built_data if d['black_project'] and d['black_project'].get('fab_is_operational') and i < len(d['black_project']['fab_is_operational']) and d['black_project']['fab_is_operational'][i]) / max(1, len(fab_built_data))
                     for i in range(len(years))
                 ] for k in ["median", "p25", "p75"]},
             },
-            # Extract real wafer starts from simulations (includes 0s for non-operational fabs)
+            # Extract real wafer starts from fab-built simulations only
             "wafer_starts_samples": [
                 d['black_project']['fab_wafer_starts_per_month']
                 if d['black_project'] and d['black_project'].get('fab_wafer_starts_per_month') is not None
                 else 0.0
-                for d in all_data
+                for d in fab_built_data  # Only fab-built simulations
             ],
-            # Extract chips per wafer from first simulation with valid data
+            # Extract chips per wafer from first fab-built simulation with valid data
             "chips_per_wafer": next(
                 (d['black_project']['fab_chips_per_wafer']
-                 for d in all_data
+                 for d in fab_built_data
                  if d['black_project'] and d['black_project'].get('fab_chips_per_wafer')),
                 28
             ),
-            # Extract architecture efficiency - use median from simulations
+            # Extract architecture efficiency - use median from fab-built simulations
             "architecture_efficiency": float(np.median([
                 d['black_project']['fab_architecture_efficiency']
-                for d in all_data
+                for d in fab_built_data
                 if d['black_project'] and d['black_project'].get('fab_architecture_efficiency', 0) > 0
-            ])) if any(d['black_project'] and d['black_project'].get('fab_architecture_efficiency', 0) > 0 for d in all_data) else 1.0,
+            ])) if any(d['black_project'] and d['black_project'].get('fab_architecture_efficiency', 0) > 0 for d in fab_built_data) else 1.0,
             "h100_power": 700,  # watts
-            # Build transistor density from simulation data - show probability distribution of process nodes
-            "transistor_density": (lambda: _build_transistor_density_distribution(all_data))(),
+            # Build transistor density from fab-built simulation data only
+            "transistor_density": _build_transistor_density_distribution(fab_built_data),
             "compute_per_month": {
                 "years": years,
-                **get_percentiles_with_fallback(
-                    # Approximate monthly compute from cumulative production difference
-                    lambda d: [
-                        (d['black_project']['fab_cumulative_production_h100e'][i] - (d['black_project']['fab_cumulative_production_h100e'][i-1] if i > 0 else 0)) / 0.25  # Convert quarterly to monthly
+                # Use fab-built simulations for compute per month
+                **(lambda data: {
+                    "median": np.percentile([[
+                        (d['black_project']['fab_cumulative_production_h100e'][i] - (d['black_project']['fab_cumulative_production_h100e'][i-1] if i > 0 else 0)) / 0.25
                         if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') and i < len(d['black_project']['fab_cumulative_production_h100e'])
                         else 0.0
                         for i in range(len(years))
-                    ],
-                    lambda: make_fallback_time_series(1000, 1.15, 0.3)
-                ),
+                    ] for d in data], 50, axis=0).tolist() if data else [0.0] * len(years),
+                    "p25": np.percentile([[
+                        (d['black_project']['fab_cumulative_production_h100e'][i] - (d['black_project']['fab_cumulative_production_h100e'][i-1] if i > 0 else 0)) / 0.25
+                        if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') and i < len(d['black_project']['fab_cumulative_production_h100e'])
+                        else 0.0
+                        for i in range(len(years))
+                    ] for d in data], 25, axis=0).tolist() if data else [0.0] * len(years),
+                    "p75": np.percentile([[
+                        (d['black_project']['fab_cumulative_production_h100e'][i] - (d['black_project']['fab_cumulative_production_h100e'][i-1] if i > 0 else 0)) / 0.25
+                        if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') and i < len(d['black_project']['fab_cumulative_production_h100e'])
+                        else 0.0
+                        for i in range(len(years))
+                    ] for d in data], 75, axis=0).tolist() if data else [0.0] * len(years),
+                })(fab_built_data),
             },
             "watts_per_tpp_curve": {
                 # Extended curve: Dennard scaling ends at ~0.03 relative density
@@ -1130,15 +1182,23 @@ def extract_black_project_plot_data(
             },
             "energy_per_month": {
                 "years": years,
-                **get_percentiles_with_fallback(
-                    lambda d: [
-                        (d['black_project']['datacenter_capacity_gw'][i] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') and i < len(d['black_project']['datacenter_capacity_gw']) else 0.0)
+                # Use fab-built simulations for energy per month
+                **(lambda data: {
+                    "median": np.percentile([[
+                        d['black_project']['datacenter_capacity_gw'][i] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') and i < len(d['black_project']['datacenter_capacity_gw']) else 0.0
                         for i in range(len(years))
-                    ],
-                    lambda: make_fallback_time_series(0.01, 1.12, 0.2)
-                ),
+                    ] for d in data], 50, axis=0).tolist() if data else [0.0] * len(years),
+                    "p25": np.percentile([[
+                        d['black_project']['datacenter_capacity_gw'][i] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') and i < len(d['black_project']['datacenter_capacity_gw']) else 0.0
+                        for i in range(len(years))
+                    ] for d in data], 25, axis=0).tolist() if data else [0.0] * len(years),
+                    "p75": np.percentile([[
+                        d['black_project']['datacenter_capacity_gw'][i] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') and i < len(d['black_project']['datacenter_capacity_gw']) else 0.0
+                        for i in range(len(years))
+                    ] for d in data], 75, axis=0).tolist() if data else [0.0] * len(years),
+                })(fab_built_data),
             },
-        },
+        })(),
 
         # Detection likelihood section
         "detection_likelihood": {
@@ -1298,7 +1358,7 @@ def extract_black_project_plot_data(
 
 def get_default_parameters() -> Dict[str, Any]:
     """Get default parameters from YAML for frontend initialization."""
-    config_path = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "modal_parameters.yaml"
+    config_path = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "black_project_monte_carlo_parameters.yaml"
     model_params = ModelParameters.from_yaml(config_path)
 
     # Extract relevant parameters for frontend
@@ -1330,8 +1390,8 @@ def get_default_parameters() -> Dict[str, Any]:
         "fractionOfDatacenterCapacityToDivert": bp_props.fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start if bp_props else 0.5,
         "fractionOfLithographyScannersToDivert": bp_props.fraction_of_lithography_scanners_to_divert_at_black_project_start if bp_props else 0.10,
         "maxFractionOfTotalNationalEnergyConsumption": bp_props.max_fraction_of_total_national_energy_consumption if bp_props else 0.05,
-        # build_a_black_fab is derived: True if prc_localization_year_for_min_node <= black_project_start_year
-        "buildCovertFab": (bp_props.prc_localization_year_for_min_node <= bp.black_project_start_year) if bp_props and bp else True,
+        # build_a_black_fab is derived: True if best available node meets min requirement by black_project_start_year
+        "buildCovertFab": _is_fab_built(bp_props, bp.black_project_start_year if bp else 2029) if bp_props else True,
         "blackFabMaxProcessNode": str(int(bp_props.black_fab_min_process_node)) if bp_props else "28",
 
         # Detection parameters
