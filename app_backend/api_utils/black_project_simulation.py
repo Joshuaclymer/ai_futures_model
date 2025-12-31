@@ -1052,9 +1052,11 @@ def extract_reference_format(
             "initial_black_project": get_percentiles_with_individual(
                 lambda d: d['black_project']['initial_compute_surviving_h100e'] if d['black_project'] else [0.0] * len(years)
             ),
-            "black_fab_flow": get_percentiles_with_individual(
+            # black_fab_flow: FILTERED to only fab-built simulations (for Covert fab section plots)
+            "black_fab_flow": get_fab_percentiles_with_individual(
                 lambda d: d['black_project']['fab_cumulative_production_h100e'] if d['black_project'] else [0.0] * len(years)
             ),
+            # black_fab_flow_all_sims: ALL simulations (for Dark Compute Stock Breakdown)
             "black_fab_flow_all_sims": get_percentiles_with_individual(
                 lambda d: d['black_project']['fab_cumulative_production_h100e'] if d['black_project'] else [0.0] * len(years)
             ),
