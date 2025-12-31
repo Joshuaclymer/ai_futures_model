@@ -22,7 +22,7 @@ def fetch_local_api(
     num_simulations: int = DEFAULT_NUM_SAMPLES,
     agreement_year: int = DEFAULT_AGREEMENT_YEAR,
     num_years: int = 10,
-    timeout: int = 300,
+    timeout: int = 600,
     use_cache: bool = True,
     verbose: bool = True,
 ) -> Optional[Dict]:
