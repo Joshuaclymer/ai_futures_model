@@ -48,9 +48,14 @@ class World(TensorDataclass):
         Create a zero-initialized World.
 
         If template is provided, creates zeros with same structure.
+        If template is a FlatWorld, returns a FlatWorld.zeros() instead.
         Otherwise creates an empty World.
         """
         if template is not None:
+            # Check if template is a FlatWorld
+            from classes.world.flat_world import FlatWorld
+            if isinstance(template, FlatWorld):
+                return FlatWorld.zeros(template)
             return super().zeros(template)
 
         # Create empty world with zero time

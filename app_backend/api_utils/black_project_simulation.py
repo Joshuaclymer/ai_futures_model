@@ -147,8 +147,9 @@ def run_black_project_simulations(
     """
     start_time = time.perf_counter()
 
-    # Load model parameters from YAML
-    config_path = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "modal_parameters.yaml"
+    # Load model parameters from YAML (use black_project_parameters.yaml for faster simulations)
+    # This config has update_software_progress: false which speeds up from ~4s to ~0.2s per sim
+    config_path = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "black_project_parameters.yaml"
     logger.info(f"[black-project] Loading config from: {config_path}")
 
     try:
@@ -181,11 +182,18 @@ def run_black_project_simulations(
     }
 
 
-def to_float(value) -> float:
-    """Convert tensor or number to Python float."""
+def to_float(value, default: float = 0.0) -> float:
+    """Convert tensor or number to Python float, handling Infinity/NaN for JSON compatibility."""
+    if value is None:
+        return default
     if hasattr(value, 'item'):
-        return float(value.item())
-    return float(value) if value is not None else 0.0
+        result = float(value.item())
+    else:
+        result = float(value)
+    # Handle Infinity and NaN which are not valid JSON
+    if np.isinf(result) or np.isnan(result):
+        return default
+    return result
 
 
 def compute_detection_times(all_data: List[Dict], years: List[float], agreement_year: float) -> List[float]:
@@ -201,7 +209,7 @@ def compute_detection_times(all_data: List[Dict], years: List[float], agreement_
             detection_times.append(bp['sampled_detection_time'])
         else:
             # Fallback if detection time not available
-            detection_times.append(float('inf'))  # No detection
+            detection_times.append(100.0)  # No detection - use large value that's JSON-compatible
 
     return detection_times
 
@@ -324,6 +332,8 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
 
         bp_data = {
             'id': bp_id,
+            # Black project start year (for filtering output data)
+            'preparation_start_year': to_float(first_bp.preparation_start_year) if first_bp and hasattr(first_bp, 'preparation_start_year') else None,
             # Time series (extracted from trajectory, one value per time step)
             'operational_compute': [],
             'total_compute': [],
@@ -355,6 +365,9 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
             'fab_transistor_density_relative_to_h100': 0.0,  # Will be updated from final state
             'fab_process_node_nm': 28.0,  # Will be updated from final state
             'fab_chips_per_wafer': 28,  # Will be updated from final state
+            # Energy efficiency values (for labels)
+            'initial_stock_watts_per_h100e': 700.0,  # Will be updated from first state
+            'fab_watts_per_h100e': 700.0,  # Will be updated from final state (fab_watts_per_chip / fab_h100e_per_chip)
         }
 
         for world in trajectory:
@@ -425,6 +438,14 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
             bp_data['fab_transistor_density_relative_to_h100'] = to_float(final_bp.fab_transistor_density_relative_to_h100) if hasattr(final_bp, 'fab_transistor_density_relative_to_h100') else 0.0
             bp_data['fab_process_node_nm'] = to_float(final_bp.fab_process_node_nm) if hasattr(final_bp, 'fab_process_node_nm') else 28.0
             bp_data['fab_chips_per_wafer'] = to_float(final_bp.fab_chips_per_wafer) if hasattr(final_bp, 'fab_chips_per_wafer') else 28
+            # Extract watts_per_h100e for fab (fab_watts_per_chip / fab_h100e_per_chip)
+            fab_watts = to_float(final_bp.fab_watts_per_chip) if hasattr(final_bp, 'fab_watts_per_chip') else 700.0
+            fab_h100e = to_float(final_bp.fab_h100e_per_chip) if hasattr(final_bp, 'fab_h100e_per_chip') else 1.0
+            bp_data['fab_watts_per_h100e'] = fab_watts / fab_h100e if fab_h100e > 0 else 700.0
+
+        # Extract initial stock watts_per_h100e from first state
+        if first_bp and hasattr(first_bp, 'compute_stock') and first_bp.compute_stock:
+            bp_data['initial_stock_watts_per_h100e'] = to_float(first_bp.compute_stock.watts_per_h100e) if hasattr(first_bp.compute_stock, 'watts_per_h100e') else 700.0
 
         data['black_project'] = bp_data
 
@@ -500,8 +521,49 @@ def extract_black_project_plot_data(
     all_data = [extract_world_data(r) for r in results]
 
     # Use first simulation as reference for years
-    years = all_data[0]['years'] if all_data else []
+    raw_years = all_data[0]['years'] if all_data else []
     num_sims = len(all_data)
+
+    # Get black project start year to filter output (survival rate is relative to this)
+    bp_start_year = None
+    if all_data and all_data[0]['black_project']:
+        bp_start_year = all_data[0]['black_project'].get('preparation_start_year')
+
+    # Filter data to only include time points >= black_project_start_year
+    # This fixes the issue where survival_rate stays at 1.0 before the project starts
+    if bp_start_year is not None and raw_years:
+        # Find the first index where year >= bp_start_year
+        start_idx = 0
+        for i, y in enumerate(raw_years):
+            if y >= bp_start_year:
+                start_idx = i
+                break
+
+        # Filter years array
+        years = raw_years[start_idx:]
+
+        # Filter all time series data in all_data
+        for d in all_data:
+            # Filter top-level time series
+            d['years'] = d['years'][start_idx:]
+            d['prc_compute_stock'] = d['prc_compute_stock'][start_idx:]
+            d['prc_operating_compute'] = d['prc_operating_compute'][start_idx:]
+
+            # Filter black project time series
+            if d['black_project']:
+                bp = d['black_project']
+                for key in ['operational_compute', 'total_compute', 'datacenter_capacity_gw',
+                            'fab_is_operational', 'cumulative_lr', 'lr_other_intel', 'posterior_prob',
+                            'lr_reported_energy', 'fab_cumulative_production_h100e', 'fab_monthly_production_h100e',
+                            'survival_rate', 'initial_compute_surviving_h100e',
+                            'initial_stock_energy_gw', 'fab_compute_energy_gw', 'total_compute_energy_gw']:
+                    if key in bp and isinstance(bp[key], list):
+                        bp[key] = bp[key][start_idx:]
+
+        logger.info(f"[black-project] Filtered data to start from black project year {bp_start_year}")
+        logger.info(f"[black-project] Removed {start_idx} time points before project start")
+    else:
+        years = raw_years
 
     # Log raw simulation data for debugging
     logger.info("=" * 60)
@@ -550,6 +612,41 @@ def extract_black_project_plot_data(
             "p25": [v * (1 - spread) for v in median],
             "p75": [v * (1 + spread) for v in median],
         }
+
+    # Helper to compute accounting-only LR time series (chip × SME × datacenter × energy)
+    # This excludes worker-based evidence and detection penalty
+    def _compute_accounting_lr_time_series(bp_data: Dict) -> List[float]:
+        """Compute time series of accounting-only likelihood ratio.
+
+        Combined evidence from resource accounting = chip × SME × datacenter × energy LRs.
+        The first three are static (set at initialization), while energy varies over time.
+        """
+        if not bp_data:
+            return []
+
+        # Get static LR components
+        lr_chip = bp_data.get('lr_prc_accounting', 1.0)
+        lr_sme = bp_data.get('lr_sme_inventory', 1.0)
+        lr_dc = bp_data.get('lr_satellite_datacenter', 1.0)
+
+        # Get time-varying energy LR
+        lr_energy_series = bp_data.get('lr_reported_energy', [])
+
+        if isinstance(lr_energy_series, (int, float)):
+            # Single value, not a time series
+            lr_energy_series = [lr_energy_series] * len(years)
+
+        if not lr_energy_series or len(lr_energy_series) == 0:
+            # No energy data, return static accounting LR
+            static_lr = lr_chip * lr_sme * lr_dc
+            return [static_lr] * len(years)
+
+        # Compute combined accounting LR for each timestep
+        combined = []
+        for lr_energy in lr_energy_series:
+            combined.append(lr_chip * lr_sme * lr_dc * lr_energy)
+
+        return combined
 
     # Helper to compute CCDF
     def compute_ccdf(values: List[float]) -> List[Dict[str, float]]:
@@ -820,10 +917,16 @@ def extract_black_project_plot_data(
                 lambda d: d['black_project']['datacenter_capacity_gw'] if d['black_project'] else [],
                 lambda: make_fallback_time_series(0.05, 1.2, 0.2)  # 50 MW growing 20%/yr
             ),
-            # Individual simulation values for dashboard
+            # Individual simulation values for dashboard - capacity at detection time
             "individual_capacity_before_detection": [
-                d['black_project']['datacenter_capacity_gw'][min(int(len(years) * 0.4), len(d['black_project']['datacenter_capacity_gw']) - 1)]
-                if d['black_project'] and d['black_project']['datacenter_capacity_gw'] else 0.5
+                (lambda bp, yrs: (
+                    bp['datacenter_capacity_gw'][
+                        min(
+                            max(0, int(bp.get('sampled_detection_time', 1.0) / (yrs[-1] - yrs[0]) * len(yrs)) if yrs and len(yrs) > 1 else 0),
+                            len(bp['datacenter_capacity_gw']) - 1
+                        )
+                    ] if bp and bp.get('datacenter_capacity_gw') else 0.0
+                ))(d.get('black_project'), years)
                 for d in all_data
             ] if bp_data else [0.3 + 0.1 * (i % 5) for i in range(num_sims)],
             "individual_time_before_detection": compute_detection_times(all_data, years, agreement_year),
@@ -832,7 +935,7 @@ def extract_black_project_plot_data(
                 str(lr): compute_ccdf([
                     d['black_project']['datacenter_capacity_gw'][
                         min(
-                            int((d['black_project'].get('sampled_detection_time', 1.0) / max(1, years[-1] - years[0])) * len(years)),
+                            int((min(d['black_project'].get('sampled_detection_time', 1.0), years[-1] - years[0]) / max(1, years[-1] - years[0])) * len(years)),
                             len(d['black_project']['datacenter_capacity_gw']) - 1
                         )
                     ] if d['black_project'] and d['black_project']['datacenter_capacity_gw'] else 0.0
@@ -840,12 +943,11 @@ def extract_black_project_plot_data(
                 ])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
-            # LR for datacenters - use actual satellite LR from simulations
-            "lr_datacenters": {
-                "median": [d['black_project']['lr_satellite_datacenter'] if d['black_project'] else 1.0 for d in all_data][:len(years)] if bp_data else [1.0] * len(years),
-                "p25": [1.0] * len(years),  # Static LR doesn't have percentiles
-                "p75": [d['black_project']['lr_satellite_datacenter'] * 1.1 if d['black_project'] else 1.1 for d in all_data][:len(years)] if bp_data else [1.1] * len(years),
-            },
+            # LR for datacenters - use cumulative LR time series (combined evidence over time)
+            "lr_datacenters": get_percentiles_with_fallback(
+                lambda d: d['black_project']['cumulative_lr'] if d['black_project'] and d['black_project'].get('cumulative_lr') else [],
+                lambda: make_fallback_time_series(1.0, 1.3, 0.2)
+            ),
             # PRC total capacity (context)
             "prc_capacity_years": years,
             "prc_capacity_gw": {
@@ -928,8 +1030,9 @@ def extract_black_project_plot_data(
                 (all_data[0]['prc_compute_stock'][i] if all_data and all_data[0]['prc_compute_stock'] and i < len(all_data[0]['prc_compute_stock']) else 300000 * (1.25 ** i)) * 0.3
                 for i in range(len(years))
             ],
-            # Energy efficiency relative to H100 (1.35^years from 2023)
-            "state_of_the_art_energy_efficiency_relative_to_h100": 1.35 ** (agreement_year - 2023),
+            # Energy efficiency relative to H100 (1.26^years from H100 release year 2022)
+            # Uses 1.26 to match modal_parameters.yaml state_of_the_art_energy_efficiency_improvement_per_year
+            "state_of_the_art_energy_efficiency_relative_to_h100": 1.26 ** (agreement_year - 2022),
         },
 
         # Fab section (legacy format)
@@ -1053,11 +1156,12 @@ def extract_black_project_plot_data(
                 d['black_project']['lr_satellite_datacenter'] if d['black_project'] and d['black_project'].get('lr_satellite_datacenter') else 1.0
                 for d in all_data
             ],
-            # Time series: combined LR
+            # Time series: combined LR from accounting only (chip × SME × datacenter × energy)
+            # This is the product of accounting evidence WITHOUT worker-based evidence
             "combined_evidence": {
                 "years": years,
                 **get_percentiles_with_fallback(
-                    lambda d: d['black_project']['cumulative_lr'] if d['black_project'] and d['black_project'].get('cumulative_lr') else [],
+                    lambda d: _compute_accounting_lr_time_series(d['black_project']) if d['black_project'] else [],
                     lambda: make_fallback_time_series(1.0, 1.15, 0.2)  # Growing LR over time
                 ),
             },
@@ -1139,15 +1243,29 @@ def extract_black_project_plot_data(
                 ),
             },
             # Stacked energy data: [initial_stock_energy_gw, fab_compute_energy_gw] per time point
-            # Uses corrected watts_per_chip calculation matching discrete model
-            "energy_stacked_data": [
+            # Uses medians across all simulations for proper distribution representation
+            "energy_stacked_data": (lambda: [
                 [
-                    all_data[0]['black_project']['initial_stock_energy_gw'][i] if all_data and all_data[0]['black_project'] and 'initial_stock_energy_gw' in all_data[0]['black_project'] and i < len(all_data[0]['black_project']['initial_stock_energy_gw']) else 0.05,
-                    all_data[0]['black_project']['fab_compute_energy_gw'][i] if all_data and all_data[0]['black_project'] and 'fab_compute_energy_gw' in all_data[0]['black_project'] and i < len(all_data[0]['black_project']['fab_compute_energy_gw']) else 0.0,
+                    float(np.median([
+                        d['black_project']['initial_stock_energy_gw'][i]
+                        if d['black_project'] and 'initial_stock_energy_gw' in d['black_project'] and i < len(d['black_project']['initial_stock_energy_gw'])
+                        else 0.0
+                        for d in all_data
+                    ])) if all_data else 0.0,
+                    float(np.median([
+                        d['black_project']['fab_compute_energy_gw'][i]
+                        if d['black_project'] and 'fab_compute_energy_gw' in d['black_project'] and i < len(d['black_project']['fab_compute_energy_gw'])
+                        else 0.0
+                        for d in all_data
+                    ])) if all_data else 0.0,
                 ]
                 for i in range(len(years))
-            ] if years else [],
-            "energy_source_labels": ["Initial Stock", "Fab-Produced"],
+            ] if years else [])(),
+            # Energy source labels with efficiency values (H100_power / watts_per_h100e)
+            "energy_source_labels": (lambda: [
+                f"Initial Dark Compute ({700.0 / all_data[0]['black_project']['initial_stock_watts_per_h100e']:.2f}x energy efficiency)" if all_data and all_data[0]['black_project'] and 'initial_stock_watts_per_h100e' in all_data[0]['black_project'] else "Initial Dark Compute",
+                f"Covert Fab Compute ({700.0 / all_data[0]['black_project']['fab_watts_per_h100e']:.2f}x energy efficiency)" if all_data and all_data[0]['black_project'] and 'fab_watts_per_h100e' in all_data[0]['black_project'] else "Covert Fab Compute",
+            ])(),
             "operating_chips": {
                 "years": years,
                 **get_percentiles_with_fallback(
@@ -1198,7 +1316,7 @@ def get_default_parameters() -> Dict[str, Any]:
     defaults = {
         # Simulation settings
         "numYearsToSimulate": 10,
-        "numSimulations": 11,  # 1 central + 10 MC
+        "numSimulations": 200,
         "agreementYear": int(sim_params.policy.ai_slowdown_start_year) if sim_params.policy else 2030,
         "blackProjectStartYear": int(bp.black_project_start_year) if bp else 2029,
 
@@ -1238,6 +1356,14 @@ def get_default_parameters() -> Dict[str, Any]:
         # Survival parameters
         "initialAnnualHazardRate": compute.survival_rate_parameters.initial_annual_hazard_rate if compute else 0.05,
         "annualHazardRateIncreasePerYear": compute.survival_rate_parameters.annual_hazard_rate_increase_per_year if compute else 0.02,
+
+        # Exogenous compute trends (for Dennard scaling curves)
+        "transistorDensityScalingExponent": compute.exogenous_trends.transistor_density_scaling_exponent if compute else 1.49,
+        "stateOfTheArtArchitectureEfficiencyImprovementPerYear": compute.exogenous_trends.state_of_the_art_architecture_efficiency_improvement_per_year if compute else 1.23,
+        "transistorDensityAtEndOfDennardScaling": compute.exogenous_trends.transistor_density_at_end_of_dennard_scaling_m_per_mm2 if compute else 10.0,
+        "wattsTppDensityExponentBeforeDennard": compute.exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended if compute else -1.0,
+        "wattsTppDensityExponentAfterDennard": compute.exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended if compute else -0.33,
+        "stateOfTheArtEnergyEfficiencyImprovementPerYear": compute.exogenous_trends.state_of_the_art_energy_efficiency_improvement_per_year if compute else 1.26,
     }
 
     return defaults

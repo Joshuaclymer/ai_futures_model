@@ -12,10 +12,11 @@ from torchdiffeq import odeint, odeint_event
 from typing import Dict, List, Tuple
 
 from classes.world.world import World
+from classes.world.flat_world import FlatWorld
 from classes.simulation_primitives import SimulationResult
 from parameters.simulation_parameters import SimulationParameters, ModelParameters
 from initialize_world_history import initialize_world_for_year
-from world_updaters.combined_updater import CombinedUpdater
+from world_updaters.combined_updater import CombinedUpdater, FlatCombinedUpdater
 
 
 # ODE solver settings
@@ -105,6 +106,7 @@ class AIFuturesSimulator(nn.Module):
         self,
         world_history: Dict[int, World] = None,
         params: SimulationParameters = None,
+        use_flat_mode: bool = True,
     ) -> SimulationResult:
         """
         Run a single simulation trajectory.
@@ -117,6 +119,7 @@ class AIFuturesSimulator(nn.Module):
             world_history: Dictionary mapping years to World states. If None, creates default.
                           Simulation starts from the last year in history.
             params: SimulationParameters to use. If None, samples from model_parameters.
+            use_flat_mode: If True (default), use flat tensor optimization for ~5x speedup.
 
         Returns:
             SimulationResult containing trajectory and metadata.
@@ -158,10 +161,21 @@ class AIFuturesSimulator(nn.Module):
 
         # Single odeint call for all eval times
         initial_state = initial_world.to_state_tensor()
-        states = odeint(
-            combined, initial_state, eval_times,
-            method='dopri5', rtol=rtol, atol=atol
-        )
+
+        if use_flat_mode:
+            # Use flat tensor optimization for fast ODE integration
+            flat_world = FlatWorld.from_world(initial_world)
+            flat_combined = FlatCombinedUpdater(combined, flat_world)
+            states = odeint(
+                flat_combined, initial_state, eval_times,
+                method='dopri5', rtol=rtol, atol=atol
+            )
+        else:
+            # Use original nested dataclass approach
+            states = odeint(
+                combined, initial_state, eval_times,
+                method='dopri5', rtol=rtol, atol=atol
+            )
 
         # Convert states to World objects and apply discrete events
         trajectory = []

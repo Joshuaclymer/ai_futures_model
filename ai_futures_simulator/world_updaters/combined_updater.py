@@ -5,11 +5,14 @@ Combined updater that orchestrates all world updaters.
 import torch
 import torch.nn as nn
 from torch import Tensor
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from classes.world.world import World
 from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.simulation_parameters import SimulationParameters
+
+if TYPE_CHECKING:
+    from classes.world.flat_world import FlatWorld, FlatStateDerivative
 
 
 class CombinedUpdater(WorldUpdater):
@@ -145,3 +148,67 @@ class CombinedUpdater(WorldUpdater):
         world = World.from_state_tensor(state_tensor, self._world_template)
         total_derivative = self.contribute_state_derivatives(t, world)
         return total_derivative.to_state_tensor()
+
+
+class FlatCombinedUpdater(nn.Module):
+    """
+    Fast ODE updater that operates directly on flat tensors.
+
+    This is a wrapper around CombinedUpdater that avoids the expensive
+    World.from_state_tensor() and to_state_tensor() calls in the ODE loop
+    by using FlatWorld and FlatStateDerivative with proxy objects.
+
+    The individual WorldUpdater classes continue to use the same attribute
+    access interface (world.nations[id].compute_stock.functional_tpp_h100e)
+    which is provided by the proxy objects.
+    """
+
+    def __init__(self, combined: CombinedUpdater, flat_world: 'FlatWorld'):
+        """
+        Args:
+            combined: The CombinedUpdater with configured updaters
+            flat_world: A FlatWorld template for proxy creation
+        """
+        super().__init__()
+        self.combined = combined
+        self._flat_template = flat_world
+        self._schema = flat_world._schema
+        self._metadata = flat_world._metadata
+        self._world_template = flat_world._template
+
+    def forward(self, t: Tensor, state_tensor: Tensor) -> Tensor:
+        """
+        Compute d(state)/dt using flat tensor operations.
+
+        This avoids cloning the entire World dataclass on every call.
+        Instead, we use FlatWorld/FlatStateDerivative with proxy objects
+        that map attribute access to tensor indices.
+        """
+        from classes.world.flat_world import FlatWorld, FlatStateDerivative
+
+        # Create FlatWorld wrapping the state tensor (no clone!)
+        flat_world = FlatWorld(
+            state_tensor, self._schema, self._metadata, self._world_template
+        )
+
+        # Create zero-initialized derivative tensor
+        deriv_tensor = torch.zeros_like(state_tensor)
+        flat_deriv = FlatStateDerivative(
+            deriv_tensor, self._schema, self._metadata, self._world_template
+        )
+
+        # Call each updater's contribute_state_derivatives
+        # They use the same world.nations[id].attr interface via proxies
+        for updater in self.combined.updaters:
+            updater_deriv = updater.contribute_state_derivatives(t, flat_world)
+            # Add contribution to our flat derivative
+            deriv_tensor = deriv_tensor + updater_deriv.to_state_tensor()
+
+        return deriv_tensor
+
+    def set_flat_template(self, flat_world: 'FlatWorld'):
+        """Update the flat template (e.g., after a discrete event)."""
+        self._flat_template = flat_world
+        self._schema = flat_world._schema
+        self._metadata = flat_world._metadata
+        self._world_template = flat_world._template
