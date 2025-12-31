@@ -4,7 +4,7 @@ Comparison module for validating the local API against the reference model.
 This module provides tools for:
 - Fetching data from the reference API (discrete model)
 - Fetching data from the local API (continuous ODE model)
-- Comparing metrics between models (each metric in its own module)
+- Automatically comparing all shared keys between APIs
 - Generating alignment reports
 """
 
@@ -19,20 +19,14 @@ from .config import (
     DEFAULT_TOTAL_LABOR,
 )
 from .reference_api import fetch_reference_api
-from .local_simulator import fetch_local_api, extract_local_metrics, clear_local_cache
-from .metrics import (
-    ComparisonResult,
-    ALL_COMPARISONS,
-    compare_survival_rate,
-    compare_cumulative_lr,
-    compare_posterior_prob,
-    compare_lr_other_intel,
-    compare_lr_reported_energy,
-    compare_lr_prc_accounting,
-    compare_operating_compute,
-    compare_datacenter_capacity,
+from .local_simulator import fetch_local_api, clear_local_cache
+from .auto_compare import (
+    KeyComparisonResult,
+    ComparisonSummary,
+    compare_apis,
+    print_comparison_results,
 )
-from .reporting import print_results, generate_markdown_report
+from .main import run_comparison
 
 __all__ = [
     # Config
@@ -47,20 +41,12 @@ __all__ = [
     # APIs
     'fetch_reference_api',
     'fetch_local_api',
-    'extract_local_metrics',
     'clear_local_cache',
-    # Metrics
-    'ComparisonResult',
-    'ALL_COMPARISONS',
-    'compare_survival_rate',
-    'compare_cumulative_lr',
-    'compare_posterior_prob',
-    'compare_lr_other_intel',
-    'compare_lr_reported_energy',
-    'compare_lr_prc_accounting',
-    'compare_operating_compute',
-    'compare_datacenter_capacity',
-    # Reporting
-    'print_results',
-    'generate_markdown_report',
+    # Auto compare
+    'KeyComparisonResult',
+    'ComparisonSummary',
+    'compare_apis',
+    'print_comparison_results',
+    # Main
+    'run_comparison',
 ]
