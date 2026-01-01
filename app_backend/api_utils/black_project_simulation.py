@@ -1016,6 +1016,12 @@ def extract_reference_format(
 
     # Energy before detection (at detection time)
     # Use detection_times which is now based on LR threshold
+    # Match reference formula: energy_gw = operational_h100e * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / energy_efficiency / 1e9
+    # Where H100_TPP_PER_CHIP = 2144, H100_WATTS_PER_TPP = 0.326493, energy_efficiency = 0.2
+    # This simplifies to: energy_gw = operational_h100e * 3500 / 1e9
+    H100_TPP_PER_CHIP = 2144.0
+    H100_WATTS_PER_TPP = 0.326493
+    ENERGY_EFFICIENCY_PRC = 0.2  # energy_efficiency_of_prc_stock_relative_to_state_of_the_art
     energy_before_detection = []
     for i, d in enumerate(all_data):
         bp = d.get('black_project')
@@ -1025,15 +1031,15 @@ def extract_reference_format(
             energy_before_detection.append(0.0)
             continue
 
-        total_energy = bp.get('total_compute_energy_gw', [])
-        if not total_energy:
+        operational_compute = bp.get('operational_compute', [])
+        if not operational_compute:
             energy_before_detection.append(0.0)
             continue
 
         # Get detection year (agreement_year + detection_times[i])
         det_year = agreement_year + detection_times[i]
 
-        # Find energy at detection time
+        # Find index at detection time
         det_idx = 0
         for j, year in enumerate(sim_years):
             if year >= det_year:
@@ -1041,10 +1047,15 @@ def extract_reference_format(
                 break
             det_idx = j
 
-        if det_idx < len(total_energy):
-            energy_before_detection.append(total_energy[det_idx])
+        if det_idx < len(operational_compute):
+            op_h100e = operational_compute[det_idx]
+            # Use reference formula: energy_gw = operational_h100e * 3500 / 1e9
+            energy_gw = op_h100e * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / ENERGY_EFFICIENCY_PRC / 1e9
+            energy_before_detection.append(energy_gw)
         else:
-            energy_before_detection.append(total_energy[-1] if total_energy else 0.0)
+            op_h100e = operational_compute[-1] if operational_compute else 0.0
+            energy_gw = op_h100e * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / ENERGY_EFFICIENCY_PRC / 1e9
+            energy_before_detection.append(energy_gw)
 
     # Compute reduction ratios for CCDFs
     def compute_reduction_ratios(lr_threshold: float) -> Dict[str, List[float]]:
