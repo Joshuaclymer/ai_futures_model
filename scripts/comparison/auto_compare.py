@@ -215,11 +215,26 @@ def compute_ccdf_diff(local_ccdf: List[dict], ref_ccdf: List[dict]) -> Tuple[flo
     return avg_diff, max_diff, num_points, warning_note
 
 
+def are_ccdfs_identical(ccdf1: List[dict], ccdf2: List[dict], tolerance: float = 0.01) -> bool:
+    """Check if two CCDFs are nearly identical (within tolerance)."""
+    if not ccdf1 or not ccdf2:
+        return False
+    if len(ccdf1) != len(ccdf2):
+        return False
+
+    y1 = np.array([p['y'] for p in ccdf1])
+    y2 = np.array([p['y'] for p in ccdf2])
+
+    return np.allclose(y1, y2, atol=tolerance)
+
+
 def compute_ccdf_dict_diff(local_dict: dict, ref_dict: dict) -> Tuple[float, float, int, str]:
     """
     Compare CCDF dicts (keyed by threshold like '1', '2', '4').
 
     Returns average diff across all thresholds.
+    Also detects when local returns identical data for all thresholds while
+    reference returns different data (a common bug).
     """
     # Find common threshold keys
     local_keys = set(local_dict.keys())
@@ -229,11 +244,35 @@ def compute_ccdf_dict_diff(local_dict: dict, ref_dict: dict) -> Tuple[float, flo
     if not common_keys:
         return 0.0, 0.0, 0, "No common threshold keys"
 
+    # Check if local has identical data across all thresholds
+    sorted_keys = sorted(common_keys)
+    local_ccdfs = [local_dict[k] for k in sorted_keys if isinstance(local_dict[k], list)]
+    ref_ccdfs = [ref_dict[k] for k in sorted_keys if isinstance(ref_dict[k], list)]
+
+    local_all_identical = True
+    ref_all_identical = True
+
+    if len(local_ccdfs) > 1:
+        for i in range(1, len(local_ccdfs)):
+            if not are_ccdfs_identical(local_ccdfs[0], local_ccdfs[i]):
+                local_all_identical = False
+                break
+
+    if len(ref_ccdfs) > 1:
+        for i in range(1, len(ref_ccdfs)):
+            if not are_ccdfs_identical(ref_ccdfs[0], ref_ccdfs[i]):
+                ref_all_identical = False
+                break
+
+    # If local has identical thresholds but reference has different thresholds, it's a bug
+    if local_all_identical and not ref_all_identical and len(local_ccdfs) > 1:
+        return 100.0, 100.0, len(sorted_keys), "BUG: Local returns identical data for all thresholds but reference has different data"
+
     all_diffs = []
     max_diffs = []
     total_points = 0
 
-    for key in sorted(common_keys):
+    for key in sorted_keys:
         local_ccdf = local_dict[key]
         ref_ccdf = ref_dict[key]
 
@@ -251,7 +290,7 @@ def compute_ccdf_dict_diff(local_dict: dict, ref_dict: dict) -> Tuple[float, flo
     avg_diff = float(np.mean(all_diffs))
     max_diff = float(np.max(max_diffs))
 
-    note = f"Compared {len(all_diffs)} thresholds: {sorted(common_keys)}"
+    note = f"Compared {len(all_diffs)} thresholds: {sorted_keys}"
     return avg_diff, max_diff, total_points, note
 
 
