@@ -361,6 +361,77 @@ def compute_fab_detection_data(all_data: List[Dict], years: List[float], agreeme
     return individual_h100e, individual_time, individual_process_nodes, individual_energy
 
 
+def extract_fab_ccdf_values_at_threshold(fab_built_sims: List[Dict], years: List[float], agreement_year: float, lr_threshold: float) -> Tuple[List[float], List[float]]:
+    """
+    Extract fab compute and operational time values at detection for CCDF calculation.
+
+    This matches the reference model's extract_fab_compute_at_detection which:
+    1. Uses fab-specific LR (lr_fab_combined) for detection threshold
+    2. Calculates operational_time = max(0.0, detection_year - operational_start)
+    3. Gets cumulative compute at detection year
+
+    IMPORTANT: Different thresholds lead to different detection years, and thus
+    different compute/op_time values. This is the key bug fix - previously the code
+    ignored the threshold and always used final values.
+
+    Args:
+        fab_built_sims: List of simulation data dicts (filtered to sims with fab)
+        years: Time points for the simulation
+        agreement_year: Year when agreement starts
+        lr_threshold: Detection threshold (1, 2, 4, etc.)
+
+    Returns:
+        Tuple of (compute_values, op_time_values) for CCDF calculation
+    """
+    compute_values = []
+    op_time_values = []
+
+    for d in fab_built_sims:
+        bp = d.get('black_project')
+        sim_years = d.get('years', years)
+
+        if not bp or not sim_years:
+            continue
+
+        # Get fab-specific LR for detection calculation
+        lr_fab_combined = bp.get('lr_fab_combined', [])
+
+        # Find fab detection year based on fab LR threshold
+        fab_detection_year = None
+        for i, year in enumerate(sim_years):
+            if year >= agreement_year and i < len(lr_fab_combined):
+                if lr_fab_combined[i] >= lr_threshold:
+                    fab_detection_year = year
+                    break
+
+        # If no detection, use end of simulation
+        if fab_detection_year is None:
+            fab_detection_year = sim_years[-1] if sim_years else agreement_year + 7
+
+        # Calculate when fab became operational
+        construction_start = bp.get('fab_construction_start_year', agreement_year)
+        construction_duration = bp.get('fab_construction_duration', 1.5)
+        operational_start = construction_start + construction_duration
+
+        # Time operational before detection (matching reference model)
+        operational_time = max(0.0, fab_detection_year - operational_start)
+
+        # Get compute at detection
+        fab_prod = bp.get('fab_cumulative_production_h100e', [])
+        if fab_prod and sim_years:
+            dt = sim_years[1] - sim_years[0] if len(sim_years) > 1 else 0.1
+            det_idx = min(int((fab_detection_year - sim_years[0]) / dt), len(fab_prod) - 1)
+            det_idx = max(0, det_idx)
+            compute_at_detection = fab_prod[det_idx]
+        else:
+            compute_at_detection = 0.0
+
+        compute_values.append(compute_at_detection)
+        op_time_values.append(operational_time)
+
+    return compute_values, op_time_values
+
+
 def get_detection_year(d: Dict, agreement_year: float, lr_threshold: float = 5.0) -> Optional[float]:
     """
     Get the detection year for a simulation based on cumulative LR threshold.
@@ -958,18 +1029,29 @@ def extract_reference_format(
             return {"individual": [], "median": [], "p25": [], "p75": []}
 
     # Helper to compute CCDF
+    # Matches reference model's calculate_ccdf which computes P(X > x) not P(X >= x)
+    # NOTE: Reference does NOT filter out zeros - they are valid data points (e.g., op_time = 0
+    # when detection happens before fab becomes operational)
     def compute_ccdf(values: List[float]) -> List[Dict[str, float]]:
-        values = [v for v in values if v > 0 and v < float('inf')]
+        # Only filter out infinities and NaNs, but keep zeros and negative values
+        values = [v for v in values if v < float('inf') and not np.isnan(v)]
         if not values:
             return []
         sorted_vals = np.sort(values)
         n = len(sorted_vals)
         ccdf = []
-        seen = set()
+        prev_val = None
         for i, val in enumerate(sorted_vals):
-            if val not in seen:
-                ccdf.append({"x": float(val), "y": float((n - i) / n)})
-                seen.add(val)
+            if val != prev_val:
+                # P(X > x) = (count of values strictly greater than x) / total
+                # For value at index i, there are (n - (i + 1)) values greater than it
+                num_greater = n - (i + 1)
+                ccdf.append({"x": float(val), "y": float(num_greater / n)})
+                prev_val = val
+            else:
+                # For duplicate values, update the last y (will be lower)
+                num_greater = n - (i + 1)
+                ccdf[-1]["y"] = float(num_greater / n)
         return ccdf
 
     # Identify fab-built simulations
@@ -1511,22 +1593,16 @@ def extract_reference_format(
             "individual_time_before_detection": fab_individual_time,
             "individual_energy_before_detection": fab_individual_energy,
             "compute_ccdf": [],
+            # Use extract_fab_ccdf_values_at_threshold to get values at detection for each threshold
+            # This is the key fix - different thresholds lead to different detection years and thus
+            # different compute/op_time values (previously ignored threshold, used final values)
             "compute_ccdfs": {
-                str(lr): compute_ccdf([
-                    d['black_project']['fab_cumulative_production_h100e'][-1]
-                    if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e')
-                    else 0.0
-                    for d in fab_built_sims
-                ])
+                str(lr): compute_ccdf(extract_fab_ccdf_values_at_threshold(fab_built_sims, years, agreement_year, lr)[0])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             "op_time_ccdf": [],
             "op_time_ccdfs": {
-                str(lr): compute_ccdf([
-                    sum(1 for op in d['black_project'].get('fab_is_operational', []) if op) * dt
-                    if d['black_project'] else 0.0
-                    for d in fab_built_sims
-                ])
+                str(lr): compute_ccdf(extract_fab_ccdf_values_at_threshold(fab_built_sims, years, agreement_year, lr)[1])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             "likelihood_ratios": LIKELIHOOD_RATIO_THRESHOLDS,
