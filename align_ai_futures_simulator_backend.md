@@ -237,15 +237,6 @@ Both models build fabs at similar rates (~54%) when using the same sample sizes.
 
 4. **lr_inventory difference investigated**: Median differs (1.94 vs 2.71) but means are nearly identical (2.32 vs 2.27). The distributions have similar ranges - this is acceptable MC variance due to different sampling order.
 
-### Bug Fix (2025-12-31) - black_fab_flow
-
-5. **Architecture efficiency year calculation**: Fixed `calculate_fab_h100e_per_chip()` to use `agreement_year` (2030) instead of `preparation_start_year` (2029). The reference model's `get_monthly_production_rate()` uses `construction_start_year = agreement_year` for architecture efficiency calculation. This affects production via `arch_efficiency = 1.23^(year - 2022)`:
-   - Before fix: 1.23^7 = 4.17 (using 2029)
-   - After fix: 1.23^8 = 5.13 (using 2030)
-   - **Result**: black_fab_flow improved from 61% avg diff to ~50% avg diff
-   - Remaining variance is due to Monte Carlo sampling (wafer_starts ~18% lower in local model)
-   - Absolute end values are close: Local 1.51M vs Ref 1.77M (15% difference)
-
 ### Remaining Items for Future Work
 
 1. **h100e_before_detection 30% diff**: May be related to detection time or production rate calculation differences

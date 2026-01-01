@@ -156,11 +156,11 @@ class BlackProjectUpdater(WorldUpdater):
                     wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
                 )
 
-                # Use agreement_year (fab construction start) for architecture efficiency
-                # This matches reference model: construction_start_year = agreement_year
+                # Use preparation_start_year (fab construction time) for architecture efficiency
+                # This matches discrete model: chip specs are fixed when fab is built
                 h100e_per_chip = calculate_fab_h100e_per_chip(
                     fab_process_node_nm=project.fab_process_node_nm,
-                    year=agreement_year,  # Fixed at construction start, not current_time!
+                    year=prep_start_year,  # Fixed at construction time, not current_time!
                     exogenous_trends=exogenous_trends,
                 )
 
@@ -258,18 +258,17 @@ class BlackProjectUpdater(WorldUpdater):
                 wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
             ))
 
-            # Use agreement_year (fab construction start) for architecture efficiency
-            # This matches reference model: construction_start_year = agreement_year
-            agreement_year = prep_start_year + 1
+            # Use preparation_start_year (fab construction time) for architecture efficiency
+            # This matches discrete model: chip specs are fixed when fab is built
             project._set_frozen_field('fab_h100e_per_chip', calculate_fab_h100e_per_chip(
                 fab_process_node_nm=project.fab_process_node_nm,
-                year=agreement_year,  # Fixed at construction start, not current_time!
+                year=prep_start_year,  # Fixed at construction time, not current_time!
                 exogenous_trends=self.compute_params.exogenous_trends,
             ))
 
             project._set_frozen_field('fab_watts_per_chip', calculate_fab_watts_per_chip(
                 fab_process_node_nm=project.fab_process_node_nm,
-                year=agreement_year,  # Fixed at construction start, matches fab_h100e_per_chip
+                year=prep_start_year,  # Fixed at construction time, matches fab_h100e_per_chip
                 exogenous_trends=self.compute_params.exogenous_trends,
             ))
 
@@ -434,24 +433,34 @@ class BlackProjectUpdater(WorldUpdater):
                     math.log(max(1e-10, lr_energy))  # Include energy LR
                 )
 
-                # Look up worker detection LR from precomputed dictionary
-                # This uses the sampled detection time from initialization
-                # Use round(..., 1) to match float keys in the dict
-                # Reference model: lr_other = lr_over_time_vs_num_workers.get(relative_year, 1.0)
-                relative_year_dc = round(float(years_since_agreement), 1)
-                lr_datacenters_dict = getattr(project, 'lr_datacenters_by_year', {})
-                worker_lr = lr_datacenters_dict.get(relative_year_dc, 1.0)
+                # Check if detection has occurred (sampled_detection_time is relative to agreement_year)
+                detected = years_since_agreement >= project.sampled_detection_time
 
-                # Compute cumulative LR using precomputed worker LR (matches reference model)
-                # Reference model: cumulative_lr = lr_initial * lr_sme * satellite * energy * lr_other
-                cumulative_lr_val = math.exp(static_log_lr) * worker_lr
+                # Compute continuous log-LR from worker detection (time relative to agreement)
+                log_lr = compute_cumulative_log_lr(
+                    t=years_since_agreement,
+                    labor=total_labor,
+                    mean_detection_time_100_workers=self.perception_params.mean_detection_time_for_100_workers,
+                    mean_detection_time_1000_workers=self.perception_params.mean_detection_time_for_1000_workers,
+                    variance=self.perception_params.variance_of_detection_time_given_num_workers,
+                    static_log_lr=static_log_lr,
+                    detected=detected,
+                )
 
-                # Compute posterior probability using the cumulative log-LR
-                log_lr = math.log(max(1e-10, cumulative_lr_val))
+                # Compute posterior probability
                 posterior_prob_val = compute_posterior_probability(
                     cumulative_log_lr=log_lr,
                     prior_odds=self.perception_params.prior_odds_of_covert_project,
                 )
+
+                # Look up DATACENTER-specific LR from precomputed dictionary
+                # This uses the sampled detection time from initialization
+                # Use round(..., 1) to match float keys in the dict
+                relative_year_dc = round(float(years_since_agreement), 1)
+                lr_datacenters_dict = getattr(project, 'lr_datacenters_by_year', {})
+                worker_lr = lr_datacenters_dict.get(relative_year_dc, 1.0)
+
+                cumulative_lr_val = math.exp(log_lr)
 
                 # Set point-in-time metrics (time series extracted from trajectory)
                 project._set_frozen_field('lr_other_intel', worker_lr)
@@ -674,11 +683,10 @@ def initialize_black_project(
     )
 
     # Fab h100e per chip calculation
-    # Use agreement_year (fab construction start) to match reference model
     process_node_nm = actual_process_node_nm if build_a_black_fab else 28.0  # Use best available node, default to 28nm if no fab
     fab_h100e_per_chip = calculate_fab_h100e_per_chip(
         fab_process_node_nm=process_node_nm,
-        year=agreement_year,  # Fixed at construction start, matches reference model
+        year=preparation_start_year,
         exogenous_trends=exogenous_trends,
     )
 
