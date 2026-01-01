@@ -391,12 +391,17 @@ class BlackProjectUpdater(WorldUpdater):
             project._set_frozen_field('total_compute_energy_gw', total_energy_gw)
 
             # --- Operating compute (limited by datacenter capacity) ---
-            watts_per_h100e = project.compute_stock.watts_per_h100e if project.compute_stock else prc_energy.h100_power_watts
-            project._set_frozen_field('operating_compute_tpp_h100e', calculate_operating_compute(
-                functional_compute_h100e=functional_compute,
-                datacenter_capacity_gw=total_capacity_gw,
-                watts_per_h100e=watts_per_h100e,
-            ))
+            # Reference model: uses total_energy_requirements_GW() from all chip types
+            # and scales down proportionally if energy exceeds capacity.
+            # We use total_energy_gw which accounts for both initial stock and fab compute.
+            if total_energy_gw <= 0:
+                operating_compute = 0.0
+            elif total_energy_gw <= total_capacity_gw:
+                operating_compute = functional_compute
+            else:
+                # Scale down proportionally to fit within capacity
+                operating_compute = functional_compute * (total_capacity_gw / total_energy_gw)
+            project._set_frozen_field('operating_compute_tpp_h100e', operating_compute)
 
             # --- Detection model metrics (continuous) ---
             # Use years_since_agreement for detection (matches reference model)
