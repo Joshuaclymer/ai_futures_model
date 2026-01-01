@@ -293,11 +293,19 @@ def compare_values(
 
 
 def find_shared_keys(local_data: Dict, ref_data: Dict) -> List[str]:
-    """Find all keys that exist in both local and reference data."""
+    """Find all keys that exist in both local and reference data.
+
+    Excludes percentile keys (p10, p25, p75, p90) - we only compare medians.
+    """
     local_keys = set(set_nested_keys(local_data))
     ref_keys = set(set_nested_keys(ref_data))
     shared = local_keys & ref_keys
-    return sorted(list(shared))
+
+    # Filter out percentile keys - only compare medians
+    percentile_patterns = ['.p10', '.p25', '.p75', '.p90', '_p10', '_p25', '_p75', '_p90']
+    filtered = [k for k in shared if not any(p in k for p in percentile_patterns)]
+
+    return sorted(filtered)
 
 
 def compare_apis(
