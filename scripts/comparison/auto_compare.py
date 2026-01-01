@@ -360,7 +360,7 @@ def compare_apis(
     )
 
 
-def print_comparison_results(summary: ComparisonSummary, show_all: bool = False):
+def print_comparison_results(summary: ComparisonSummary, show_all: bool = True):
     """Print comparison results in a readable format."""
     print("\n" + "=" * 80)
     print("AUTOMATIC KEY COMPARISON RESULTS")
@@ -416,12 +416,12 @@ def print_comparison_results(summary: ComparisonSummary, show_all: bool = False)
             print(f"    Local: {format_value(r.local_value)}, Ref: {format_value(r.reference_value)}")
             print(f"    Avg diff: {r.avg_pct_diff:.1f}%, Max diff: {r.max_pct_diff:.1f}%")
 
-    if show_all and passes:
+    if passes:
         print(f"\n{'─' * 80}")
         print("PASSES (avg diff <= 5%):")
         print(f"{'─' * 80}")
         for r in sorted(passes, key=lambda x: -x.avg_pct_diff):
-            print(f"  ✓ {r.key_path}: {r.avg_pct_diff:.1f}% avg diff")
+            print(f"  ✓ {r.key_path}: {r.avg_pct_diff:.1f}% (local: {format_value(r.local_value)}, ref: {format_value(r.reference_value)})")
 
     print(f"\n{'=' * 80}")
     if summary.failed > 0:
