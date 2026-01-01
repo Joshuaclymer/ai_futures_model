@@ -499,6 +499,124 @@ def compute_h100_years_before_detection(all_data: List[Dict], years: List[float]
     return h100_years
 
 
+def compute_average_covert_compute(all_data: List[Dict], years: List[float], agreement_year: float, lr_threshold: float) -> List[float]:
+    """
+    Compute average covert compute from agreement to detection for each simulation.
+
+    This matches the reference implementation which calculates:
+    average_compute = h100_years / time_duration
+    where time_duration = detection_year - agreement_year
+
+    For each simulation and detection threshold:
+    1. Calculate detection year based on likelihood ratio threshold
+    2. Compute cumulative H100-years from agreement year to detection
+    3. Return average = h100_years / time_duration
+    """
+    if not years or len(years) < 2:
+        return [0.0 for _ in all_data]
+
+    dt = years[1] - years[0]
+    average_compute_values = []
+
+    for d in all_data:
+        bp = d.get('black_project')
+        sim_years = d.get('years', [])
+
+        if not bp or not sim_years:
+            average_compute_values.append(0.0)
+            continue
+
+        operational_compute = bp.get('operational_compute', [])
+        if not operational_compute:
+            average_compute_values.append(0.0)
+            continue
+
+        # Get detection year based on LR threshold
+        detection_year = get_detection_year(d, agreement_year, lr_threshold)
+        if detection_year is None:
+            detection_year = max(sim_years) if sim_years else agreement_year + 10
+
+        # Calculate time duration from agreement to detection
+        time_duration = detection_year - agreement_year
+        if time_duration <= 0:
+            # If detection at or before agreement, average is 0
+            average_compute_values.append(0.0)
+            continue
+
+        # Sum operational compute from agreement_year to detection_year (H100-years)
+        cumulative = 0.0
+        for i, year in enumerate(sim_years):
+            if year < agreement_year:
+                continue
+            if year >= detection_year:
+                break
+            if i < len(operational_compute):
+                cumulative += operational_compute[i] * dt  # H100e * years = H100-years
+
+        # Average operational compute = total H100-years / time duration
+        average_compute = cumulative / time_duration
+        average_compute_values.append(average_compute)
+
+    return average_compute_values
+
+
+def compute_datacenter_capacity_at_detection(all_data: List[Dict], years: List[float], lr_threshold: float) -> List[float]:
+    """
+    Compute datacenter capacity (GW) at detection time for each simulation.
+
+    This matches the reference implementation which:
+    1. Uses datacenter-specific LR (combined: satellite * reported_energy * worker)
+    2. Finds first year where LR >= threshold
+    3. Returns capacity at that detection year (or end of simulation if not detected)
+    """
+    if not years or len(years) < 2:
+        return [0.0 for _ in all_data]
+
+    capacity_at_detection = []
+
+    for d in all_data:
+        bp = d.get('black_project')
+        sim_years = d.get('years', years)
+
+        if not bp or not sim_years:
+            capacity_at_detection.append(0.0)
+            continue
+
+        datacenter_capacity_gw = bp.get('datacenter_capacity_gw', [])
+        if not datacenter_capacity_gw:
+            capacity_at_detection.append(0.0)
+            continue
+
+        # Get combined datacenter LR (satellite * reported_energy * worker)
+        lr_satellite = bp.get('lr_satellite', [])
+        lr_reported_energy = bp.get('lr_reported_energy', [])
+        lr_worker = bp.get('lr_worker', [])
+
+        # Find detection year based on combined datacenter LR
+        detection_idx = None
+        for i, year in enumerate(sim_years):
+            # Compute combined LR at this time
+            lr_sat = lr_satellite[i] if i < len(lr_satellite) else 1.0
+            lr_energy = lr_reported_energy[i] if i < len(lr_reported_energy) else 1.0
+            lr_work = lr_worker[i] if i < len(lr_worker) else 1.0
+            combined_lr = lr_sat * lr_energy * lr_work
+
+            if combined_lr >= lr_threshold:
+                detection_idx = i
+                break
+
+        if detection_idx is not None:
+            # Get capacity at detection
+            capacity = datacenter_capacity_gw[detection_idx] if detection_idx < len(datacenter_capacity_gw) else datacenter_capacity_gw[-1]
+        else:
+            # Not detected - use final year capacity
+            capacity = datacenter_capacity_gw[-1] if datacenter_capacity_gw else 0.0
+
+        capacity_at_detection.append(capacity)
+
+    return capacity_at_detection
+
+
 def compute_h100e_before_detection(all_data: List[Dict], years: List[float], agreement_year: float, lr_threshold: float = 5.0) -> List[float]:
     """
     Compute chip stock (H100e) at detection time for each simulation.
@@ -1461,11 +1579,10 @@ def extract_reference_format(
                 str(lr): compute_ccdf(h100_years_before_detection)
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
+            # Compute average covert compute CCDF for each lr threshold separately
+            # Reference computes: average_compute = h100_years / (detection_year - agreement_year)
             "average_covert_compute_ccdf": {
-                str(lr): compute_ccdf([
-                    sum((d['black_project']['operational_compute'] if d['black_project'] else [])[:int(detection_times[i] / dt) + 1]) / max(1, detection_times[i]) if detection_times[i] > 0 else 0
-                    for i, d in enumerate(all_data)
-                ])
+                str(lr): compute_ccdf(compute_average_covert_compute(all_data, years, agreement_year, lr))
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             "chip_production_reduction_ccdf": {
@@ -1503,14 +1620,11 @@ def extract_reference_format(
             "energy_by_source": energy_by_source,
             "source_labels": source_labels,
             "fraction_diverted": fraction_diverted,
+            # Reference uses only threshold [1] for datacenter capacity CCDFs since detection is binary
+            # Must compute detection using threshold 1 (not pre-computed datacenter_detection_times which uses 5.0)
             "capacity_ccdfs": {
-                str(lr): compute_ccdf([
-                    d['black_project']['datacenter_capacity_gw'][
-                        min(int(datacenter_detection_times[i] / dt) if dt > 0 else 0, len(d['black_project']['datacenter_capacity_gw']) - 1)
-                    ] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') else 0.0
-                    for i, d in enumerate(all_data)
-                ])
-                for lr in LIKELIHOOD_RATIO_THRESHOLDS
+                str(lr): compute_ccdf(compute_datacenter_capacity_at_detection(all_data, years, lr))
+                for lr in [1]  # Only threshold 1 - datacenter detection is binary
             },
             "individual_capacity_before_detection": [
                 d['black_project']['datacenter_capacity_gw'][
