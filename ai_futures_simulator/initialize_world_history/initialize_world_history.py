@@ -46,14 +46,17 @@ def initialize_world_for_year(params: SimulationParameters, year: int) -> World:
 
         from world_updaters.black_project import initialize_black_project
 
-        # Get PRC compute stock at black project start year for diversion calculation
-        bp_start_year = params.black_project.black_project_start_year
+        # Get PRC compute stock at agreement year for diversion calculation
+        # This matches reference model which calculates initial stock at agreement_year (2030),
+        # not at black_project_start_year (2029)
+        agreement_year = params.policy.ai_slowdown_start_year
         prc_compute_params = params.compute.PRCComputeParameters
         base_compute = prc_compute_params.total_prc_compute_tpp_h100e_in_2025
         growth_rate = prc_compute_params.annual_growth_rate_of_prc_compute_stock
-        prc_compute_at_bp_start = base_compute * (growth_rate ** (bp_start_year - 2025))
+        prc_compute_at_agreement_year = base_compute * (growth_rate ** (agreement_year - 2025))
 
         # Generate simulation years for detection calculation
+        bp_start_year = params.black_project.black_project_start_year
         end_year = params.settings.simulation_end_year
         simulation_years = [bp_start_year + i * 0.25 for i in range(int((end_year - bp_start_year) / 0.25) + 1)]
 
@@ -65,7 +68,7 @@ def initialize_world_for_year(params: SimulationParameters, year: int) -> World:
             energy_params=params.datacenter_and_energy,
             perception_params=params.perceptions.black_project_perception_parameters,
             policy_params=params.policy,
-            initial_prc_compute_stock=prc_compute_at_bp_start,
+            initial_prc_compute_stock=prc_compute_at_agreement_year,
             simulation_years=simulation_years,
         )
         black_projects["prc_black_project"] = project

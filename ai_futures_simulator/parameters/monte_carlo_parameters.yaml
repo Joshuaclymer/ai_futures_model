@@ -334,16 +334,27 @@ datacenter_and_energy:
 # =========================================================================
 black_project:
   properties:
-    # PRC localization year for minimum process node
-    # Based on discrete model: 28nm has 0% at 2025, 25% at 2031
-    # Distribution: 75% chance never achieved (9999), 25% spread over 2026-2031
-    prc_localization_year_for_min_node:
-      dist: choice
-      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]  # 9999 = never achieved
-      p: [0.02, 0.04, 0.05, 0.05, 0.05, 0.04, 0.75]  # ~25% chance achieved by 2031
+    # PRC localization years - separate distributions for each process node
+    # Based on reference model: linear interpolation from 0% at 2025 to X% at 2031
+    # 28nm: 25% by 2031, 14nm: 10% by 2031, 7nm: 6% by 2031
 
-    # Fraction of lithography scanners to divert
-    fraction_of_lithography_scanners_to_divert_at_black_project_start:
-      dist: uniform
-      min: 0.05
-      max: 0.15
+    # 28nm localization: 25% probability by 2031
+    prc_localization_year_28nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
+      p: [0.042, 0.042, 0.042, 0.042, 0.042, 0.042, 0.748]
+
+    # 14nm localization: 10% probability by 2031
+    prc_localization_year_14nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
+      p: [0.017, 0.017, 0.017, 0.017, 0.017, 0.017, 0.898]
+
+    # 7nm localization: 6% probability by 2031
+    prc_localization_year_7nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
+      p: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.94]
+
+    # Fraction of lithography scanners to divert (fixed 10% to match reference model)
+    fraction_of_lithography_scanners_to_divert_at_black_project_start: 0.10

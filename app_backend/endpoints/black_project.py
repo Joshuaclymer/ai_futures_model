@@ -1,10 +1,17 @@
 """Black project simulation endpoint.
 
-Runs 1 central simulation + 10 Monte Carlo simulations and returns
-aggregated plot data for visualization.
+Runs N Monte Carlo simulations and returns aggregated plot data for visualization.
+
+Supports optional caching: Set USE_CACHE=true in environment to enable.
+When enabled and a cached response exists for the default parameters,
+the cached response is returned instead of running simulations.
+This can speed up page loads during development.
 """
 
+import json
 import logging
+import os
+from pathlib import Path
 from flask import request, jsonify
 
 from api_utils.black_project_simulation import (
@@ -15,48 +22,99 @@ from api_utils.black_project_simulation import (
 
 logger = logging.getLogger(__name__)
 
+# Cache configuration - set USE_CACHE=true in env to enable
+USE_CACHE = os.environ.get("USE_CACHE", "false").lower() == "true"
+CACHE_DIR = Path(__file__).parent.parent / "cache"
+
+
+def _load_cached_response() -> dict | None:
+    """Load cached response if available."""
+    cache_path = CACHE_DIR / "black_project_default.json"
+    if cache_path.exists():
+        try:
+            with open(cache_path, "r") as f:
+                data = json.load(f)
+            logger.info(f"[black-project] Loaded cached response from {cache_path}")
+            return data
+        except Exception as e:
+            logger.warning(f"[black-project] Failed to load cache: {e}")
+    return None
+
+
+def _is_default_request(data: dict, defaults: dict) -> bool:
+    """Check if request uses default parameters (cacheable)."""
+    frontend_params = data.get("parameters", {})
+    # If no custom parameters provided, it's a default request
+    if not frontend_params:
+        return True
+    # Check if parameters match defaults (allowing for some tolerance)
+    for key, default_val in defaults.items():
+        if key in frontend_params:
+            param_val = frontend_params[key]
+            if isinstance(default_val, (int, float)) and isinstance(param_val, (int, float)):
+                if abs(param_val - default_val) > 0.001:
+                    return False
+            elif param_val != default_val:
+                return False
+    return True
+
 
 def register_black_project_routes(app):
     """Register black project routes with the Flask app."""
 
-    @app.route('/api/run-black-project-simulation', methods=['POST'])
-    def run_black_project_simulation():
+    @app.route('/api/get-data-for-ai-black-projects-page', methods=['POST'])
+    def get_data_for_ai_black_projects_page():
         """
-        Run 1 central + N Monte Carlo simulations and return plot data.
+        Run N Monte Carlo simulations and return plot data.
 
         Request body:
         {
             "parameters": {...},  // Optional frontend params
-            "num_simulations": 11,  // Total (1 central + N MC), default: 11
+            "num_simulations": 100,  // Number of Monte Carlo simulations, default: 100
             "time_range": [2027, 2037]  // [agreement_year, end_year]
         }
 
-        Returns:
+        Returns (matching reference API format):
         {
-            "success": true,
-            "num_simulations": 11,
+            "num_simulations": 100,
+            "prob_fab_built": 0.55,
+            "p_project_exists": 0.2,
+            "researcher_headcount": 500,
             "black_project_model": {...},
             "black_datacenters": {...},
-            "initial_stock": {...},
-            "rate_of_computation": {...},
-            ...
+            "black_fab": {...},
+            "initial_black_project": {...},
+            "initial_stock": {...}
         }
+
+        Caching:
+        If USE_CACHE=true (disabled by default) and the request uses default
+        parameters, returns cached response if available. Set USE_CACHE=true
+        in environment to enable caching for faster development.
         """
         try:
             data = request.json or {}
             frontend_params = data.get('parameters', {})
-            total_simulations = data.get('num_simulations', 11)
+            total_simulations = data.get('num_simulations', 100)
             time_range = data.get('time_range', [2027, 2037])
 
-            # Total = 1 central + N MC
-            num_mc = max(0, total_simulations - 1)
+            # Check for cached response (only for default parameters)
+            if USE_CACHE:
+                defaults = get_default_parameters()
+                if _is_default_request(data, defaults):
+                    cached = _load_cached_response()
+                    if cached:
+                        logger.info("[black-project] Returning cached response")
+                        return jsonify(cached)
+                    else:
+                        logger.info("[black-project] No cache found, running simulation")
 
-            logger.info(f"[black-project] Running 1 central + {num_mc} MC simulations")
+            logger.info(f"[black-project] Running {total_simulations} Monte Carlo simulations")
 
             # Run simulations
             simulation_results = run_black_project_simulations(
                 frontend_params=frontend_params,
-                num_mc_simulations=num_mc,
+                num_simulations=total_simulations,
                 time_range=time_range,
             )
 
@@ -66,10 +124,8 @@ def register_black_project_routes(app):
                 frontend_params=frontend_params,
             )
 
-            return jsonify({
-                'success': True,
-                **plot_data,
-            })
+            # Return data directly (no success wrapper) to match reference API format
+            return jsonify(plot_data)
 
         except Exception as e:
             logger.exception(f"Error in run_black_project_simulation: {e}")

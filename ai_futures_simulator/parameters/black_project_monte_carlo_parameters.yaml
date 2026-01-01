@@ -18,7 +18,7 @@ initial_progress: 0.0
 settings:
   simulation_start_year: 2026
   simulation_end_year: 2040.0
-  n_eval_points: 100
+  n_eval_points: 141  # Changed from 100 to get dt=0.1 years (14 years / 140 = 0.1)
   # ODE solver settings (tuned for speed, <1% final error)
   ode_rtol: 0.002     # Relative tolerance
   ode_atol: 0.00005   # Absolute tolerance
@@ -133,10 +133,10 @@ compute:
   exogenous_trends:
     transistor_density_scaling_exponent: 1.49
     state_of_the_art_architecture_efficiency_improvement_per_year: 1.23
-    # Energy efficiency parameters (Dennard scaling)
-    transistor_density_at_end_of_dennard_scaling_m_per_mm2: 10.0
-    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: -1.0
-    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: -0.33
+    # Energy efficiency parameters (Dennard scaling) - aligned with reference model
+    transistor_density_at_end_of_dennard_scaling_m_per_mm2: 1.98  # Reference: 1.98
+    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: -2.0  # Reference: -2.0
+    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: -0.91  # Reference: -0.91
     state_of_the_art_energy_efficiency_improvement_per_year: 1.26
 
   # Chip survival/attrition parameters
@@ -177,6 +177,8 @@ compute:
     # PRC lithography scanner production
     prc_lithography_scanners_produced_in_first_year: 20.0
     prc_additional_lithography_scanners_produced_per_year: 16.0
+    # Uncertainty in PRC scanner production (lognormal relative sigma) - matches reference model
+    prc_scanner_production_relative_sigma: 0.30
     # PRC localization probabilities (by process node and year)
     p_localization_28nm_2030: 0.25
     p_localization_14nm_2030: 0.10
@@ -203,8 +205,14 @@ datacenter_and_energy:
     energy_efficiency_of_compute_stock_relative_to_state_of_the_art: 0.20
     total_prc_energy_consumption_gw: 1100.0
     # Datacenter worker-to-capacity conversion parameters (for black projects)
-    data_center_mw_per_year_per_construction_worker: 0.13  # Reference: 0.13
-    data_center_mw_per_operating_worker: 1.0  # Reference: 1 operating worker per MW
+    # Reference model: median=0.13, relative_sigma=0.40 (lognormal sampling)
+    data_center_mw_per_year_per_construction_worker:
+      dist: lognormal
+      ci80: [0.079, 0.213]  # Matches reference model's relative_sigma=0.40
+    # Reference model: median=1.0, relative_sigma=0.40 (lognormal sampling)
+    data_center_mw_per_operating_worker:
+      dist: lognormal
+      ci80: [0.61, 1.64]  # Matches reference model's relative_sigma=0.40
     # H100 power consumption in watts (~700W typical for H100)
     h100_power_watts: 700.0
 
@@ -230,14 +238,10 @@ black_project:
     fraction_of_labor_devoted_to_black_fab_operation: 0.049      # 550/11300
     fraction_of_labor_devoted_to_ai_research: 0.044              # 500/11300
     # Diverted resources (with uncertainty)
-    # Note: Reference uses 5% at year 2030 (agreement_year), but our model uses black_project_start_year (2029).
-    # This 1-year difference causes ~2.2x less initial diverted compute in our model vs reference.
-    fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05
+    # Initial stock is calculated at agreement_year (2030), matching reference model
+    fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05  # Reference: 5%
     fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 0.01  # Reference: 1% diversion
-    fraction_of_lithography_scanners_to_divert_at_black_project_start:
-      dist: uniform
-      min: 0.05
-      max: 0.15  # 5% to 15% diversion
+    fraction_of_lithography_scanners_to_divert_at_black_project_start: 0.10  # Fixed 10% to match reference model
     max_fraction_of_total_national_energy_consumption: 0.05
     # Datacenter construction timing
     # Discrete model starts construction 1 year before black project start
@@ -291,7 +295,7 @@ perceptions:
     # Detection time ~ Gamma(k, theta) where k = mean/sigma, theta = sigma
     mean_detection_time_for_100_workers: 6.95  # Reference: 6.95 years
     mean_detection_time_for_1000_workers: 3.42  # Reference: 3.42 years
-    variance_of_detection_time_given_num_workers: 15.05  # This is σ² where σ=3.88 is the scale parameter
+    variance_of_detection_time_given_num_workers: 3.88  # Scale parameter (theta) for Gamma distribution
     # Likelihood ratio thresholds for detection
     detection_threshold: 100.0
     detection_thresholds: [1, 2, 4]

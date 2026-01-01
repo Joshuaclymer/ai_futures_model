@@ -101,9 +101,17 @@ def classify_value(value: Any) -> str:
     return 'unknown'
 
 
-def compute_array_diff(local: List[float], ref: List[float]) -> Tuple[float, float, int]:
+def compute_array_diff(local: List[float], ref: List[float], sort_arrays: bool = True) -> Tuple[float, float, int]:
     """
     Compute average and max percent difference between two arrays.
+
+    For Monte Carlo samples, we sort both arrays first to compare distribution
+    percentiles rather than arbitrary element ordering.
+
+    Args:
+        local: Local array
+        ref: Reference array
+        sort_arrays: If True, sort both arrays before comparing (for MC samples)
 
     Returns:
         (avg_pct_diff, max_pct_diff, num_points)
@@ -118,6 +126,11 @@ def compute_array_diff(local: List[float], ref: List[float]) -> Tuple[float, flo
 
     local_arr = np.array(local[:n], dtype=float)
     ref_arr = np.array(ref[:n], dtype=float)
+
+    # Sort arrays to compare distribution percentiles (important for MC samples)
+    if sort_arrays:
+        local_arr = np.sort(local_arr)
+        ref_arr = np.sort(ref_arr)
 
     # Handle zeros in reference - use small epsilon
     ref_safe = np.where(np.abs(ref_arr) < 1e-10, 1e-10, ref_arr)

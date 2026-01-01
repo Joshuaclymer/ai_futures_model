@@ -8,7 +8,7 @@ All values must be explicitly set during world initialization - no defaults.
 import torch
 from torch import Tensor
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from classes.world.tensor_dataclass import TensorDataclass
 from classes.world.assets import Assets, Compute, Fabs, Datacenters
 from classes.world.software_progress import AISoftwareProgress
@@ -121,6 +121,8 @@ class AIBlackProject(AISoftwareDeveloper):
     fab_compute_stock_h100e: float = field(metadata={'is_state': True})
     # Average age of fab-produced chips (for computing attrition rate)
     fab_compute_average_age_years: float = field(metadata={'is_state': True})
+    # Total cumulative H100e ever produced by fab (no attrition, monotonically increasing)
+    fab_total_produced_h100e: float = field(metadata={'is_state': True})
 
     # Metrics
 
@@ -163,6 +165,15 @@ class AIBlackProject(AISoftwareDeveloper):
     lr_other_intel: float = field(init=False)  # Direct evidence LR from workers (dynamic)
     cumulative_lr: float = field(init=False)  # Combined likelihood ratio (dynamic)
     posterior_prob: float = field(init=False)  # P(project exists | evidence) (dynamic)
+
+    ## Fab-specific LR components (for black_fab section - uses fab labor and time from construction)
+    lr_fab_other: float = field(init=False)  # Fab worker detection LR (based on fab labor)
+    lr_fab_procurement: float = field(init=False)  # Fab procurement LR (1.0 if localized, 10.0 if foreign imports needed)
+    lr_fab_combined: float = field(init=False)  # Fab's combined LR = lr_sme_inventory × lr_fab_procurement × lr_fab_other
+
+    ## Precomputed LR time series (separate for datacenters and fab)
+    lr_datacenters_by_year: Dict[float, float] = field(init=False)  # Datacenter worker LR by year (since agreement)
+    lr_fab_other_by_year: Dict[float, float] = field(init=False)  # Fab worker LR by year (since fab construction)
 
     ## Legacy time series fields (kept for backward compatibility, will be deprecated)
     years: List[float] = field(init=False)

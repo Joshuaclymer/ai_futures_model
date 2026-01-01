@@ -29,8 +29,12 @@ class BlackProjectProperties:
 
     # Fab configuration
     black_fab_min_process_node: float  # Min process node required (nm), e.g., 28nm
-    prc_localization_year_for_min_node: float  # Year PRC achieves localization for min node
-    # Note: build_a_black_fab is derived: True if localization_year <= black_project_start_year
+    # Localization years for each process node (sampled independently)
+    # 9999 = never achieved. Fab uses best available node meeting minimum threshold.
+    prc_localization_year_28nm: float  # Year PRC achieves 28nm localization
+    prc_localization_year_14nm: float  # Year PRC achieves 14nm localization
+    prc_localization_year_7nm: float   # Year PRC achieves 7nm localization
+    # Note: build_a_black_fab is derived: True if min_node localization <= black_project_start_year
 
     # Datacenter construction timing (has default, so must come after non-default fields)
     # How many years before black_project_start_year to begin datacenter construction

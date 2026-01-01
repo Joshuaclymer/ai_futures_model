@@ -10,7 +10,7 @@ import logging
 import csv
 import numpy as np
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 # Add ai_futures_simulator subdirectory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator"))
@@ -162,6 +162,16 @@ def run_black_project_simulations(
     end_year = float(time_range[1]) if len(time_range) > 1 else 2037.0
     logger.info(f"[black-project] Time range: {agreement_year} to {end_year}")
 
+    # Override simulation_end_year from time_range (YAML default is 2040)
+    # Keep simulation_start_year from YAML (needs historical data to initialize)
+    # But override end_year and calculate n_eval_points for full simulation range
+    start_year = model_params.settings.get('simulation_start_year', 2026)
+    model_params.settings['simulation_end_year'] = end_year
+    # Calculate n_eval_points to maintain 0.1-year resolution for full simulation
+    n_years = end_year - start_year
+    model_params.settings['n_eval_points'] = int(n_years * 10) + 1
+    logger.info(f"[black-project] Updated settings: start_year={start_year}, end_year={end_year}, n_eval_points={model_params.settings['n_eval_points']}")
+
     # Create simulator
     simulator = AIFuturesSimulator(model_parameters=model_params)
 
@@ -262,6 +272,89 @@ def compute_detection_times(all_data: List[Dict], years: List[float], agreement_
         detection_times.append(max(0.0, time_before_detection))  # Ensure non-negative
 
     return detection_times
+
+
+def compute_fab_detection_data(all_data: List[Dict], years: List[float], agreement_year: float, lr_threshold: float = 5.0) -> Tuple[List[float], List[float], List[float], List[float]]:
+    """
+    Compute fab-specific detection data for dashboard display.
+
+    Matches reference model's extract_individual_fab_detection_data which:
+    1. Uses fab-specific LR (lr_fab_combined) for detection threshold
+    2. Reports time as operational time before detection (not time from agreement_year)
+    3. Gets h100e at the fab detection time (not project detection time)
+
+    Returns:
+        Tuple of (individual_h100e, individual_time, individual_process_nodes, individual_energy)
+        Only includes simulations where fab was built.
+    """
+    individual_h100e = []
+    individual_time = []
+    individual_process_nodes = []
+    individual_energy = []
+
+    for d in all_data:
+        bp = d.get('black_project')
+        sim_years = d.get('years', years)
+
+        if not bp:
+            continue
+
+        # Check if fab was built
+        fab_is_operational = bp.get('fab_is_operational', [])
+        if not any(fab_is_operational):
+            continue
+
+        # Get fab-specific LR for detection calculation
+        lr_fab_combined = bp.get('lr_fab_combined', [])
+
+        # Find fab detection year based on fab LR threshold
+        fab_detection_year = None
+        for i, year in enumerate(sim_years):
+            if year >= agreement_year and i < len(lr_fab_combined):
+                if lr_fab_combined[i] >= lr_threshold:
+                    fab_detection_year = year
+                    break
+
+        # If no detection, use end of simulation
+        if fab_detection_year is None:
+            fab_detection_year = sim_years[-1] if sim_years else agreement_year + 7
+
+        # Calculate when fab became operational
+        construction_start = bp.get('fab_construction_start_year', agreement_year)
+        construction_duration = bp.get('fab_construction_duration', 1.5)
+        operational_start = construction_start + construction_duration
+
+        # Time operational before detection (matching reference model)
+        # Reference model checks LR from agreement_year (not operational_start) and uses:
+        # operational_time = max(0.0, detection_year - operational_start)
+        # If detection happens BEFORE fab is operational, operational_time = 0.0
+        operational_time = max(0.0, fab_detection_year - operational_start)
+
+        # Get h100e at detection
+        fab_prod = bp.get('fab_cumulative_production_h100e', [])
+        if fab_prod and sim_years:
+            # Find index closest to detection year
+            dt = sim_years[1] - sim_years[0] if len(sim_years) > 1 else 0.1
+            det_idx = min(int((fab_detection_year - sim_years[0]) / dt), len(fab_prod) - 1)
+            det_idx = max(0, det_idx)
+            h100e_at_detection = fab_prod[det_idx]
+        else:
+            h100e_at_detection = 0.0
+
+        # Get process node
+        process_node = f"{int(bp.get('fab_process_node_nm', 28))}nm"
+
+        # Calculate energy (h100e * watts_per_h100e / 1e9)
+        # Use fab_watts_per_h100e which accounts for process node (e.g., 28nm = ~9794 W/H100e)
+        watts_per_h100e = bp.get('fab_watts_per_h100e', 700)
+        energy_gw = h100e_at_detection * watts_per_h100e / 1e9
+
+        individual_h100e.append(h100e_at_detection)
+        individual_time.append(operational_time)
+        individual_process_nodes.append(process_node)
+        individual_energy.append(energy_gw)
+
+    return individual_h100e, individual_time, individual_process_nodes, individual_energy
 
 
 def get_detection_year(d: Dict, agreement_year: float, lr_threshold: float = 5.0) -> Optional[float]:
@@ -428,10 +521,12 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
             'total_compute': [],
             'datacenter_capacity_gw': [],
             'fab_is_operational': [],
-            'cumulative_lr': [],  # Combined LR over time
-            'lr_other_intel': [],  # Direct evidence LR over time
+            'cumulative_lr': [],  # Combined LR over time (full project)
+            'lr_other_intel': [],  # Direct evidence LR over time (full project)
             'posterior_prob': [],  # Posterior probability over time
             'lr_reported_energy': [],  # Energy accounting LR over time
+            'lr_fab_other': [],  # Fab-specific worker detection LR (uses fab labor)
+            'lr_fab_combined': [],  # Fab's combined LR = lr_inventory × lr_procurement × lr_fab_other
             'fab_cumulative_production_h100e': [],  # Cumulative fab production
             'fab_monthly_production_h100e': [],  # Monthly production rate
             'survival_rate': [],  # Chip survival rate
@@ -445,6 +540,7 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
             'lr_prc_accounting': to_float(first_bp.lr_prc_accounting) if first_bp and hasattr(first_bp, 'lr_prc_accounting') else 1.0,
             'lr_sme_inventory': to_float(first_bp.lr_sme_inventory) if first_bp and hasattr(first_bp, 'lr_sme_inventory') else 1.0,
             'lr_satellite_datacenter': to_float(first_bp.lr_satellite_datacenter) if first_bp and hasattr(first_bp, 'lr_satellite_datacenter') else 1.0,
+            'lr_fab_procurement': to_float(first_bp.lr_fab_procurement) if first_bp and hasattr(first_bp, 'lr_fab_procurement') else 1.0,
             # Initial diverted compute (constant, set at black project start, never changes)
             # This is calculated from PRC compute at black project start year, not simulation start year
             'initial_diverted_compute_h100e': to_float(first_bp.initial_diverted_compute_h100e) if first_bp and hasattr(first_bp, 'initial_diverted_compute_h100e') else 0.0,
@@ -477,6 +573,10 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
                 bp_data['lr_other_intel'].append(to_float(bp.lr_other_intel) if hasattr(bp, 'lr_other_intel') else 1.0)
                 bp_data['posterior_prob'].append(to_float(bp.posterior_prob) if hasattr(bp, 'posterior_prob') else 0.3)
                 bp_data['lr_reported_energy'].append(to_float(bp.lr_reported_energy) if hasattr(bp, 'lr_reported_energy') else 1.0)
+
+                # Fab-specific LR metrics (use fab labor and time from construction start)
+                bp_data['lr_fab_other'].append(to_float(bp.lr_fab_other) if hasattr(bp, 'lr_fab_other') else 1.0)
+                bp_data['lr_fab_combined'].append(to_float(bp.lr_fab_combined) if hasattr(bp, 'lr_fab_combined') else 1.0)
 
                 # Fab production metrics
                 bp_data['fab_cumulative_production_h100e'].append(
@@ -511,6 +611,8 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
                 bp_data['lr_other_intel'].append(1.0)
                 bp_data['posterior_prob'].append(0.3)
                 bp_data['lr_reported_energy'].append(1.0)
+                bp_data['lr_fab_other'].append(1.0)
+                bp_data['lr_fab_combined'].append(1.0)
                 bp_data['fab_cumulative_production_h100e'].append(0.0)
                 bp_data['fab_monthly_production_h100e'].append(0.0)
                 bp_data['survival_rate'].append(1.0)
@@ -527,6 +629,9 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
             bp_data['fab_transistor_density_relative_to_h100'] = to_float(final_bp.fab_transistor_density_relative_to_h100) if hasattr(final_bp, 'fab_transistor_density_relative_to_h100') else 0.0
             bp_data['fab_process_node_nm'] = to_float(final_bp.fab_process_node_nm) if hasattr(final_bp, 'fab_process_node_nm') else 28.0
             bp_data['fab_chips_per_wafer'] = to_float(final_bp.fab_chips_per_wafer) if hasattr(final_bp, 'fab_chips_per_wafer') else 28
+            # Fab construction timing (needed for compute_fab_detection_data)
+            bp_data['fab_construction_start_year'] = to_float(final_bp.fab_construction_start_year) if hasattr(final_bp, 'fab_construction_start_year') else 2030.0
+            bp_data['fab_construction_duration'] = to_float(final_bp.fab_construction_duration) if hasattr(final_bp, 'fab_construction_duration') else 1.5
             # Extract watts_per_h100e for fab (fab_watts_per_chip / fab_h100e_per_chip)
             fab_watts = to_float(final_bp.fab_watts_per_chip) if hasattr(final_bp, 'fab_watts_per_chip') else 700.0
             fab_h100e = to_float(final_bp.fab_h100e_per_chip) if hasattr(final_bp, 'fab_h100e_per_chip') else 1.0
@@ -645,24 +750,34 @@ def _build_watts_per_tpp_curve() -> Dict[str, List[float]]:
     }
 
 
-def _compute_fab_dashboard(fab_built_sims: List[Dict], all_data: List[Dict], detection_times: List[float], num_sims: int, dt: float) -> Dict[str, Any]:
+def _compute_fab_dashboard(fab_built_sims: List[Dict], all_data: List[Dict], detection_times: List[float], num_sims: int, dt: float,
+                           fab_individual_h100e: List[float] = None, fab_individual_time: List[float] = None,
+                           fab_individual_energy: List[float] = None) -> Dict[str, Any]:
     """
     Compute pre-formatted dashboard values for the covert fab section.
     This avoids frontend computation.
+
+    If fab_individual_* parameters are provided (from compute_fab_detection_data), use those
+    for correct fab-specific detection calculations. Otherwise falls back to project detection.
     """
     from collections import Counter
 
     num_fab_built = len(fab_built_sims)
     prob_fab_built = f"{(num_fab_built / num_sims * 100):.1f}%" if num_sims > 0 else "--"
 
-    # Compute median H100e before detection
-    h100e_before = []
-    for d in fab_built_sims:
-        idx = all_data.index(d)
-        if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e'):
-            fab_prod = d['black_project']['fab_cumulative_production_h100e']
-            det_idx = min(int(detection_times[idx] / dt) if dt > 0 else 0, len(fab_prod) - 1)
-            h100e_before.append(fab_prod[det_idx])
+    # Use fab-specific detection data if provided (from compute_fab_detection_data)
+    # These use fab LR and operational time, matching the reference model
+    if fab_individual_h100e is not None:
+        h100e_before = fab_individual_h100e
+    else:
+        # Fallback: compute using project detection times (old behavior)
+        h100e_before = []
+        for d in fab_built_sims:
+            idx = all_data.index(d)
+            if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e'):
+                fab_prod = d['black_project']['fab_cumulative_production_h100e']
+                det_idx = min(int(detection_times[idx] / dt) if dt > 0 else 0, len(fab_prod) - 1)
+                h100e_before.append(fab_prod[det_idx])
 
     if h100e_before:
         sorted_h100e = sorted(h100e_before)
@@ -677,8 +792,13 @@ def _compute_fab_dashboard(fab_built_sims: List[Dict], all_data: List[Dict], det
         median_h100e = 0
         production_str = "--"
 
-    # Compute median time before detection
-    time_before = [detection_times[all_data.index(d)] for d in fab_built_sims]
+    # Use fab-specific time if provided
+    if fab_individual_time is not None:
+        time_before = fab_individual_time
+    else:
+        # Fallback: compute using project detection times (old behavior)
+        time_before = [detection_times[all_data.index(d)] for d in fab_built_sims]
+
     if time_before:
         sorted_time = sorted(time_before)
         median_time = sorted_time[len(sorted_time) // 2]
@@ -783,7 +903,8 @@ def extract_reference_format(
                             'fab_is_operational', 'cumulative_lr', 'lr_other_intel', 'posterior_prob',
                             'lr_reported_energy', 'fab_cumulative_production_h100e', 'fab_monthly_production_h100e',
                             'survival_rate', 'initial_compute_surviving_h100e',
-                            'initial_stock_energy_gw', 'fab_compute_energy_gw', 'total_compute_energy_gw']:
+                            'initial_stock_energy_gw', 'fab_compute_energy_gw', 'total_compute_energy_gw',
+                            'lr_fab_other', 'lr_fab_combined']:  # Added missing fab LR keys
                     if key in bp and isinstance(bp[key], list):
                         bp[key] = bp[key][start_idx:]
     else:
@@ -884,6 +1005,10 @@ def extract_reference_format(
     detection_times = compute_detection_times(all_data, years, agreement_year)
     h100_years_before_detection = compute_h100_years_before_detection(all_data, years, agreement_year)
     h100e_before_detection = compute_h100e_before_detection(all_data, years, agreement_year)
+
+    # Fab-specific detection data (uses fab LR, not project LR; time is operational time not from agreement)
+    fab_individual_h100e, fab_individual_time, fab_individual_process_nodes, fab_individual_energy = \
+        compute_fab_detection_data(all_data, years, agreement_year)
 
     # Energy before detection (at detection time)
     # Use detection_times which is now based on LR threshold
@@ -1006,29 +1131,133 @@ def extract_reference_format(
         }
 
     # Detection probability at each time point
-    datacenter_detection_prob = []
-    for i, year in enumerate(years):
-        detected_count = sum(
-            1 for d in all_data
-            if d['black_project'] and d['black_project'].get('sampled_detection_time', float('inf')) <= (year - years[0])
-        )
-        datacenter_detection_prob.append(detected_count / num_sims if num_sims > 0 else 0.0)
+    # Reference model: datacenter_detection_prob = np.mean(np.array(lr_datacenters_by_sim) >= 5.0, axis=0)
+    # This is the proportion of simulations where datacenter LR >= 5.0 at each time step
+    #
+    # IMPORTANT: Reference model's cumulative_lr_from_concealed_datacenters includes 3 components:
+    #   1. lr_from_identifying_datacenters_with_satellites() - fixed per simulation
+    #   2. lr_from_reported_energy_consumption(year) - time series
+    #   3. cumulative_lr_from_direct_observation(year) - time series (worker-based)
+    # So: lr_datacenters = lr_satellite * lr_reported_energy * lr_worker (lr_other_intel)
+    lr_datacenters_by_sim = []
+    for d in all_data:
+        bp = d.get('black_project')
+        if not bp:
+            lr_datacenters_by_sim.append([1.0] * len(years))
+            continue
+
+        # Get the three LR components
+        lr_satellite = bp.get('lr_satellite_datacenter', 1.0)  # Fixed value
+        lr_reported_energy = bp.get('lr_reported_energy', [1.0] * len(years))  # Time series
+        lr_worker = bp.get('lr_other_intel', [1.0] * len(years))  # Time series (worker detection)
+
+        # Compute combined datacenter LR (product of all three components)
+        combined_lr = []
+        for i in range(len(years)):
+            lr_energy = lr_reported_energy[i] if i < len(lr_reported_energy) else 1.0
+            lr_work = lr_worker[i] if i < len(lr_worker) else 1.0
+            combined_lr.append(lr_satellite * lr_energy * lr_work)
+        lr_datacenters_by_sim.append(combined_lr)
+
+    lr_datacenters_array = np.array(lr_datacenters_by_sim)
+    datacenter_detection_prob = (np.mean(lr_datacenters_array >= 5.0, axis=0)).tolist()
+
+    # Compute datacenter-specific detection times using COMBINED datacenter LR (threshold = 5.0)
+    # This is different from project detection which uses cumulative_lr
+    LR_DETECTION_THRESHOLD = 5.0
+    datacenter_detection_times = []
+    for i, d in enumerate(all_data):
+        bp = d.get('black_project')
+        sim_years = d.get('years', years)
+
+        if not bp or not sim_years:
+            # Default to end of simulation
+            datacenter_detection_times.append(sim_years[-1] - agreement_year if sim_years else 7.0)
+            continue
+
+        # Use the combined datacenter LR we computed above
+        lr_datacenters = lr_datacenters_by_sim[i]
+
+        # Find first year where datacenter LR >= threshold
+        detection_year = None
+        for j, year in enumerate(sim_years):
+            if j < len(lr_datacenters) and lr_datacenters[j] >= LR_DETECTION_THRESHOLD:
+                detection_year = year
+                break
+
+        if detection_year is not None:
+            datacenter_detection_times.append(detection_year - agreement_year)
+        else:
+            # Not detected - use time to end of simulation
+            datacenter_detection_times.append(sim_years[-1] - agreement_year if sim_years else 7.0)
 
     # Fraction diverted (this is the datacenter capacity diversion fraction, NOT compute diversion)
     # Reference model uses fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start = 0.01
     # This is fixed from parameters, not computed dynamically
     fraction_diverted = 0.01  # Fixed value from parameters
 
-    # PRC capacity data (simplified - use static growth model)
+    # Constants for energy calculation (matching reference model)
+    H100_TPP_PER_CHIP = 2144.0  # Tera-Parameter-Passes per H100 chip
+    H100_WATTS_PER_TPP = 0.326493  # Watts per Tera-Parameter-Pass
+    ENERGY_EFFICIENCY_RELATIVE_TO_SOTA = 0.20  # PRC stock efficiency relative to SOTA
+    SOTA_IMPROVEMENT_PER_YEAR = 1.26  # State-of-the-art efficiency improvement per year
+    H100_RELEASE_YEAR = 2022
+
+    # Compute state-of-the-art efficiency at agreement year relative to H100 (2022)
+    years_since_h100 = agreement_year - H100_RELEASE_YEAR
+    sota_efficiency_at_agreement = SOTA_IMPROVEMENT_PER_YEAR ** years_since_h100
+    combined_efficiency_at_agreement = ENERGY_EFFICIENCY_RELATIVE_TO_SOTA * sota_efficiency_at_agreement
+
+    # Compute PRC energy capacity for each simulation from sampled growth rates
+    # This matches reference model: compute_stock * H100_TPP * H100_WATTS_PER_TPP / combined_efficiency
+    prc_capacity_at_agreement_samples_computed = []
+    for d in all_data:
+        if d.get('prc_params'):
+            # Use sampled growth rate for this simulation
+            base_compute = d['prc_params']['total_prc_compute_tpp_h100e_in_2025']
+            growth_rate = d['prc_params']['annual_growth_rate']
+            years_since_2025 = agreement_year - 2025
+            compute_stock = base_compute * (growth_rate ** years_since_2025)
+            # Convert compute stock to energy capacity in GW
+            energy_watts = compute_stock * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / combined_efficiency_at_agreement
+            energy_gw = energy_watts / 1e9
+            prc_capacity_at_agreement_samples_computed.append(energy_gw)
+        else:
+            # Fallback: use static model
+            prc_capacity_at_agreement_samples_computed.append(0.175 * (1.74 ** (agreement_year - 2025)))
+
+    # PRC capacity data - compute from actual sampled values
     prc_capacity_years = list(range(2025, int(agreement_year) + 1))
-    prc_base_gw = 0.175  # Starting capacity in 2025
-    prc_growth = 1.74  # Growth rate per year
+
+    # Compute capacity trajectories for each simulation
+    prc_capacity_by_sim = []
+    for d in all_data:
+        if d.get('prc_params'):
+            base_compute = d['prc_params']['total_prc_compute_tpp_h100e_in_2025']
+            growth_rate = d['prc_params']['annual_growth_rate']
+            capacity_trajectory = []
+            for year in prc_capacity_years:
+                years_since_2025 = year - 2025
+                compute_stock = base_compute * (growth_rate ** years_since_2025)
+                # Combined efficiency changes each year
+                years_since_h100 = year - H100_RELEASE_YEAR
+                sota_eff = SOTA_IMPROVEMENT_PER_YEAR ** years_since_h100
+                combined_eff = ENERGY_EFFICIENCY_RELATIVE_TO_SOTA * sota_eff
+                energy_gw = (compute_stock * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / combined_eff) / 1e9
+                capacity_trajectory.append(energy_gw)
+            prc_capacity_by_sim.append(capacity_trajectory)
+        else:
+            # Fallback
+            prc_capacity_by_sim.append([0.175 * (1.74 ** (y - 2025)) for y in prc_capacity_years])
+
+    # Compute percentiles from simulation data
+    prc_capacity_array = np.array(prc_capacity_by_sim)
     prc_capacity_gw = {
-        "median": [prc_base_gw * (prc_growth ** (y - 2025)) for y in prc_capacity_years],
-        "p25": [prc_base_gw * (prc_growth ** (y - 2025)) * 0.8 for y in prc_capacity_years],
-        "p75": [prc_base_gw * (prc_growth ** (y - 2025)) * 1.2 for y in prc_capacity_years],
+        "median": np.percentile(prc_capacity_array, 50, axis=0).tolist(),
+        "p25": np.percentile(prc_capacity_array, 25, axis=0).tolist(),
+        "p75": np.percentile(prc_capacity_array, 75, axis=0).tolist(),
     }
-    prc_capacity_at_agreement = prc_base_gw * (prc_growth ** (agreement_year - 2025))
+    prc_capacity_at_agreement = float(np.median(prc_capacity_at_agreement_samples_computed))
 
     # Build response in reference format
     response = {
@@ -1049,8 +1278,10 @@ def extract_reference_format(
             "cumulative_lr": get_percentiles_with_individual(
                 lambda d: d['black_project']['cumulative_lr'] if d['black_project'] else [1.0] * len(years)
             ),
+            # initial_black_project: Reference model uses total surviving compute (initial + fab)
+            # NOT just initial stock. See reference: black_project_by_sim = initial_h100e + fab_h100e
             "initial_black_project": get_percentiles_with_individual(
-                lambda d: d['black_project']['initial_compute_surviving_h100e'] if d['black_project'] else [0.0] * len(years)
+                lambda d: d['black_project']['total_compute'] if d['black_project'] else [0.0] * len(years)
             ),
             # black_fab_flow: FILTERED to only fab-built simulations (for Covert fab section plots)
             "black_fab_flow": get_fab_percentiles_with_individual(
@@ -1163,9 +1394,14 @@ def extract_reference_format(
             "operational_compute": get_percentiles_with_individual(
                 lambda d: [v / 1000.0 for v in (d['black_project']['operational_compute'] if d['black_project'] else [0.0] * len(years))]
             ),
-            "lr_datacenters": get_percentiles_with_individual(
-                lambda d: d['black_project']['cumulative_lr'] if d['black_project'] else [1.0] * len(years)
-            ),
+            "lr_datacenters": {
+                # Use combined datacenter LR (satellite * reported_energy * worker)
+                # lr_datacenters_by_sim was computed earlier as the product of all 3 components
+                "p25": np.percentile(lr_datacenters_array, 25, axis=0).tolist(),
+                "median": np.percentile(lr_datacenters_array, 50, axis=0).tolist(),
+                "p75": np.percentile(lr_datacenters_array, 75, axis=0).tolist(),
+                "individual": [sim.tolist() if hasattr(sim, 'tolist') else list(sim) for sim in lr_datacenters_by_sim]
+            },
             "datacenter_detection_prob": datacenter_detection_prob,
             "energy_by_source": energy_by_source,
             "source_labels": source_labels,
@@ -1173,7 +1409,7 @@ def extract_reference_format(
             "capacity_ccdfs": {
                 str(lr): compute_ccdf([
                     d['black_project']['datacenter_capacity_gw'][
-                        min(int(detection_times[i] / dt) if dt > 0 else 0, len(d['black_project']['datacenter_capacity_gw']) - 1)
+                        min(int(datacenter_detection_times[i] / dt) if dt > 0 else 0, len(d['black_project']['datacenter_capacity_gw']) - 1)
                     ] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') else 0.0
                     for i, d in enumerate(all_data)
                 ])
@@ -1181,16 +1417,16 @@ def extract_reference_format(
             },
             "individual_capacity_before_detection": [
                 d['black_project']['datacenter_capacity_gw'][
-                    min(int(detection_times[i] / dt) if dt > 0 else 0, len(d['black_project']['datacenter_capacity_gw']) - 1)
+                    min(int(datacenter_detection_times[i] / dt) if dt > 0 else 0, len(d['black_project']['datacenter_capacity_gw']) - 1)
                 ] if d['black_project'] and d['black_project'].get('datacenter_capacity_gw') else 0.0
                 for i, d in enumerate(all_data)
             ],
-            "individual_time_before_detection": detection_times,
+            "individual_time_before_detection": datacenter_detection_times,
             "likelihood_ratios": LIKELIHOOD_RATIO_THRESHOLDS,
             "prc_capacity_years": prc_capacity_years,
             "prc_capacity_gw": prc_capacity_gw,
             "prc_capacity_at_agreement_year_gw": prc_capacity_at_agreement,
-            "prc_capacity_at_agreement_year_samples": [prc_capacity_at_agreement * (0.8 + 0.4 * np.random.random()) for _ in range(num_sims)],
+            "prc_capacity_at_agreement_year_samples": prc_capacity_at_agreement_samples_computed,
         },
 
         # black_fab (25 keys)
@@ -1235,42 +1471,30 @@ def extract_reference_format(
                 lambda d: [d['black_project']['fab_watts_per_h100e'] / 700.0] * len(years) if d['black_project'] else [1.0] * len(years)
             ),
             "watts_per_tpp_curve": _build_watts_per_tpp_curve(),
-            # LR values: Use fab-only percentiles (black_fab section only includes fab-built simulations)
+            # LR values: Use FAB-SPECIFIC LR metrics (lr_fab_combined and lr_fab_other)
+            # These are computed using fab labor (construction + operation) and time from fab construction start
+            # lr_fab_combined = lr_sme_inventory × lr_prc_accounting × lr_fab_other
             "lr_combined": get_fab_percentiles_with_individual(
-                lambda d: d['black_project']['cumulative_lr'] if d['black_project'] else [1.0] * len(years)
+                lambda d: d['black_project']['lr_fab_combined'] if d['black_project'] else [1.0] * len(years)
             ),
             "lr_inventory": get_fab_percentiles_with_individual(
                 lambda d: [d['black_project']['lr_sme_inventory']] * len(years) if d['black_project'] else [1.0] * len(years)
             ),
             "lr_procurement": get_fab_percentiles_with_individual(
-                lambda d: [d['black_project']['lr_prc_accounting']] * len(years) if d['black_project'] else [1.0] * len(years)
+                lambda d: [d['black_project']['lr_fab_procurement']] * len(years) if d['black_project'] else [1.0] * len(years)
             ),
             "lr_other": get_fab_percentiles_with_individual(
-                lambda d: d['black_project']['lr_other_intel'] if d['black_project'] else [1.0] * len(years)
+                lambda d: d['black_project']['lr_fab_other'] if d['black_project'] else [1.0] * len(years)
             ),
             "process_node_by_sim": [
                 f"{int(d['black_project'].get('fab_process_node_nm', 28))}nm" if d['black_project'] else "28nm"
                 for d in fab_built_sims
             ] if fab_built_sims else [],
-            "individual_process_node": [
-                f"{int(d['black_project'].get('fab_process_node_nm', 28))}nm" if d['black_project'] else "28nm"
-                for d in fab_built_sims
-            ] if fab_built_sims else [],
-            "individual_h100e_before_detection": [
-                d['black_project']['fab_cumulative_production_h100e'][
-                    min(int(detection_times[all_data.index(d)] / dt) if dt > 0 else 0, len(d['black_project']['fab_cumulative_production_h100e']) - 1)
-                ] if d['black_project'] and d['black_project'].get('fab_cumulative_production_h100e') else 0.0
-                for d in fab_built_sims
-            ] if fab_built_sims else [],
-            "individual_time_before_detection": [
-                detection_times[all_data.index(d)] for d in fab_built_sims
-            ] if fab_built_sims else [],
-            "individual_energy_before_detection": [
-                d['black_project']['total_compute_energy_gw'][
-                    min(int(detection_times[all_data.index(d)] / dt) if dt > 0 else 0, len(d['black_project']['total_compute_energy_gw']) - 1)
-                ] if d['black_project'] and d['black_project'].get('total_compute_energy_gw') else 0.0
-                for d in fab_built_sims
-            ] if fab_built_sims else [],
+            "individual_process_node": fab_individual_process_nodes,  # From compute_fab_detection_data
+            # Fab detection data uses fab-specific LR and operational time (matching reference model)
+            "individual_h100e_before_detection": fab_individual_h100e,
+            "individual_time_before_detection": fab_individual_time,
+            "individual_energy_before_detection": fab_individual_energy,
             "compute_ccdf": [],
             "compute_ccdfs": {
                 str(lr): compute_ccdf([
@@ -1293,17 +1517,24 @@ def extract_reference_format(
             "likelihood_ratios": LIKELIHOOD_RATIO_THRESHOLDS,
 
             # Pre-computed dashboard values (avoid frontend computation)
-            "dashboard": _compute_fab_dashboard(fab_built_sims, all_data, detection_times, num_sims, dt),
+            "dashboard": _compute_fab_dashboard(fab_built_sims, all_data, detection_times, num_sims, dt,
+                                                fab_individual_h100e=fab_individual_h100e,
+                                                fab_individual_time=fab_individual_time,
+                                                fab_individual_energy=fab_individual_energy),
         },
 
         # initial_black_project (4 keys)
+        # Reference format: h100e = fab production (filtered to fab-built sims), in thousands
+        # black_project = total surviving compute (initial + fab), in thousands
         "initial_black_project": {
             "years": years,
+            # Total dark compute (surviving initial + fab), in thousands to match reference
             "black_project": get_percentiles_with_individual(
-                lambda d: d['black_project']['initial_compute_surviving_h100e'] if d['black_project'] else [0.0] * len(years)
+                lambda d: [v / 1000 for v in d['black_project']['total_compute']] if d['black_project'] else [0.0] * len(years)
             ),
-            "h100e": get_percentiles_with_individual(
-                lambda d: d['black_project']['total_compute'] if d['black_project'] else [0.0] * len(years)
+            # Fab production only, filtered to fab-built sims, in thousands
+            "h100e": get_fab_percentiles_with_individual(
+                lambda d: [v / 1000 for v in d['black_project']['fab_cumulative_production_h100e']] if d['black_project'] else [0.0] * len(years)
             ),
             "survival_rate": get_percentiles_with_individual(
                 lambda d: d['black_project']['survival_rate'] if d['black_project'] else [1.0] * len(years)

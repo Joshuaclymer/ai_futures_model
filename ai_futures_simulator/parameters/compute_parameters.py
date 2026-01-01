@@ -54,6 +54,9 @@ class PRCComputeParameters:
     fab_wafers_per_month_per_operating_worker: float
     fab_wafers_per_month_per_construction_worker_under_standard_timeline: float
 
+    # Fields with defaults must come at the end
+    # Uncertainty in PRC scanner production (lognormal relative sigma) - matches reference model
+    prc_scanner_production_relative_sigma: float = 0.30
     # Fab construction time uncertainty multiplier (sampled from lognormal, median=1.0)
     # Discrete model applies relative_sigma=0.35 to computed duration
     fab_construction_time_multiplier: float = 1.0

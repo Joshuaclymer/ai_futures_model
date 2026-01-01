@@ -179,8 +179,8 @@ def calculate_watts_per_tpp_from_transistor_density(
     Calculate watts per TPP from transistor density using Dennard scaling model.
 
     Uses a piecewise power law with different exponents before/after Dennard scaling ended:
-    - Before Dennard: watts_per_tpp scales with density^exponent_before (steeper, ~-1.0)
-    - After Dennard: watts_per_tpp scales with density^exponent_after (shallower, ~-0.33)
+    - Before Dennard: watts_per_tpp scales with density^exponent_before (steeper, -2.0)
+    - After Dennard: watts_per_tpp scales with density^exponent_after (shallower, -0.91)
 
     The transition point is anchored to the H100 (post-Dennard) and the pre-Dennard
     line is connected to ensure continuity.
@@ -192,9 +192,9 @@ def calculate_watts_per_tpp_from_transistor_density(
         exogenous_trends: Optional ExogenousComputeTrends for parameter values
         h100_transistor_density_m_per_mm2: H100 transistor density (default 98.28)
         h100_watts_per_tpp: H100 watts per TPP (default 0.326493)
-        transistor_density_at_end_of_dennard: Density at Dennard transition (default 10.0)
-        watts_per_tpp_exponent_before_dennard: Exponent before Dennard ended (default -1.0)
-        watts_per_tpp_exponent_after_dennard: Exponent after Dennard ended (default -0.33)
+        transistor_density_at_end_of_dennard: Density at Dennard transition (default 1.98)
+        watts_per_tpp_exponent_before_dennard: Exponent before Dennard ended (default -2.0)
+        watts_per_tpp_exponent_after_dennard: Exponent after Dennard ended (default -0.91)
 
     Returns:
         Watts per TPP for the given transistor density
@@ -204,9 +204,10 @@ def calculate_watts_per_tpp_from_transistor_density(
         watts_per_tpp_exponent_before_dennard = exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended
         watts_per_tpp_exponent_after_dennard = exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended
     else:
-        transistor_density_at_end_of_dennard = transistor_density_at_end_of_dennard or 10.0
-        watts_per_tpp_exponent_before_dennard = watts_per_tpp_exponent_before_dennard or -1.0
-        watts_per_tpp_exponent_after_dennard = watts_per_tpp_exponent_after_dennard or -0.33
+        # Default values match discrete model's BlackFabParameters
+        transistor_density_at_end_of_dennard = transistor_density_at_end_of_dennard or 1.98
+        watts_per_tpp_exponent_before_dennard = watts_per_tpp_exponent_before_dennard or -2.0
+        watts_per_tpp_exponent_after_dennard = watts_per_tpp_exponent_after_dennard or -0.91
 
     # Calculate watts_per_tpp at the Dennard transition point using post-Dennard relationship
     transition_density_ratio = transistor_density_at_end_of_dennard / h100_transistor_density_m_per_mm2

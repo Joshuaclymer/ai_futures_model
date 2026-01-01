@@ -205,6 +205,10 @@ class ModelParameters:
     # Initial progress value
     initial_progress: float = 0.0
 
+    # Internal random generator for sampling (initialized on first use)
+    _rng: Optional[np.random.Generator] = None
+    _sample_count: int = 0
+
     @classmethod
     def from_yaml(cls, path: Union[str, Path]) -> "ModelParameters":
         """Load model parameters from a YAML config file."""
@@ -260,13 +264,20 @@ class ModelParameters:
         Sample a set of simulation parameters from the distributions.
 
         Args:
-            rng: NumPy random generator. If None, creates one from self.seed.
+            rng: NumPy random generator. If None, uses an internal generator
+                 that's initialized from self.seed on first use and advances
+                 with each call, ensuring different samples each time.
 
         Returns:
             SimulationParameters instance with sampled values.
         """
         if rng is None:
-            rng = np.random.default_rng(self.seed)
+            # Use internal random generator that advances with each call
+            # This ensures different samples when sample() is called repeatedly
+            if self._rng is None:
+                self._rng = np.random.default_rng(self.seed)
+            rng = self._rng
+            self._sample_count += 1
 
         # Sample settings
         sampled_settings = {}
