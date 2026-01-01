@@ -344,10 +344,14 @@ def compute_fab_detection_data(all_data: List[Dict], years: List[float], agreeme
         # Get process node
         process_node = f"{int(bp.get('fab_process_node_nm', 28))}nm"
 
-        # Calculate energy (h100e * watts_per_h100e / 1e9)
-        # Use fab_watts_per_h100e which accounts for process node (e.g., 28nm = ~9794 W/H100e)
-        watts_per_h100e = bp.get('fab_watts_per_h100e', 700)
-        energy_gw = h100e_at_detection * watts_per_h100e / 1e9
+        # Calculate energy using same formula as reference model:
+        # energy_gw = h100e * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / energy_efficiency / 1e9
+        # where H100_TPP_PER_CHIP * H100_WATTS_PER_TPP ≈ 700W and energy_efficiency = 0.2
+        # Note: Reference uses energy_efficiency_of_prc_stock_relative_to_state_of_the_art (0.2)
+        # not the fab-specific watts_per_h100e
+        H100_WATTS_PER_H100E = 700.0
+        ENERGY_EFFICIENCY_OF_PRC_STOCK = 0.2
+        energy_gw = h100e_at_detection * H100_WATTS_PER_H100E / ENERGY_EFFICIENCY_OF_PRC_STOCK / 1e9
 
         individual_h100e.append(h100e_at_detection)
         individual_time.append(operational_time)
