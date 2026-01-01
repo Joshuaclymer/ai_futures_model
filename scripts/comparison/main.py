@@ -24,7 +24,7 @@ from .config import (
     DEFAULT_TOTAL_LABOR,
 )
 from .reference_api import fetch_reference_api, clear_cache as clear_reference_cache
-from .local_simulator import fetch_local_api, clear_local_cache
+from .local_simulator import fetch_local_direct, clear_local_cache
 from .auto_compare import compare_apis, print_comparison_results
 
 
@@ -75,7 +75,7 @@ def run_comparison(
 
     # Step 2: Fetch local API data
     print("\nStep 2: Fetching local API data")
-    local_response = fetch_local_api(
+    local_response = fetch_local_direct(
         num_simulations=num_samples,
         agreement_year=DEFAULT_AGREEMENT_YEAR,
         num_years=DEFAULT_NUM_YEARS,
@@ -84,8 +84,7 @@ def run_comparison(
     )
 
     if local_response is None:
-        print("ERROR: Failed to fetch local API data")
-        print("Make sure the backend is running at http://localhost:5329")
+        print("ERROR: Failed to run local simulations")
         return False
 
     # Step 3: Automatically compare all shared keys

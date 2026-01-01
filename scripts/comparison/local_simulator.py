@@ -8,6 +8,7 @@ which serves the same data displayed on the frontend.
 import json
 import time
 import urllib.request
+from pathlib import Path
 from typing import Dict, Optional
 
 from .config import (
@@ -232,3 +233,60 @@ def clear_local_cache():
         for cache_file in CACHE_DIR.glob("local_*.json"):
             cache_file.unlink()
             print(f"  Deleted {cache_file.name}")
+
+
+def fetch_local_direct(
+    num_simulations: int = DEFAULT_NUM_SAMPLES,
+    agreement_year: int = DEFAULT_AGREEMENT_YEAR,
+    num_years: int = 10,
+    use_cache: bool = True,
+    verbose: bool = True,
+) -> Optional[Dict]:
+    """Run simulations directly without HTTP API (faster, no server needed)."""
+    cache_file = CACHE_DIR / f"local_{num_simulations}_{agreement_year}_{num_years}.json"
+
+    if use_cache and cache_file.exists():
+        if verbose:
+            print(f"  Loading cached local data from {cache_file.name}")
+        with open(cache_file, 'r') as f:
+            return json.load(f)
+
+    if verbose:
+        print(f"  Running {num_simulations} simulations directly...")
+
+    try:
+        import sys
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        sys.path.insert(0, str(repo_root))
+        sys.path.insert(0, str(repo_root / "app_backend"))
+        sys.path.insert(0, str(repo_root / "ai_futures_simulator"))
+        from api_utils.black_project_simulation import run_black_project_simulations, extract_black_project_plot_data
+
+        start = time.time()
+        frontend_params = {'laborAllocation': {'total': 11300}}
+        result = run_black_project_simulations(
+            frontend_params=frontend_params,
+            num_simulations=num_simulations,
+            time_range=[agreement_year, agreement_year + num_years],
+        )
+        response = extract_black_project_plot_data(result, frontend_params)
+        elapsed = time.time() - start
+
+        if verbose:
+            print(f"  Simulations completed in {elapsed:.1f}s")
+
+        if use_cache:
+            CACHE_DIR.mkdir(exist_ok=True)
+            with open(cache_file, 'w') as f:
+                json.dump(response, f)
+            if verbose:
+                print(f"  Cached to {cache_file.name}")
+
+        return response
+
+    except Exception as e:
+        if verbose:
+            print(f"  ERROR running direct simulations: {e}")
+            import traceback
+            traceback.print_exc()
+        return None
