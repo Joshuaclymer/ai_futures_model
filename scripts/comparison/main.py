@@ -3,8 +3,8 @@
 Main entry point for comparing local API with reference discrete model.
 
 Automatically compares all shared keys between:
-- Local API: /api/get-data-for-ai-black-projects-page (continuous ODE model)
-- Reference API: https://dark-compute.onrender.com/run_simulation (discrete model)
+- ai_futures_simulator: continuous ODE model (runs in-process)
+- Reference API: http://127.0.0.1:5001/run_simulation (discrete model)
 
 For time series data, computes the *average* percent difference across all time points.
 
@@ -17,19 +17,19 @@ import sys
 from pathlib import Path
 
 from .config import (
-    DEFAULT_NUM_SAMPLES,
+    DEFAULT_NUM_SIMULATIONS,
     DEFAULT_START_YEAR,
-    DEFAULT_AGREEMENT_YEAR,
-    DEFAULT_NUM_YEARS,
-    DEFAULT_TOTAL_LABOR,
+    DEFAULT_END_YEAR,
 )
 from .reference_api import fetch_reference_api, clear_cache as clear_reference_cache
-from .local_simulator import fetch_local_direct, clear_local_cache
+from .ai_futures_simulator_api import fetch_ai_futures_simulator
 from .auto_compare import compare_apis, print_comparison_results
 
 
 def run_comparison(
-    num_samples: int = DEFAULT_NUM_SAMPLES,
+    num_simulations: int = DEFAULT_NUM_SIMULATIONS,
+    start_year: int = DEFAULT_START_YEAR,
+    end_year: int = DEFAULT_END_YEAR,
     use_cache: bool = True,
     show_all: bool = False,
     verbose: bool = True,
@@ -41,8 +41,10 @@ def run_comparison(
     For time series, computes average percent difference.
 
     Args:
-        num_samples: Number of Monte Carlo samples
-        use_cache: Whether to use cached API responses
+        num_simulations: Number of Monte Carlo simulations
+        start_year: Simulation start year
+        end_year: Simulation end year
+        use_cache: Whether to use cached reference API responses
         show_all: Whether to show passing comparisons too
         verbose: Whether to print progress messages
 
@@ -50,21 +52,20 @@ def run_comparison(
         True if no failures, False otherwise
     """
     print("=" * 60)
-    print("Local API vs Reference API Comparison")
+    print("ai_futures_simulator vs Reference API Comparison")
     print("=" * 60)
     print(f"\nConfiguration:")
-    print(f"  Samples: {num_samples}")
-    print(f"  Agreement Year: {DEFAULT_AGREEMENT_YEAR}")
-    print(f"  Simulation Years: {DEFAULT_NUM_YEARS}")
-    print(f"  Reference Start Year: {DEFAULT_START_YEAR}")
-    print(f"  Total Labor: {DEFAULT_TOTAL_LABOR}")
-    print(f"  Use Cache: {use_cache}")
+    print(f"  Simulations: {num_simulations}")
+    print(f"  Time range: {start_year} - {end_year}")
+    print(f"  Use Cache (reference only): {use_cache}")
     print()
 
     # Step 1: Fetch reference data
     print("Step 1: Fetching reference API data")
     ref_response = fetch_reference_api(
-        num_samples=num_samples,
+        num_simulations=num_simulations,
+        start_year=start_year,
+        end_year=end_year,
         use_cache=use_cache,
         verbose=verbose,
     )
@@ -73,24 +74,24 @@ def run_comparison(
         print("ERROR: Failed to fetch reference data")
         return False
 
-    # Step 2: Fetch local API data
-    print("\nStep 2: Fetching local API data")
-    local_response = fetch_local_direct(
-        num_simulations=num_samples,
-        agreement_year=DEFAULT_AGREEMENT_YEAR,
-        num_years=DEFAULT_NUM_YEARS,
-        use_cache=use_cache,
+    # Step 2: Fetch ai_futures_simulator data (never cached - always run fresh)
+    print("\nStep 2: Fetching ai_futures_simulator data")
+    afs_response = fetch_ai_futures_simulator(
+        num_simulations=num_simulations,
+        start_year=start_year,
+        end_year=end_year,
+        use_cache=False,  # Never cache ai_futures_simulator - always run fresh
         verbose=verbose,
     )
 
-    if local_response is None:
-        print("ERROR: Failed to run local simulations")
+    if afs_response is None:
+        print("ERROR: Failed to run ai_futures_simulator")
         return False
 
     # Step 3: Automatically compare all shared keys
     print("\nStep 3: Comparing shared keys (computing average % diff for time series)")
     summary = compare_apis(
-        local_data=local_response,
+        local_data=afs_response,
         ref_data=ref_response,
         verbose=verbose,
     )
@@ -103,11 +104,9 @@ def run_comparison(
 
 
 def clear_cache():
-    """Clear all cached API responses."""
+    """Clear cached reference API responses (local simulator is never cached)."""
     print("Clearing reference API cache...")
     clear_reference_cache()
-    print("Clearing local API cache...")
-    clear_local_cache()
 
 
 def main():
@@ -118,13 +117,13 @@ def main():
     parser.add_argument(
         '--samples', '-n',
         type=int,
-        default=DEFAULT_NUM_SAMPLES,
-        help=f'Number of Monte Carlo samples (default: {DEFAULT_NUM_SAMPLES})'
+        default=DEFAULT_NUM_SIMULATIONS,
+        help=f'Number of Monte Carlo simulations (default: {DEFAULT_NUM_SIMULATIONS})'
     )
     parser.add_argument(
         '--no-cache',
         action='store_true',
-        help='Disable API response caching'
+        help='Disable reference API response caching'
     )
     parser.add_argument(
         '--clear-cache',
@@ -151,7 +150,7 @@ def main():
         return 0
 
     success = run_comparison(
-        num_samples=args.samples,
+        num_simulations=args.samples,
         use_cache=not args.no_cache,
         show_all=args.show_all,
         verbose=not args.quiet,

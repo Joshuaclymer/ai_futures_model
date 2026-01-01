@@ -5,18 +5,15 @@ Configuration constants for the comparison module.
 from pathlib import Path
 
 # API Configuration
-REFERENCE_API_URL = 'https://dark-compute.onrender.com/run_simulation'
-LOCAL_API_URL = 'http://127.0.0.1:5329/api/get-data-for-ai-black-projects-page'
+REFERENCE_API_URL = 'http://127.0.0.1:5001/run_simulation'
 
 # Cache settings
 CACHE_DIR = Path(__file__).parent.parent / 'cache'
 
 # Default simulation parameters
-DEFAULT_NUM_SAMPLES = 200
-DEFAULT_START_YEAR = 2029  # Reference model's start_year (prep year)
-DEFAULT_AGREEMENT_YEAR = 2030  # = start_year + 1
-DEFAULT_NUM_YEARS = 7  # Number of years to simulate (matches reference API output range 2030-2037)
-DEFAULT_TOTAL_LABOR = 11300
+DEFAULT_NUM_SIMULATIONS = 200
+DEFAULT_START_YEAR = 2030
+DEFAULT_END_YEAR = 2037
 
 # Metric comparison tolerances (percent)
 METRIC_TOLERANCES = {

@@ -5,7 +5,7 @@ Automatically finds matching keys between API responses and computes:
 - For scalars: percent difference
 - For arrays: median percent difference
 - For time series (with percentiles): average percent difference across all time points
-- For CCDFs: not compared (structural data)
+- For CCDFs: interpolate to common x-values and compare y-values (probabilities)
 """
 
 import numpy as np
@@ -101,7 +101,7 @@ def classify_value(value: Any) -> str:
     return 'unknown'
 
 
-def compute_array_diff(local: List[float], ref: List[float], sort_arrays: bool = True) -> Tuple[float, float, int]:
+def compute_array_diff(local: List[float], ref: List[float], sort_arrays: bool = True) -> Tuple[float, float, int, str]:
     """
     Compute average and max percent difference between two arrays.
 
@@ -114,15 +114,21 @@ def compute_array_diff(local: List[float], ref: List[float], sort_arrays: bool =
         sort_arrays: If True, sort both arrays before comparing (for MC samples)
 
     Returns:
-        (avg_pct_diff, max_pct_diff, num_points)
+        (avg_pct_diff, max_pct_diff, num_points, warning_note)
     """
+    warning_note = ""
+
     if not local or not ref:
-        return 0.0, 0.0, 0
+        return 0.0, 0.0, 0, ""
+
+    # Check for length mismatch
+    if len(local) != len(ref):
+        warning_note = f"Length mismatch: local={len(local)}, ref={len(ref)}"
 
     # Use the shorter length
     n = min(len(local), len(ref))
     if n == 0:
-        return 0.0, 0.0, 0
+        return 0.0, 0.0, 0, warning_note
 
     local_arr = np.array(local[:n], dtype=float)
     ref_arr = np.array(ref[:n], dtype=float)
@@ -132,11 +138,21 @@ def compute_array_diff(local: List[float], ref: List[float], sort_arrays: bool =
         local_arr = np.sort(local_arr)
         ref_arr = np.sort(ref_arr)
 
-    # Handle zeros in reference - use small epsilon
-    ref_safe = np.where(np.abs(ref_arr) < 1e-10, 1e-10, ref_arr)
+    # Compute percent differences with proper zero handling
+    pct_diffs = np.zeros(n)
+    for i in range(n):
+        local_val = local_arr[i]
+        ref_val = ref_arr[i]
 
-    # Compute percent differences
-    pct_diffs = np.abs(local_arr - ref_arr) / np.abs(ref_safe) * 100
+        # Both near zero - consider it a match
+        if abs(ref_val) < 1e-10 and abs(local_val) < 1e-10:
+            pct_diffs[i] = 0.0
+        # Reference near zero but local is not - use absolute difference threshold
+        elif abs(ref_val) < 1e-10:
+            # If local is also small (< 0.01), consider it close enough
+            pct_diffs[i] = 0.0 if abs(local_val) < 0.01 else 100.0
+        else:
+            pct_diffs[i] = abs(local_val - ref_val) / abs(ref_val) * 100
 
     # Cap extreme values
     pct_diffs = np.clip(pct_diffs, 0, 1000)
@@ -144,7 +160,99 @@ def compute_array_diff(local: List[float], ref: List[float], sort_arrays: bool =
     avg_diff = float(np.mean(pct_diffs))
     max_diff = float(np.max(pct_diffs))
 
-    return avg_diff, max_diff, n
+    return avg_diff, max_diff, n, warning_note
+
+
+def compute_ccdf_diff(local_ccdf: List[dict], ref_ccdf: List[dict]) -> Tuple[float, float, int, str]:
+    """
+    Compare two CCDFs by interpolating to common x-values and comparing y-values.
+
+    CCDFs are lists of {"x": value, "y": probability} points.
+    We interpolate both to common x-values and compute the average absolute difference
+    in probabilities.
+
+    Returns:
+        (avg_diff, max_diff, num_points, warning_note)
+        where diff is in percentage points (0-100 scale for probabilities)
+    """
+    warning_note = ""
+
+    if not local_ccdf or not ref_ccdf:
+        return 0.0, 0.0, 0, "Empty CCDF"
+
+    # Extract x and y values
+    local_x = np.array([p['x'] for p in local_ccdf])
+    local_y = np.array([p['y'] for p in local_ccdf])
+    ref_x = np.array([p['x'] for p in ref_ccdf])
+    ref_y = np.array([p['y'] for p in ref_ccdf])
+
+    # Sort by x
+    local_order = np.argsort(local_x)
+    local_x, local_y = local_x[local_order], local_y[local_order]
+    ref_order = np.argsort(ref_x)
+    ref_x, ref_y = ref_x[ref_order], ref_y[ref_order]
+
+    # Create common x-values spanning both ranges
+    x_min = min(local_x.min(), ref_x.min())
+    x_max = max(local_x.max(), ref_x.max())
+
+    # Use 50 evenly spaced points for comparison
+    num_points = 50
+    common_x = np.linspace(x_min, x_max, num_points)
+
+    # Interpolate both CCDFs to common x-values
+    # For CCDF, values outside the range should be 1.0 (left) or 0.0 (right)
+    local_interp = np.interp(common_x, local_x, local_y, left=1.0, right=0.0)
+    ref_interp = np.interp(common_x, ref_x, ref_y, left=1.0, right=0.0)
+
+    # Compute absolute differences in probability (as percentage points)
+    # Multiply by 100 to convert from 0-1 to 0-100 scale
+    prob_diffs = np.abs(local_interp - ref_interp) * 100
+
+    avg_diff = float(np.mean(prob_diffs))
+    max_diff = float(np.max(prob_diffs))
+
+    return avg_diff, max_diff, num_points, warning_note
+
+
+def compute_ccdf_dict_diff(local_dict: dict, ref_dict: dict) -> Tuple[float, float, int, str]:
+    """
+    Compare CCDF dicts (keyed by threshold like '1', '2', '4').
+
+    Returns average diff across all thresholds.
+    """
+    # Find common threshold keys
+    local_keys = set(local_dict.keys())
+    ref_keys = set(ref_dict.keys())
+    common_keys = local_keys & ref_keys
+
+    if not common_keys:
+        return 0.0, 0.0, 0, "No common threshold keys"
+
+    all_diffs = []
+    max_diffs = []
+    total_points = 0
+
+    for key in sorted(common_keys):
+        local_ccdf = local_dict[key]
+        ref_ccdf = ref_dict[key]
+
+        if isinstance(local_ccdf, list) and isinstance(ref_ccdf, list):
+            avg, max_d, n, _ = compute_ccdf_diff(local_ccdf, ref_ccdf)
+            if n > 0:
+                all_diffs.append(avg)
+                max_diffs.append(max_d)
+                total_points += n
+
+    if not all_diffs:
+        return 0.0, 0.0, 0, "No comparable CCDFs"
+
+    # Average across all thresholds
+    avg_diff = float(np.mean(all_diffs))
+    max_diff = float(np.max(max_diffs))
+
+    note = f"Compared {len(all_diffs)} thresholds: {sorted(common_keys)}"
+    return avg_diff, max_diff, total_points, note
 
 
 def compare_values(
@@ -161,7 +269,7 @@ def compare_values(
     ref_type = classify_value(ref_value)
 
     # Skip if types don't match or are non-comparable
-    skip_types = {'unknown', 'empty_array', 'string', 'boolean', 'ccdf', 'ccdf_dict', 'mixed_array', 'object'}
+    skip_types = {'unknown', 'empty_array', 'string', 'boolean', 'mixed_array', 'object'}
     if local_type in skip_types or ref_type in skip_types:
         return KeyComparisonResult(
             key_path=key_path,
@@ -173,6 +281,44 @@ def compare_values(
             num_points=0,
             status='SKIP',
             note=f"Non-comparable type: {local_type}/{ref_type}"
+        )
+
+    # CCDF comparison (list of {x, y} points)
+    if local_type == 'ccdf' and ref_type == 'ccdf':
+        avg_diff, max_diff, n, note = compute_ccdf_diff(local_value, ref_value)
+
+        # For CCDFs, diff is in percentage points (0-100 scale)
+        # Use same thresholds as other metrics
+        status = 'PASS' if avg_diff <= 5 else ('WARN' if avg_diff <= 25 else 'FAIL')
+
+        return KeyComparisonResult(
+            key_path=key_path,
+            data_type='ccdf',
+            local_value=f"{len(local_value)} pts",
+            reference_value=f"{len(ref_value)} pts",
+            avg_pct_diff=avg_diff,
+            max_pct_diff=max_diff,
+            num_points=n,
+            status=status,
+            note=note + " (diff in probability %pts)" if note else "diff in probability %pts",
+        )
+
+    # CCDF dict comparison (dict keyed by threshold like '1', '2', '4')
+    if local_type == 'ccdf_dict' and ref_type == 'ccdf_dict':
+        avg_diff, max_diff, n, note = compute_ccdf_dict_diff(local_value, ref_value)
+
+        status = 'PASS' if avg_diff <= 5 else ('WARN' if avg_diff <= 25 else 'FAIL')
+
+        return KeyComparisonResult(
+            key_path=key_path,
+            data_type='ccdf_dict',
+            local_value=f"{len(local_value)} thresholds",
+            reference_value=f"{len(ref_value)} thresholds",
+            avg_pct_diff=avg_diff,
+            max_pct_diff=max_diff,
+            num_points=n,
+            status=status,
+            note=note + " (diff in probability %pts)" if note else "diff in probability %pts",
         )
 
     # Scalar comparison
@@ -197,7 +343,7 @@ def compare_values(
 
     # Array comparison
     if local_type == 'array' and ref_type == 'array':
-        avg_diff, max_diff, n = compute_array_diff(local_value, ref_value)
+        avg_diff, max_diff, n, note = compute_array_diff(local_value, ref_value)
 
         # Use median values as summary
         local_median = float(np.median(local_value)) if local_value else 0
@@ -214,6 +360,7 @@ def compare_values(
             max_pct_diff=max_diff,
             num_points=n,
             status=status,
+            note=note,
         )
 
     # Time series comparison (has median key)
@@ -221,7 +368,7 @@ def compare_values(
         local_median = local_value.get('median', [])
         ref_median = ref_value.get('median', [])
 
-        avg_diff, max_diff, n = compute_array_diff(local_median, ref_median)
+        avg_diff, max_diff, n, note = compute_array_diff(local_median, ref_median, sort_arrays=False)
 
         # Use overall median as summary value
         local_summary = float(np.median(local_median)) if local_median else 0
@@ -238,6 +385,7 @@ def compare_values(
             max_pct_diff=max_diff,
             num_points=n,
             status=status,
+            note=note,
         )
 
     # 2D array comparison (e.g., individual simulation data)
@@ -248,7 +396,8 @@ def compare_values(
             ref_arr = np.array(ref_value)
             local_median = np.median(local_arr, axis=0).tolist()
             ref_median = np.median(ref_arr, axis=0).tolist()
-            avg_diff, max_diff, n = compute_array_diff(local_median, ref_median)
+            # Don't sort - these are time series (median at each time point)
+            avg_diff, max_diff, n, note = compute_array_diff(local_median, ref_median, sort_arrays=False)
 
             local_summary = float(np.median(local_median)) if local_median else 0
             ref_summary = float(np.median(ref_median)) if ref_median else 0
@@ -264,6 +413,7 @@ def compare_values(
                 max_pct_diff=max_diff,
                 num_points=n,
                 status=status,
+                note=note,
             )
         except Exception as e:
             return KeyComparisonResult(

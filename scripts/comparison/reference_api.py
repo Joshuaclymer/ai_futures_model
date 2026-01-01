@@ -10,16 +10,16 @@ from typing import Dict, Optional
 from .config import (
     REFERENCE_API_URL,
     CACHE_DIR,
-    DEFAULT_NUM_SAMPLES,
+    DEFAULT_NUM_SIMULATIONS,
     DEFAULT_START_YEAR,
-    DEFAULT_TOTAL_LABOR,
+    DEFAULT_END_YEAR,
 )
 
 
 def fetch_reference_api(
-    num_samples: int = DEFAULT_NUM_SAMPLES,
+    num_simulations: int = DEFAULT_NUM_SIMULATIONS,
     start_year: int = DEFAULT_START_YEAR,
-    total_labor: int = DEFAULT_TOTAL_LABOR,
+    end_year: int = DEFAULT_END_YEAR,
     timeout: int = 180,
     use_cache: bool = True,
     verbose: bool = True,
@@ -28,9 +28,9 @@ def fetch_reference_api(
     Fetch simulation results from the reference API.
 
     Args:
-        num_samples: Number of Monte Carlo samples to run
-        start_year: Black project start year
-        total_labor: Total labor allocated to black project
+        num_simulations: Number of Monte Carlo simulations to run
+        start_year: Simulation start year
+        end_year: Simulation end year
         timeout: API request timeout in seconds
         use_cache: Whether to use cached responses
         verbose: Whether to print progress messages
@@ -38,7 +38,7 @@ def fetch_reference_api(
     Returns:
         API response as a dictionary, or None if request failed
     """
-    cache_file = CACHE_DIR / f"reference_{num_samples}_{start_year}_{total_labor}.json"
+    cache_file = CACHE_DIR / f"reference_{num_simulations}_{start_year}_{end_year}.json"
 
     # Try cache first
     if use_cache and cache_file.exists():
@@ -48,12 +48,13 @@ def fetch_reference_api(
             return json.load(f)
 
     if verbose:
-        print(f"  Calling reference API ({num_samples} samples)...")
+        print(f"  Calling reference API ({num_simulations} simulations)...")
 
+    num_years = end_year - start_year
     data = json.dumps({
-        'num_samples': num_samples,
-        'start_year': start_year,
-        'total_labor': total_labor,
+        'simulation_settings.num_simulations': num_simulations,
+        'simulation_settings.agreement_start_year': start_year,
+        'simulation_settings.num_years_to_simulate': num_years,
     }).encode()
 
     req = urllib.request.Request(
