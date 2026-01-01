@@ -1323,19 +1323,21 @@ def extract_reference_format(
             prc_h100_years = prc_at_agreement * growth_factor
             largest_h100_years = prc_h100_years * largest_company_fraction
 
+            # Compute ratios as covert / no-slowdown (values between 0 and 1)
+            # Small values mean covert production is much smaller than no-slowdown
             if bp_chip_production <= 0:
-                chip_global.append(LARGE_REDUCTION)
-                chip_prc.append(LARGE_REDUCTION)
+                chip_global.append(0.0)  # No covert production = 0 ratio
+                chip_prc.append(0.0)
             else:
-                chip_global.append(global_production / bp_chip_production if global_production > 0 else 0.0)
-                chip_prc.append(prc_production / bp_chip_production if prc_production > 0 else 0.0)
+                chip_global.append(bp_chip_production / global_production if global_production > 0 else 0.0)
+                chip_prc.append(bp_chip_production / prc_production if prc_production > 0 else 0.0)
 
             if bp_h100_years <= 0:
-                ai_largest.append(LARGE_REDUCTION)
-                ai_prc.append(LARGE_REDUCTION)
+                ai_largest.append(0.0)  # No covert computation = 0 ratio
+                ai_prc.append(0.0)
             else:
-                ai_largest.append(largest_h100_years / bp_h100_years if largest_h100_years > 0 else 0.0)
-                ai_prc.append(prc_h100_years / bp_h100_years if prc_h100_years > 0 else 0.0)
+                ai_largest.append(bp_h100_years / largest_h100_years if largest_h100_years > 0 else 0.0)
+                ai_prc.append(bp_h100_years / prc_h100_years if prc_h100_years > 0 else 0.0)
 
         return {
             'chip_global': chip_global,
@@ -1570,13 +1572,13 @@ def extract_reference_format(
             "project_80th_h100e": h100e_before_detection,
             "project_80th_time": detection_times,
 
-            # CCDFs
+            # CCDFs - compute for each threshold separately (not using pre-computed values)
             "time_to_detection_ccdf": {
-                str(lr): compute_ccdf(detection_times)
+                str(lr): compute_ccdf(compute_detection_times(all_data, years, agreement_year, lr))
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             "h100_years_ccdf": {
-                str(lr): compute_ccdf(h100_years_before_detection)
+                str(lr): compute_ccdf(compute_h100_years_before_detection(all_data, years, agreement_year, lr))
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             # Compute average covert compute CCDF for each lr threshold separately
