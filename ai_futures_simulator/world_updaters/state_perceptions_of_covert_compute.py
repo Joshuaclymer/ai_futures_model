@@ -99,14 +99,14 @@ class StatePerceptionsOfCovertComputeUpdater(WorldUpdater):
         from the PRC black project.
         """
         # Get the PRC black project (if it exists)
-        prc_black_project = world.get_black_project(NamedNations.PRC)
+        prc_black_project = world.black_projects.get(NamedNations.PRC)
 
         if prc_black_project is None:
             # No PRC black project - nothing to update
             return world
 
         # Get or create US perceptions
-        usa_perceptions = world.get_perceptions(NamedNations.USA)
+        usa_perceptions = world.perceptions.get(NamedNations.USA)
         if usa_perceptions is None:
             # Initialize US perceptions with default values
             usa_perceptions = Perceptions(
@@ -122,7 +122,7 @@ class StatePerceptionsOfCovertComputeUpdater(WorldUpdater):
         prior_probability = self.perceptions_params.prior_probability_prc_has_covert_project
 
         # Get cumulative likelihood ratio from PRC black project
-        cumulative_lr = prc_black_project.cumulative_likelihood_ratio
+        cumulative_lr = prc_black_project.cumulative_lr
 
         # Perform Bayesian update: P(H|E) = prior * LR / (prior * LR + (1 - prior))
         posterior_probability = bayesian_update_probability(prior_probability, cumulative_lr)

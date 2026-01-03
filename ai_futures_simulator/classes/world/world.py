@@ -68,23 +68,3 @@ class World(TensorDataclass):
             black_projects={},
             perceptions={},
         )
-
-    def get_developer(self, developer_id: str) -> AISoftwareDeveloper:
-        """Get an AI software developer by ID."""
-        return self.ai_software_developers.get(developer_id)
-
-    def get_nation(self, nation_id: str) -> Nation:
-        """Get a nation by ID."""
-        return self.nations.get(nation_id)
-
-    def get_coalition(self, coalition_id: str) -> Coalition:
-        """Get a coalition by ID."""
-        return self.coalitions.get(coalition_id)
-
-    def get_black_project(self, project_id: str) -> Optional[AIBlackProject]:
-        """Get a black project by ID."""
-        return self.black_projects.get(project_id)
-
-    def get_perceptions(self, entity_id: str) -> Optional[Perceptions]:
-        """Get perceptions for an entity by ID."""
-        return self.perceptions.get(entity_id)

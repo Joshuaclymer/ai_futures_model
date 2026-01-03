@@ -42,7 +42,7 @@ def fetch_ai_futures_simulator(
         sys.path.insert(0, str(repo_root))
         sys.path.insert(0, str(repo_root / "app_backend"))
         sys.path.insert(0, str(repo_root / "ai_futures_simulator"))
-        from api_utils.black_project_simulation import run_black_project_simulations, extract_black_project_plot_data
+        from endpoints.black_project import run_black_project_simulations, extract_black_project_plot_data
 
         start = time.time()
         frontend_params = {}

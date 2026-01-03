@@ -410,7 +410,7 @@ def test_detection_likelihood_ratio():
 
     print(f"  - Sampled detection time: {project.sampled_detection_time:.2f} years since start")
     print(f"  - Is detected: {project.is_detected}")
-    print(f"  - Initial cumulative LR: {project.cumulative_likelihood_ratio:.4f}")
+    print(f"  - Initial cumulative LR: {project.cumulative_lr:.4f}")
 
     # Create updater
     class MockParams:
@@ -426,10 +426,10 @@ def test_detection_likelihood_ratio():
             world = result
 
         project = world.black_projects["prc_black_project"]
-        print(f"  - At year {t.item():.0f} (t+{years_after}): LR={project.cumulative_likelihood_ratio:.4f}, detected={project.is_detected}")
+        print(f"  - At year {t.item():.0f} (t+{years_after}): LR={project.cumulative_lr:.4f}, detected={project.is_detected}")
 
     # Verify LR changes over time (should decrease before detection, jump to high value after)
-    assert project.cumulative_likelihood_ratio > 0, "LR should be positive"
+    assert project.cumulative_lr > 0, "LR should be positive"
 
     print("PASSED: Detection likelihood ratio works correctly")
 

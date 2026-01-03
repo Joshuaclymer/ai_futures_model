@@ -55,7 +55,7 @@ def initialize_us_frontier_lab(params: SimulationParameters, year: int) -> AISof
     if params.software_r_and_d and params.software_r_and_d.update_software_progress:
         ai_software_progress = initialize_ai_software_progress(params, year)
 
-    return AISoftwareDeveloper(
+    developer = AISoftwareDeveloper(
         id="us_frontier_lab",
         operating_compute=[compute],  # List of Compute objects
         compute_allocation=ComputeAllocation(
@@ -69,3 +69,12 @@ def initialize_us_frontier_lab(params: SimulationParameters, year: int) -> AISof
         ai_software_progress=ai_software_progress,
         training_compute_growth_rate=training_compute_growth_rate,
     )
+
+    # Set metric attributes (init=False fields, set after construction)
+    developer._set_frozen_field('ai_r_and_d_inference_compute_tpp_h100e', total_compute * inference_fraction)
+    developer._set_frozen_field('ai_r_and_d_training_compute_tpp_h100e', total_compute * training_fraction)
+    developer._set_frozen_field('external_deployment_compute_tpp_h100e', 0.0)
+    developer._set_frozen_field('alignment_research_compute_tpp_h100e', 0.0)
+    developer._set_frozen_field('frontier_training_compute_tpp_h100e', 0.0)
+
+    return developer

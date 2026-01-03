@@ -472,6 +472,7 @@ class BlackProjectUpdater(WorldUpdater):
                 project._set_frozen_field('cumulative_lr', cumulative_lr_val)
                 project._set_frozen_field('posterior_prob', posterior_prob_val)
                 project._set_frozen_field('lr_reported_energy', lr_energy)
+                project._set_frozen_field('is_detected', detected)
 
                 # --- Fab-specific LR calculations ---
                 # Uses fab labor and time from fab construction start (different from datacenter)
@@ -1067,6 +1068,7 @@ def initialize_black_project(
 
     # Detection outcome
     project._set_frozen_field('sampled_detection_time', sampled_detection_time)
+    project._set_frozen_field('is_detected', False)  # Not detected at initialization
 
     # Store separate LR dictionaries for datacenter and fab
     project._set_frozen_field('lr_datacenters_by_year', lr_datacenters_by_year)

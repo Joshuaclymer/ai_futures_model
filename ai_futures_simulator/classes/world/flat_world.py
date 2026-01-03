@@ -292,21 +292,6 @@ class FlatWorld:
         template_dict = self._template.perceptions if self._template else None
         return self._get_dict_proxy('perceptions', keys, template_dict)
 
-    def get_nation(self, nation_id: str):
-        return self.nations.get(nation_id)
-
-    def get_developer(self, developer_id: str):
-        return self.ai_software_developers.get(developer_id)
-
-    def get_coalition(self, coalition_id: str):
-        return self.coalitions.get(coalition_id)
-
-    def get_black_project(self, project_id: str):
-        return self.black_projects.get(project_id)
-
-    def get_perceptions(self, entity_id: str):
-        return self.perceptions.get(entity_id)
-
     # Fast arithmetic operations (no cloning!)
     def __add__(self, other: 'FlatWorld') -> 'FlatWorld':
         """Element-wise addition of state tensors."""

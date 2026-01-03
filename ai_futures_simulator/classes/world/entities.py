@@ -79,22 +79,13 @@ class AISoftwareDeveloper(Entity):
     ai_software_progress: AISoftwareProgress = field(metadata={'is_state': True})
     training_compute_growth_rate: float = field(metadata={'is_state': True})  # OOMs/year contribution to progress
 
-    # Metrics (computed from state) - initialized to 0.0, computed via __post_init__
+    # Metrics (computed from state, set during initialization and updated by world_updaters)
+    # These are init=False to avoid dataclass inheritance issues with default values
     ai_r_and_d_inference_compute_tpp_h100e: float = field(init=False, default=0.0)
     ai_r_and_d_training_compute_tpp_h100e: float = field(init=False, default=0.0)
     external_deployment_compute_tpp_h100e: float = field(init=False, default=0.0)
     alignment_research_compute_tpp_h100e: float = field(init=False, default=0.0)
     frontier_training_compute_tpp_h100e: float = field(init=False, default=0.0)
-
-    def __post_init__(self):
-        """Compute metrics from state after initialization."""
-        total_compute = sum(c.functional_tpp_h100e for c in self.operating_compute)
-        ca = self.compute_allocation
-        self.ai_r_and_d_inference_compute_tpp_h100e = total_compute * ca.fraction_for_ai_r_and_d_inference
-        self.ai_r_and_d_training_compute_tpp_h100e = total_compute * ca.fraction_for_ai_r_and_d_training
-        self.external_deployment_compute_tpp_h100e = total_compute * ca.fraction_for_external_deployment
-        self.alignment_research_compute_tpp_h100e = total_compute * ca.fraction_for_alignment_research
-        self.frontier_training_compute_tpp_h100e = total_compute * ca.fraction_for_frontier_training
 
 @dataclass
 class AIBlackProject(AISoftwareDeveloper):
@@ -193,23 +184,8 @@ class AIBlackProject(AISoftwareDeveloper):
 
     ## Detection outcomes (per threshold)
     sampled_detection_time: float = field(init=False)  # Sampled from composite distribution
+    is_detected: bool = field(init=False)  # Whether project has been detected (set by world_updaters)
 
     ## Energy parameters for dynamic LR calculation
     us_estimate_energy: float = field(init=False)  # US intelligence estimate of total PRC energy
     total_prc_energy_gw: float = field(init=False)  # Total PRC energy consumption (GW)
-
-    @property
-    def cumulative_likelihood_ratio(self) -> float:
-        """Get the current cumulative likelihood ratio."""
-        if hasattr(self, 'cumulative_lr') and self.cumulative_lr is not None and self.cumulative_lr > 0:
-            return self.cumulative_lr
-        # Compute from static LR components if not yet set
-        return self.lr_prc_accounting * self.lr_sme_inventory * self.lr_satellite_datacenter
-
-    @property
-    def is_detected(self) -> bool:
-        """Check if project has been detected (current time >= sampled detection time)."""
-        # This is a simplified check - actual detection depends on current simulation time
-        # The sampled_detection_time is relative to preparation_start_year
-        # For property purposes, we use LR threshold as proxy
-        return self.cumulative_likelihood_ratio >= 100.0  # Detection threshold
