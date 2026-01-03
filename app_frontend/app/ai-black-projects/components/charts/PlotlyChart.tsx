@@ -38,9 +38,11 @@ export function PlotlyChart({
     setMounted(true);
   }, []);
 
+  const placeholderStyle: React.CSSProperties = height ? { height: `${height}px` } : {};
+
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center h-full text-gray-400 text-sm ${className}`}>
+      <div className={`flex items-center justify-center h-full text-gray-400 text-sm ${className}`} style={placeholderStyle}>
         {loadingMessage}
       </div>
     );
@@ -48,7 +50,7 @@ export function PlotlyChart({
 
   if (isEmpty || !data || data.length === 0) {
     return (
-      <div className={`flex items-center justify-center h-full text-gray-400 text-sm ${className}`}>
+      <div className={`flex items-center justify-center h-full text-gray-400 text-sm ${className}`} style={placeholderStyle}>
         {emptyMessage}
       </div>
     );
@@ -65,8 +67,8 @@ export function PlotlyChart({
     font: { family: 'inherit', size: 11 },
     hovermode: 'closest',
     hoverlabel: {
-      bgcolor: '#fffff8',
-      bordercolor: '#fffff8',
+      bgcolor: '#ffffff',
+      bordercolor: '#ffffff',
       font: {
         family: 'system-ui, -apple-system, sans-serif',
         size: 12,

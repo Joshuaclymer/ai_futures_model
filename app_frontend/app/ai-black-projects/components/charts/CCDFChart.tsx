@@ -38,6 +38,7 @@ interface CCDFChartProps {
   referenceLine?: ReferenceLine;
   height?: number;
   legendPosition?: 'top-right' | 'bottom-left';
+  creamBackground?: boolean;  // Use cream colors for legend/tooltips (for charts on cream backgrounds)
 }
 
 // Default colors for different thresholds - use global detection threshold colors
@@ -111,7 +112,11 @@ export function CCDFChart({
   referenceLine,
   height,
   legendPosition = 'top-right',
+  creamBackground = false,
 }: CCDFChartProps) {
+  // Colors for legend and tooltips based on background
+  const bgColor = creamBackground ? 'rgba(255,255,248,0.9)' : 'rgba(255,255,255,0.9)';
+  const tooltipColor = creamBackground ? '#fffff8' : '#ffffff';
   // Transform y values if showing as CDF (P(X < x) = 1 - P(X > x))
   const transformY = (y: number) => showAsCDF ? 1 - y : y;
   // Handle multi-threshold data
@@ -176,10 +181,10 @@ export function CCDFChart({
     };
 
     if (xAsInverseFraction && !isEmpty) {
-      // Log scale tick values from 1x down to very small fractions
+      // Log scale tick values from 1x down to 1/100,000x
       // Format: 1x, 1/10x, 1/100x, 1/1,000x, etc.
-      const tickVals = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001];
-      const tickText = ['1x', '1/10x', '1/100x', '1/1,000x', '1/10,000x', '1/100,000x', '1/1,000,000x'];
+      const tickVals = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001];
+      const tickText = ['1x', '1/10x', '1/100x', '1/1,000x', '1/10,000x', '1/100,000x'];
 
       xaxisConfig = {
         ...xaxisConfig,
@@ -188,11 +193,13 @@ export function CCDFChart({
         tickvals: tickVals,
         ticktext: tickText,
         ticksuffix: '',
+        range: xReverse ? [0, -5] : [-5, 0],  // Log scale: 10^-5 to 10^0 (0.00001 to 1)
+        tickangle: -45,  // Rotate tick labels to prevent overlap
       };
     }
 
     const layout: Partial<Plotly.Layout> = {
-      margin: showLegend ? { l: 50, r: 20, t: 10, b: 50 } : undefined,
+      margin: showLegend ? { l: 50, r: 20, t: 10, b: 70 } : undefined,
       xaxis: xaxisConfig,
       yaxis: {
         title: { text: yLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
@@ -206,8 +213,12 @@ export function CCDFChart({
         xanchor: legendPosition === 'bottom-left' ? 'left' : 'right',
         yanchor: legendPosition === 'bottom-left' ? 'bottom' : 'top',
         font: { size: CHART_FONT_SIZES.legend },
-        bgcolor: 'rgba(255,255,248,0.9)',
+        bgcolor: bgColor,
         borderwidth: 0,
+      },
+      hoverlabel: {
+        bgcolor: tooltipColor,
+        bordercolor: tooltipColor,
       },
       title: title ? { text: title, font: { size: CHART_FONT_SIZES.plotTitle } } : undefined,
     };
@@ -268,6 +279,10 @@ export function CCDFChart({
       range: [0, 1.05],
     },
     showlegend: false,
+    hoverlabel: {
+      bgcolor: tooltipColor,
+      bordercolor: tooltipColor,
+    },
     title: title ? { text: title, font: { size: 12 } } : undefined,
   };
 

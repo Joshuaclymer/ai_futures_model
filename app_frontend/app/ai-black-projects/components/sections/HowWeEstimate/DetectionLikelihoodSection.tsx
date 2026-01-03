@@ -186,8 +186,10 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             title="Evidence from datacenter accounting"
             descriptionNode={
               <>
-                Evidence from satellite imagery with{' '}
-                <ParamLink paramId="param-median-error-satellite">median error</ParamLink> in estimates.
+                Assuming that the PRC diverts{' '}
+                <ParamLink paramId="param-fraction-datacenter-divert">{parameters ? `${(parameters.fractionOfDatacenterCapacityToDivert * 100).toFixed(0)}%` : '50%'}</ParamLink>{' '}
+                of datacenter capacity not initially built for stealth, and the median error in the United States estimate of this capacity based on satellite imagery is{' '}
+                <ParamLink paramId="param-median-error-satellite">{parameters ? `${(parameters.intelligenceMedianErrorInSatelliteEstimate * 100).toFixed(1)}%` : '1%'}</ParamLink>.
               </>
             }
             samples={dcEvidenceSamples}
@@ -198,8 +200,9 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             title="Evidence from energy accounting"
             descriptionNode={
               <>
-                Evidence from monitoring PRC energy consumption with{' '}
-                <ParamLink paramId="param-median-error-energy">median error</ParamLink> in estimates.
+                Assuming that the fraction of PRC energy consumption that covert datacenters account for in 2037 is{' '}
+                <ParamLink paramId="param-max-energy-fraction">{parameters ? `${(parameters.maxFractionOfTotalNationalEnergyConsumption * 100).toFixed(1)}%` : '5%'}</ParamLink>, and US median error in accounting for PRC energy consumption is{' '}
+                <ParamLink paramId="param-median-error-energy">{parameters ? `${(parameters.intelligenceMedianErrorInEnergyConsumptionEstimate * 100).toFixed(0)}%` : '7%'}</ParamLink>.
               </>
             }
             data={energyEvidence}

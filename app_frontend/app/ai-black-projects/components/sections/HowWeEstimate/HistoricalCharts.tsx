@@ -141,7 +141,7 @@ export function DetectionLatencyChart() {
     legend: {
       x: 0.02, y: 0.98,
       xanchor: 'left', yanchor: 'top',
-      bgcolor: 'rgba(255,255,248,0.9)',
+      bgcolor: 'rgba(255,255,255,0.9)',
       font: { size: 8 }
     },
     margin: CHART_MARGINS.default,
@@ -215,7 +215,7 @@ export function IntelligenceAccuracyChart() {
     legend: {
       x: 0.02, y: 0.98,
       xanchor: 'left', yanchor: 'top',
-      bgcolor: 'rgba(255,255,248,0.9)',
+      bgcolor: 'rgba(255,255,255,0.9)',
       font: { size: 8 }
     },
     margin: CHART_MARGINS.default,
@@ -229,7 +229,7 @@ export function IntelligenceAccuracyChart() {
       ax: 40,
       ay: -20,
       font: { size: 8 },
-      bgcolor: '#fffff8',
+      bgcolor: '#ffffff',
     })),
   };
 

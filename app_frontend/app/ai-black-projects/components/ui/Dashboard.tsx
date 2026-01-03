@@ -25,7 +25,7 @@ export function Dashboard({
   return (
     <div
       className={`bp-dashboard ${className}`}
-      style={{ width, flexShrink: 0, padding: 20, ...style }}
+      style={{ width, flexShrink: 0, paddingLeft: 20, paddingRight: 20, paddingBottom: 20, ...style }}
     >
       {title && (
         <div

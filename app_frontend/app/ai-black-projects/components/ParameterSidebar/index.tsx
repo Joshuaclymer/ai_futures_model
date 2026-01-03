@@ -263,6 +263,7 @@ function BlackProjectPropertiesSection({ parameters, onChange }: SectionProps) {
         tooltipDoc="sme_inventory_detection"
       />
       <Slider
+        id="param-max-energy-fraction"
         label="Max fraction of total national energy consumption"
         value={parameters.maxFractionOfTotalNationalEnergyConsumption}
         onChange={(v) => onChange('maxFractionOfTotalNationalEnergyConsumption', v)}

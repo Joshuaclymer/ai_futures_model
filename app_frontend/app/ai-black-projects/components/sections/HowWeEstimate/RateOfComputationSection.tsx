@@ -230,8 +230,8 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             descriptionNode={
               <>
                 The fraction of compute that remains operational, accounting for degradation, assuming a{' '}
-                <ParamLink paramId="param-initial-hazard-rate">{parameters ? `${(parameters.initialAnnualHazardRate * 100).toFixed(0)}%` : '5%'}</ParamLink> initial annual hazard rate that increases by{' '}
-                <ParamLink paramId="param-hazard-rate-increase">{parameters ? `${(parameters.annualHazardRateIncreasePerYear * 100).toFixed(0)}%` : '2%'}</ParamLink> per year.
+                <ParamLink paramId="param-initial-hazard-rate">{parameters ? `${(parameters.initialAnnualHazardRate * 100).toPrecision(2)}%` : '5%'}</ParamLink> initial annual hazard rate that increases by{' '}
+                <ParamLink paramId="param-hazard-rate-increase">{parameters ? `${(parameters.annualHazardRateIncreasePerYear * 100).toPrecision(2)}%` : '2%'}</ParamLink> per year.
               </>
             }
             data={survivingFraction}

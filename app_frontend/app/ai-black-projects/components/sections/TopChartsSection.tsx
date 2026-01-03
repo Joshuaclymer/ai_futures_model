@@ -92,6 +92,7 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
             showArea={false}
             isLoading={isLoading}
             height={CHART_HEIGHT}
+            creamBackground={true}
             thresholdLabels={{
               '1': '"Detection" is a >1x update    ',
               '2': '"Detection" is a >2x update    ',
@@ -110,6 +111,7 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
             showArea={false}
             isLoading={isLoading}
             height={CHART_HEIGHT}
+            creamBackground={true}
             thresholdLabels={{
               '1': '"Detection" is a >1x update    ',
               '2': '"Detection" is a >2x update    ',
@@ -135,6 +137,7 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
             isLoading={isLoading}
             height={CHART_HEIGHT}
             legendPosition="bottom-left"
+            creamBackground={true}
             thresholdLabels={{
               'global': 'Relative to global production (no slowdown)',
               'prc': 'Relative to PRC production (no slowdown)',
@@ -169,6 +172,7 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
             showArea={false}
             isLoading={isLoading}
             height={CHART_HEIGHT}
+            creamBackground={true}
             thresholdLabels={{
               'largest_company': 'Relative to largest AI company (no slowdown)',
               'prc': 'Relative to PRC (no slowdown)',

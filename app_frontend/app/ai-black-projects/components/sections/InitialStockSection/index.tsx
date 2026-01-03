@@ -443,7 +443,7 @@ export function InitialStockSection({
                     y: 0.98,
                     xanchor: 'left',
                     yanchor: 'top',
-                    bgcolor: 'rgba(255, 255, 255, 0.9)',
+                    bgcolor: 'rgba(255,255,255,0.9)',
                     borderwidth: 0,
                     font: { size: CHART_FONT_SIZES.legend },
                   },
