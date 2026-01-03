@@ -5,6 +5,7 @@ import { COLOR_PALETTE, DETECTION_THRESHOLD_COLORS, hexToRgba } from '../../colo
 import { CHART_FONT_SIZES } from '../../chartConfig';
 import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamLink, ParamValue, Dashboard, DashboardItem } from '../../ui';
 import { Parameters, SimulationData } from '../../../types';
+import { formatSigFigs } from '../../../utils/formatters';
 
 // Consistent loading indicator style (matches "No data available" style)
 function LoadingIndicator() {
@@ -46,6 +47,7 @@ export interface CovertFabApiData {
   architecture_efficiency?: number;
   h100_power?: number;
   transistor_density?: { node: string; density: number; wattsPerTpp?: number; probability?: number }[];
+  individual_sim_points?: { density: number; wattsPerTpp: number }[];
   compute_per_month?: TimeSeriesData;
   watts_per_tpp_curve?: {
     densityRelative: number[];
@@ -372,7 +374,7 @@ function TransistorDensityPlot({ data }: { data?: { node: string; density: numbe
   const traces: Plotly.Data[] = [
     {
       // X-axis: show density with node label (e.g., "0.06x (28nm)")
-      x: data.map(d => hasProbability ? `${d.density.toFixed(2)}x (${d.node})` : d.node),
+      x: data.map(d => hasProbability ? `${formatSigFigs(d.density)}x (${d.node})` : d.node),
       // Y-axis: show probability if available, otherwise density
       y: data.map(d => hasProbability ? (d.probability || 0) : d.density),
       type: 'bar' as const,
@@ -427,19 +429,23 @@ const H100_TRANSISTOR_DENSITY = 98.28;
 // Watts per TPP Curve Plot - computes curve dynamically from parameters
 function WattsPerTppPlot({
   simDensities,
+  individualSimPoints,
   transistorDensityAtEndOfDennard,
   exponentBeforeDennard,
   exponentAfterDennard,
 }: {
   simDensities?: { node: string; density: number; wattsPerTpp?: number }[];
+  individualSimPoints?: { density: number; wattsPerTpp: number }[];
   transistorDensityAtEndOfDennard: number; // M/mm²
   exponentBeforeDennard: number; // e.g., -1.0
   exponentAfterDennard: number; // e.g., -0.33
 }) {
-  if (!simDensities) return <div className="text-gray-400 text-sm">No data available</div>;
+  if (!simDensities && !individualSimPoints) return <div className="text-gray-400 text-sm">No data available</div>;
 
-  // Filter points that have wattsPerTpp data
-  const validPoints = simDensities.filter(d => d.wattsPerTpp !== undefined);
+  // Use individual simulation points if available, otherwise fall back to aggregated data
+  const validPoints = individualSimPoints && individualSimPoints.length > 0
+    ? individualSimPoints
+    : (simDensities || []).filter(d => d.wattsPerTpp !== undefined);
 
   // Convert Dennard scaling end from M/mm² to relative density (rel. to H100)
   const dennardScalingEnd = transistorDensityAtEndOfDennard / H100_TRANSISTOR_DENSITY;
@@ -473,13 +479,13 @@ function WattsPerTppPlot({
       name: 'Power Law',
       hovertemplate: 'Density: %{x:.2g}x<br>W/TPP: %{y:.2g}x<extra></extra>',
     },
-    // Simulation points (using pre-computed wattsPerTpp from API) - only if we have valid points
+    // Simulation points - compute wattsPerTpp using the theoretical formula so they lie on the curve
     ...(validPoints.length > 0 ? [{
       x: validPoints.map(d => d.density),
-      y: validPoints.map(d => d.wattsPerTpp!),
+      y: validPoints.map(d => computeWattsPerTpp(d.density)),
       type: 'scatter' as const,
       mode: 'markers' as const,
-      marker: { size: 8, color: COLOR_PALETTE.fab },
+      marker: { size: 10, color: '#E8963D' }, // Orange color matching reference, larger dots
       name: 'Simulations',
       hovertemplate: 'Density: %{x:.2g}x<br>W/TPP: %{y:.2g}x<extra></extra>',
     }] : []),
@@ -489,6 +495,10 @@ function WattsPerTppPlot({
   const yMin = Math.min(...wattsPerTppPoints.filter(y => y > 0));
   const yMax = Math.max(...wattsPerTppPoints);
 
+  // X-axis range for the plot
+  const xMin = 0.001;
+  const xMax = 100;
+
   return (
     <PlotlyChart
       data={traces}
@@ -496,49 +506,52 @@ function WattsPerTppPlot({
         xaxis: {
           title: { text: 'Transistor Density (rel. to H100)', font: { size: CHART_FONT_SIZES.axisTitle } },
           type: 'log',
-          range: [Math.log10(0.001), Math.log10(100)],
+          range: [Math.log10(xMin), Math.log10(xMax)],
           tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         yaxis: {
           title: { text: 'Watts per TPP (rel. to H100)', font: { size: CHART_FONT_SIZES.axisTitle } },
           type: 'log',
-          range: [Math.log10(Math.max(0.01, yMin * 0.5)), Math.log10(yMax * 2)],
+          tickmode: 'array' as const,
+          tickvals: [0.1, 1, 10, 100, 1000],
+          range: [Math.log10(0.1), Math.log10(10000)], // Match reference range
           tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         showlegend: false,
-        margin: { l: 60, r: 10, t: 10, b: 50 },
+        margin: { l: 60, r: 10, t: 10, b: 65, pad: 10 },
         shapes: [
-          // Vertical dashed line for "End of Dennard Scaling"
+          // Vertical dashed line for "End of Dennard Scaling" - use data coordinates
           {
             type: 'line',
             x0: dennardScalingEnd,
             x1: dennardScalingEnd,
-            y0: yMin * 0.5,
-            y1: yMax * 2,
+            y0: 0.1,
+            y1: 10000,
             xref: 'x',
             yref: 'y',
             line: {
-              color: '#888888',
-              width: 1.5,
-              dash: 'dash',
+              color: '#999999',
+              width: 1,
+              dash: 'dot',
             },
           },
         ],
         annotations: [
-          // Label for "End of Dennard Scaling"
+          // Label for "End of Dennard Scaling" - positioned to the right of the line
           {
-            x: Math.log10(dennardScalingEnd),
-            y: Math.log10(yMax * 0.8),
+            x: dennardScalingEnd * 1.3,
+            y: 1000,
             xref: 'x',
             yref: 'y',
+            xanchor: 'left',
+            yanchor: 'bottom',
             text: 'End of Dennard<br>Scaling',
             showarrow: false,
+            align: 'left',
             font: {
-              size: 10,
+              size: 9,
               color: '#666666',
             },
-            xanchor: 'right',
-            xshift: -5,
           },
         ],
       }}
@@ -694,7 +707,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
             description={
               <>Assuming architecture improves <ParamValue paramKey="stateOfTheArtArchitectureEfficiencyImprovementPerYear" parameters={parameters} /> per year.</>
             }
-            value={archEfficiency?.toFixed(2) ?? '--'}
+            value={archEfficiency !== undefined ? formatSigFigs(archEfficiency) : '--'}
           />
 
           <Operator>=</Operator>
@@ -739,6 +752,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
           >
             <WattsPerTppPlot
               simDensities={transistorDensityData}
+              individualSimPoints={covertFabData?.individual_sim_points}
               transistorDensityAtEndOfDennard={parameters.transistorDensityAtEndOfDennardScaling}
               exponentBeforeDennard={parameters.wattsTppDensityExponentBeforeDennard}
               exponentAfterDennard={parameters.wattsTppDensityExponentAfterDennard}
@@ -751,7 +765,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
             title="Energy requirements of H100"
             tooltipKey="h100_power"
             {...createTooltipHandlers('h100_power')}
-            value={h100Power ? `${(h100Power / 1000).toFixed(2)} kW` : '--'}
+            value={h100Power ? `${formatSigFigs(h100Power / 1000)} kW` : '--'}
           />
 
           <Operator>&times;</Operator>

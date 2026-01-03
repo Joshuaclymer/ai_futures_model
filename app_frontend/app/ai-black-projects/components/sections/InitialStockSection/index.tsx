@@ -8,31 +8,12 @@ import { CHART_FONT_SIZES } from '../../chartConfig';
 import { ParamValue, Dashboard, DashboardItem } from '../../ui';
 import { Parameters, SimulationData } from '../../../types';
 import { parseInitialStockData, InitialStockData } from '../../../utils/typeGuards';
+import { formatH100e, formatEnergy, formatPercent } from '../../../utils/formatters';
 
 interface InitialStockSectionProps {
   data: SimulationData | null;
   isLoading?: boolean;
   parameters: Parameters;
-}
-
-// Helper to format H100e values
-function formatH100e(value: number): string {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M H100e`;
-  } else if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(0)}K H100e`;
-  }
-  return `${value.toFixed(0)} H100e`;
-}
-
-// Helper to format energy values
-function formatEnergy(energyGW: number): string {
-  if (energyGW >= 1) {
-    return `${energyGW.toFixed(1)} GW`;
-  } else if (energyGW >= 0.001) {
-    return `${(energyGW * 1000).toFixed(0)} MW`;
-  }
-  return `${(energyGW * 1000).toFixed(1)} MW`;
 }
 
 // Create histogram trace with probability normalization
@@ -157,7 +138,7 @@ export function InitialStockSection({
     return {
       medianDarkCompute: formatH100e(medianCompute),
       medianEnergy: formatEnergy(medianEnergy),
-      detectionProb: detectionProb !== undefined ? `${(detectionProb * 100).toFixed(1)}%` : '--',
+      detectionProb: detectionProb !== undefined ? formatPercent(detectionProb) : '--',
     };
   }, [initialStock]);
 

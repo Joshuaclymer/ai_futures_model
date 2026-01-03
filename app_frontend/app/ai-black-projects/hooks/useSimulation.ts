@@ -69,7 +69,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
 
   // Fetch from real backend
   const fetchFromRealBackend = async (params: Parameters, signal: AbortSignal) => {
-    const response = await fetch(`${BACKEND_URL}/api/run-black-project-simulation`, {
+    const response = await fetch(`${BACKEND_URL}/api/get-data-for-ai-black-projects-page`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -86,7 +86,8 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
     }
 
     const result = await response.json();
-    if (!result.success) {
+    // Backend returns data directly without success wrapper, but check for error response
+    if (result.success === false) {
       throw new Error(result.error || 'Backend simulation failed');
     }
 

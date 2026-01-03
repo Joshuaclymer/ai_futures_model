@@ -1325,19 +1325,21 @@ def extract_reference_format(
 
             # Compute ratios as covert / no-slowdown (values between 0 and 1)
             # Small values mean covert production is much smaller than no-slowdown
+            # Use a very small value (1e-10) instead of 0 for log scale compatibility
+            SMALL_RATIO = 1e-10
             if bp_chip_production <= 0:
-                chip_global.append(0.0)  # No covert production = 0 ratio
-                chip_prc.append(0.0)
+                chip_global.append(SMALL_RATIO)  # No covert production = near-zero ratio
+                chip_prc.append(SMALL_RATIO)
             else:
-                chip_global.append(bp_chip_production / global_production if global_production > 0 else 0.0)
-                chip_prc.append(bp_chip_production / prc_production if prc_production > 0 else 0.0)
+                chip_global.append(bp_chip_production / global_production if global_production > 0 else SMALL_RATIO)
+                chip_prc.append(bp_chip_production / prc_production if prc_production > 0 else SMALL_RATIO)
 
             if bp_h100_years <= 0:
-                ai_largest.append(0.0)  # No covert computation = 0 ratio
-                ai_prc.append(0.0)
+                ai_largest.append(SMALL_RATIO)  # No covert computation = near-zero ratio
+                ai_prc.append(SMALL_RATIO)
             else:
-                ai_largest.append(bp_h100_years / largest_h100_years if largest_h100_years > 0 else 0.0)
-                ai_prc.append(bp_h100_years / prc_h100_years if prc_h100_years > 0 else 0.0)
+                ai_largest.append(bp_h100_years / largest_h100_years if largest_h100_years > 0 else SMALL_RATIO)
+                ai_prc.append(bp_h100_years / prc_h100_years if prc_h100_years > 0 else SMALL_RATIO)
 
         return {
             'chip_global': chip_global,

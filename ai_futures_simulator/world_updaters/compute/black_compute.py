@@ -98,11 +98,42 @@ def calculate_fab_wafer_starts_per_month(
     fab_number_of_lithography_scanners: float,
     wafers_per_month_per_worker: float = 24.64,
     wafers_per_month_per_scanner: float = 1000.0,
+    labor_productivity_relative_sigma: float = 0.62,
+    scanner_productivity_relative_sigma: float = 0.20,
 ) -> float:
-    """Calculate wafer starts per month based on labor and scanner constraints."""
-    from_labor = fab_operating_labor * wafers_per_month_per_worker
-    from_scanners = fab_number_of_lithography_scanners * wafers_per_month_per_scanner
-    return min(from_labor, from_scanners)
+    """Calculate wafer starts per month based on labor and scanner constraints.
+
+    Matches reference model which applies lognormal uncertainty to both
+    labor and scanner productivity:
+    - Labor productivity: 62% relative sigma (variation in management, skills, etc.)
+    - Scanner productivity: 20% relative sigma (variation in uptime, yield, etc.)
+    """
+    # Base labor capacity (median)
+    median_labor_capacity = fab_operating_labor * wafers_per_month_per_worker
+
+    # Sample labor capacity from lognormal distribution
+    # Convert relative_sigma to log-space sigma: sigma = sqrt(ln(1 + r^2))
+    if labor_productivity_relative_sigma > 0 and median_labor_capacity > 0:
+        sigma_labor = math.sqrt(math.log(1 + labor_productivity_relative_sigma**2))
+        mu_labor = math.log(median_labor_capacity)
+        from_labor = np.random.lognormal(mean=mu_labor, sigma=sigma_labor)
+    else:
+        from_labor = median_labor_capacity
+
+    # Base scanner capacity (median)
+    median_scanner_capacity = fab_number_of_lithography_scanners * wafers_per_month_per_scanner
+
+    # Sample scanner capacity from lognormal distribution
+    if scanner_productivity_relative_sigma > 0 and median_scanner_capacity > 0:
+        sigma_scanner = math.sqrt(math.log(1 + scanner_productivity_relative_sigma**2))
+        mu_scanner = math.log(median_scanner_capacity)
+        from_scanners = np.random.lognormal(mean=mu_scanner, sigma=sigma_scanner)
+    else:
+        from_scanners = median_scanner_capacity
+
+    # Return minimum of labor and scanner capacity (fixed-proportions production)
+    result = min(from_labor, from_scanners)
+    return max(result, 1.0)  # Floor at 1 to prevent zero
 
 
 def calculate_fab_h100e_per_chip(

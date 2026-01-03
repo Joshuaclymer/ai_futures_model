@@ -27,6 +27,8 @@ interface CCDFChartProps {
   xAsPercent?: boolean;
   xLogScale?: boolean;
   xAsInverseFraction?: boolean;  // Show x-axis as "1/Nx" format
+  xReverse?: boolean;  // Reverse the x-axis direction
+  showAsCDF?: boolean;  // Transform y to (1-y) to show P(X < x) instead of P(X > x)
   isLoading?: boolean;
   title?: string;
   fillAlpha?: number;
@@ -35,6 +37,7 @@ interface CCDFChartProps {
   thresholdColors?: Record<string | number, string>;
   referenceLine?: ReferenceLine;
   height?: number;
+  legendPosition?: 'top-right' | 'bottom-left';
 }
 
 // Default colors for different thresholds - use global detection threshold colors
@@ -97,6 +100,8 @@ export function CCDFChart({
   xAsPercent = false,
   xLogScale = false,
   xAsInverseFraction = false,
+  xReverse = false,
+  showAsCDF = false,
   isLoading = false,
   title,
   fillAlpha = 0.1,
@@ -105,7 +110,10 @@ export function CCDFChart({
   thresholdColors = DEFAULT_THRESHOLD_COLORS,
   referenceLine,
   height,
+  legendPosition = 'top-right',
 }: CCDFChartProps) {
+  // Transform y values if showing as CDF (P(X < x) = 1 - P(X > x))
+  const transformY = (y: number) => showAsCDF ? 1 - y : y;
   // Handle multi-threshold data
   if (isMultiThresholdData(data)) {
     const thresholds = Object.keys(data).sort((a, b) => Number(a) - Number(b));
@@ -119,7 +127,7 @@ export function CCDFChart({
 
       return {
         x: thresholdData.map(d => xAsPercent ? d.x * 100 : d.x),
-        y: thresholdData.map(d => d.y),
+        y: thresholdData.map(d => transformY(d.y)),
         type: 'scatter' as const,
         mode: 'lines' as const,
         name: thresholdLabels[threshold] || `${threshold}× update`,
@@ -139,10 +147,11 @@ export function CCDFChart({
       const allXValues = thresholds.flatMap(t => (data[t] || []).map(d => xAsPercent ? d.x * 100 : d.x));
       const xMin = Math.min(...allXValues);
       const xMax = Math.max(...allXValues);
+      const refLineY = transformY(referenceLine.y);
 
       plotData.push({
         x: [xMin, xMax],
-        y: [referenceLine.y, referenceLine.y],
+        y: [refLineY, refLineY],
         type: 'scatter' as const,
         mode: 'lines' as const,
         name: referenceLine.label,
@@ -163,12 +172,14 @@ export function CCDFChart({
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
       ticksuffix: xAsPercent ? '%' : '',
       type: xLogScale ? 'log' : 'linear',
+      autorange: xReverse ? 'reversed' : true,
     };
 
     if (xAsInverseFraction && !isEmpty) {
-      // Log scale tick values: 1x, 1/10x, 1/100x, 1/1,000x, 1/10,000x
-      const tickVals = [1, 0.1, 0.01, 0.001, 0.0001];
-      const tickText = tickVals.map(formatInverseFraction);
+      // Log scale tick values from 1x down to very small fractions
+      // Format: 1x, 1/10x, 1/100x, 1/1,000x, etc.
+      const tickVals = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001];
+      const tickText = ['1x', '1/10x', '1/100x', '1/1,000x', '1/10,000x', '1/100,000x', '1/1,000,000x'];
 
       xaxisConfig = {
         ...xaxisConfig,
@@ -177,7 +188,6 @@ export function CCDFChart({
         tickvals: tickVals,
         ticktext: tickText,
         ticksuffix: '',
-        autorange: 'reversed' as const,  // Reverse so 1x is on left, 1/10,000x on right
       };
     }
 
@@ -191,10 +201,10 @@ export function CCDFChart({
       },
       showlegend: showLegend,
       legend: {
-        x: 0.98,
-        y: 0.98,
-        xanchor: 'right',
-        yanchor: 'top',
+        x: legendPosition === 'bottom-left' ? 0.02 : 0.98,
+        y: legendPosition === 'bottom-left' ? 0.02 : 0.98,
+        xanchor: legendPosition === 'bottom-left' ? 'left' : 'right',
+        yanchor: legendPosition === 'bottom-left' ? 'bottom' : 'top',
         font: { size: CHART_FONT_SIZES.legend },
         bgcolor: 'rgba(255,255,248,0.9)',
         borderwidth: 0,
@@ -232,7 +242,7 @@ export function CCDFChart({
   const plotData: Plotly.Data[] = isEmpty ? [] : [
     {
       x: singleData.map(d => xAsPercent ? d.x * 100 : d.x),
-      y: singleData.map(d => d.y),
+      y: singleData.map(d => transformY(d.y)),
       type: 'scatter',
       mode: 'lines',
       line: { color, width: 2 },
@@ -250,6 +260,7 @@ export function CCDFChart({
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
       ticksuffix: xAsPercent ? '%' : '',
       type: xLogScale ? 'log' : 'linear',
+      autorange: xReverse ? 'reversed' : true,
     },
     yaxis: {
       title: { text: yLabel, font: { size: 11 } },

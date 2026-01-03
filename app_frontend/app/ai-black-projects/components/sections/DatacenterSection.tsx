@@ -7,22 +7,12 @@ import { hexToRgba } from '../colors';
 import { CHART_FONT_SIZES, CHART_MARGINS } from '../chartConfig';
 import { useTooltip, Tooltip, TOOLTIP_DOCS, ParamValue, Dashboard, DashboardItem } from '../ui';
 import { Parameters, SimulationData } from '../../types';
+import { formatCapacity, formatSigFigs } from '../../utils/formatters';
 
 interface DatacenterSectionProps {
   data: SimulationData | null;
   isLoading?: boolean;
   parameters: Parameters;
-}
-
-// Helper to format capacity values
-function formatCapacity(gw: number): string {
-  if (gw >= 1) {
-    return `${gw.toFixed(1)} GW`;
-  } else if (gw >= 0.001) {
-    return `${(gw * 1000).toFixed(0)} MW`;
-  } else {
-    return `${(gw * 1000).toFixed(1)} MW`;
-  }
 }
 
 export function DatacenterSection({ data, isLoading, parameters }: DatacenterSectionProps) {
@@ -61,7 +51,7 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
 
     return {
       capacity: formatCapacity(medianCapacity),
-      time: medianTime.toFixed(1),
+      time: formatSigFigs(medianTime),
     };
   }, [data]);
 

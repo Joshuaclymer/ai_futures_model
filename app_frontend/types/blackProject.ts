@@ -42,7 +42,7 @@ export interface BlackProjectModel {
   likelihood_ratios: number[];
 
   // Time series data
-  h100_years: TimeSeriesPercentiles;
+  covert_computation_h100_years: TimeSeriesPercentiles;
   cumulative_lr: TimeSeriesPercentiles;
   initial_black_project: TimeSeriesPercentiles;
   black_fab_flow: TimeSeriesPercentiles;

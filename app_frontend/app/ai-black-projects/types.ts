@@ -147,9 +147,9 @@ export const defaultParameters: Parameters = {
   // Exogenous Compute Trends
   transistorDensityScalingExponent: 1.49,
   stateOfTheArtArchitectureEfficiencyImprovementPerYear: 1.23,
-  transistorDensityAtEndOfDennardScaling: 10.0,
-  wattsTppDensityExponentBeforeDennard: -1.0,
-  wattsTppDensityExponentAfterDennard: -0.33,
+  transistorDensityAtEndOfDennardScaling: 1.98,
+  wattsTppDensityExponentBeforeDennard: -2.0,
+  wattsTppDensityExponentAfterDennard: -0.91,
   stateOfTheArtEnergyEfficiencyImprovementPerYear: 1.26,
 };
 
