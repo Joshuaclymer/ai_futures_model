@@ -16,7 +16,3 @@ from .simulation import (
     run_simulation_internal,
     extract_sw_progress_from_raw,
 )
-from .black_project_simulation import (
-    run_black_project_simulations,
-    extract_black_project_plot_data,
-)
