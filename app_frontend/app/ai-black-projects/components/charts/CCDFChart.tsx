@@ -193,6 +193,7 @@ export function CCDFChart({
         tickvals: tickVals,
         ticktext: tickText,
         ticksuffix: '',
+        autorange: false,  // Disable autorange to use explicit range
         range: xReverse ? [0, -5] : [-5, 0],  // Log scale: 10^-5 to 10^0 (0.00001 to 1)
         tickangle: -45,  // Rotate tick labels to prevent overlap
       };
