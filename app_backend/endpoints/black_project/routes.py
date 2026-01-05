@@ -20,8 +20,8 @@ from .defaults import get_default_parameters
 
 logger = logging.getLogger(__name__)
 
-# Cache configuration - set USE_CACHE=true in env to enable
-USE_CACHE = os.environ.get("USE_CACHE", "false").lower() == "true"
+# Cache configuration - set USE_CACHE=false in env to disable
+USE_CACHE = os.environ.get("USE_CACHE", "true").lower() == "true"
 CACHE_DIR = Path(__file__).parent.parent.parent / "cache"
 
 
@@ -37,6 +37,18 @@ def _load_cached_response() -> dict | None:
         except Exception as e:
             logger.warning(f"[black-project] Failed to load cache: {e}")
     return None
+
+
+def _save_cached_response(data: dict) -> None:
+    """Save response to cache for default parameters."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = CACHE_DIR / "black_project_default.json"
+    try:
+        with open(cache_path, "w") as f:
+            json.dump(data, f)
+        logger.info(f"[black-project] Saved response to cache at {cache_path}")
+    except Exception as e:
+        logger.warning(f"[black-project] Failed to save cache: {e}")
 
 
 def _is_default_request(data: dict, defaults: dict) -> bool:
@@ -92,9 +104,11 @@ def register_black_project_routes(app):
             time_range = data.get('time_range', [2027, 2037])
 
             # Check for cached response (only for default parameters)
+            is_default = False
             if USE_CACHE:
                 defaults = get_default_parameters()
-                if _is_default_request(data, defaults):
+                is_default = _is_default_request(data, defaults)
+                if is_default:
                     cached = _load_cached_response()
                     if cached:
                         logger.info("[black-project] Returning cached response")
@@ -116,6 +130,10 @@ def register_black_project_routes(app):
                 simulation_results=simulation_results,
                 frontend_params=frontend_params,
             )
+
+            # Save to cache if this was a default request
+            if USE_CACHE and is_default:
+                _save_cached_response(plot_data)
 
             # Return data directly (no success wrapper) to match reference API format
             return jsonify(plot_data)
