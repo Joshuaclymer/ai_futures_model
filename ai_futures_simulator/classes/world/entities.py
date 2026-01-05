@@ -162,25 +162,9 @@ class AIBlackProject(AISoftwareDeveloper):
     lr_fab_procurement: float = field(init=False)  # Fab procurement LR (1.0 if localized, 10.0 if foreign imports needed)
     lr_fab_combined: float = field(init=False)  # Fab's combined LR = lr_sme_inventory × lr_fab_procurement × lr_fab_other
 
-    ## Precomputed LR time series (separate for datacenters and fab)
+    ## Precomputed LR lookup tables (for simulation use)
     lr_datacenters_by_year: Dict[float, float] = field(init=False)  # Datacenter worker LR by year (since agreement)
     lr_fab_other_by_year: Dict[float, float] = field(init=False)  # Fab worker LR by year (since fab construction)
-
-    ## Legacy time series fields (kept for backward compatibility, will be deprecated)
-    years: List[float] = field(init=False)
-    cumulative_h100_years: List[float] = field(init=False)
-    operational_compute_h100e_by_year: List[float] = field(init=False)
-    survival_rate_by_year: List[float] = field(init=False)
-    datacenter_capacity_gw_by_year: List[float] = field(init=False)
-    total_black_compute_by_year: List[float] = field(init=False)
-    initial_black_compute_by_year: List[float] = field(init=False)
-    fab_flow_by_year: List[float] = field(init=False)
-    lr_reported_energy_by_year: List[float] = field(init=False)
-    lr_other_intel_by_year: List[float] = field(init=False)
-    cumulative_lr_by_year: List[float] = field(init=False)
-    posterior_prob_by_year: List[float] = field(init=False)
-    fab_cumulative_production_h100e_by_year: List[float] = field(init=False)
-    fab_architecture_efficiency_by_year: List[float] = field(init=False)
 
     ## Detection outcomes (per threshold)
     sampled_detection_time: float = field(init=False)  # Sampled from composite distribution

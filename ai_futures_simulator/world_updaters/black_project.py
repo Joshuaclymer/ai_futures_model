@@ -926,16 +926,6 @@ def initialize_black_project(
     )
     project._set_frozen_field('operating_compute_tpp_h100e', initial_operating)
 
-    # Time series metrics (initialized as empty lists, computed during simulation)
-    project._set_frozen_field('years', [])
-    project._set_frozen_field('cumulative_h100_years', [])
-    project._set_frozen_field('operational_compute_h100e_by_year', [])
-    project._set_frozen_field('survival_rate_by_year', [])
-    project._set_frozen_field('datacenter_capacity_gw_by_year', [])
-    project._set_frozen_field('total_black_compute_by_year', [])
-    project._set_frozen_field('initial_black_compute_by_year', [])
-    project._set_frozen_field('fab_flow_by_year', [])
-
     # LR components - compute static LR values from resource accounting evidence
     # Sample US estimates of various quantities
     total_prc_energy_gw = prc_energy.total_prc_energy_consumption_gw
@@ -1057,14 +1047,6 @@ def initialize_black_project(
     project._set_frozen_field('initial_stock_energy_gw', initial_energy_gw)
     project._set_frozen_field('fab_compute_energy_gw', 0.0)  # No fab compute initially
     project._set_frozen_field('total_compute_energy_gw', initial_energy_gw)
-
-    # Legacy time series fields (kept for backward compatibility)
-    project._set_frozen_field('lr_reported_energy_by_year', [])
-    project._set_frozen_field('lr_other_intel_by_year', [])
-    project._set_frozen_field('cumulative_lr_by_year', [])
-    project._set_frozen_field('posterior_prob_by_year', [])
-    project._set_frozen_field('fab_cumulative_production_h100e_by_year', [])
-    project._set_frozen_field('fab_architecture_efficiency_by_year', [])
 
     # Detection outcome
     project._set_frozen_field('sampled_detection_time', sampled_detection_time)
