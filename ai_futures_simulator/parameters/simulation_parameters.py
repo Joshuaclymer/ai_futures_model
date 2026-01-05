@@ -57,10 +57,10 @@ class SimulationSettings:
     simulation_start_year: int
     simulation_end_year: float
     n_eval_points: int
-    # ODE solver settings (optional - defaults are set in ai_futures_simulator.py)
-    ode_rtol: float = 1e-3  # Relative tolerance
-    ode_atol: float = 1e-5  # Absolute tolerance
-    ode_max_step: float = 1.0  # Maximum step size in years
+    # ODE solver settings
+    ode_rtol: float
+    ode_atol: float
+    ode_max_step: float
 
 
 # =============================================================================

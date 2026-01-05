@@ -54,12 +54,11 @@ class PRCComputeParameters:
     fab_wafers_per_month_per_operating_worker: float
     fab_wafers_per_month_per_construction_worker_under_standard_timeline: float
 
-    # Fields with defaults must come at the end
     # Uncertainty in PRC scanner production (lognormal relative sigma) - matches reference model
-    prc_scanner_production_relative_sigma: float = 0.30
+    prc_scanner_production_relative_sigma: float
     # Fab construction time uncertainty multiplier (sampled from lognormal, median=1.0)
     # Discrete model applies relative_sigma=0.35 to computed duration
-    fab_construction_time_multiplier: float = 1.0
+    fab_construction_time_multiplier: float
 
 @dataclass
 class SurvivalRateParameters:
@@ -68,7 +67,7 @@ class SurvivalRateParameters:
     annual_hazard_rate_increase_per_year: float  # Per year^2 (base value, will be multiplied by hazard_rate_multiplier)
     # Multiplier applied to both hazard rates (sampled from distribution in Monte Carlo mode)
     # Discrete model uses metalog with p25=0.1, p50=1.0, p75=6.0
-    hazard_rate_multiplier: float = 1.0  # Default to 1.0 (no change from base values)
+    hazard_rate_multiplier: float
 
     @property
     def effective_initial_hazard_rate(self) -> float:

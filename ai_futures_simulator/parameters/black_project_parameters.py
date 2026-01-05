@@ -36,10 +36,10 @@ class BlackProjectProperties:
     prc_localization_year_7nm: float   # Year PRC achieves 7nm localization
     # Note: build_a_black_fab is derived: True if min_node localization <= black_project_start_year
 
-    # Datacenter construction timing (has default, so must come after non-default fields)
+    # Datacenter construction timing
     # How many years before black_project_start_year to begin datacenter construction
     # Discrete model uses 1.0 (starts 1 year before agreement)
-    years_before_black_project_start_to_begin_datacenter_construction: float = 1.0
+    years_before_black_project_start_to_begin_datacenter_construction: float
 
 @dataclass
 class BlackProjectParameters:
