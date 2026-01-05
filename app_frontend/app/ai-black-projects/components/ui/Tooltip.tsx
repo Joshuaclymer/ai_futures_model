@@ -476,43 +476,47 @@ export function Tooltip({ content, visible, triggerRect, onMouseEnter, onMouseLe
 
 // Export tooltip doc names as constants for type safety
 export const TOOLTIP_DOCS = {
-  // Datacenter tooltips
-  prc_capacity: 'prc_capacity',
-  fraction_diverted: 'fraction_diverted',
-  retrofitted_capacity: 'retrofitted_capacity',
-  prc_energy: 'prc_energy',
-  prc_energy_consumption: 'prc_energy_consumption',
-  max_energy_proportion: 'max_energy_proportion',
-  covert_unconcealed: 'covert_unconcealed',
-  construction_workers: 'construction_workers',
-  mw_per_worker: 'mw_per_worker',
-  datacenter_start_year: 'datacenter_start_year',
-  // Covert fab tooltips
-  fab_construction_time: 'fab_construction_time',
-  operating_labor_production: 'operating_labor_production',
-  chips_per_wafer: 'chips_per_wafer',
-  transistor_density: 'transistor_density',
-  architecture_efficiency: 'architecture_efficiency',
-  watts_per_tpp: 'watts_per_tpp',
-  watts_per_tpp_before_dennard: 'watts_per_tpp_before_dennard',
-  watts_per_tpp_after_dennard: 'watts_per_tpp_after_dennard',
-  h100_power: 'h100_power',
-  ai_chip_lifespan: 'ai_chip_lifespan',
-  largest_ai_project: 'largest_ai_project',
-  prc_scanner_rampup: 'prc_scanner_rampup',
-  prc_sme_indigenization: 'prc_sme_indigenization',
-  dennard_scaling_end: 'dennard_scaling_end',
-  scanner_production_capacity: 'scanner_production_capacity',
-  // Detection tooltips
-  prior_odds: 'prior_odds',
-  energy_efficiency: 'energy_efficiency',
-  energy_efficiency_improvement: 'energy_efficiency_improvement',
-  satellite_datacenter_detection: 'satellite_datacenter_detection',
-  energy_accounting_detection: 'energy_accounting_detection',
-  chip_stock_detection: 'chip_stock_detection',
-  sme_inventory_detection: 'sme_inventory_detection',
-  detection_time: 'detection_time',
-  project_property: 'project_property',
+  // Compute parameters (compute_parameters.py)
+  prc_capacity: 'compute_parameters/prc_capacity',
+  transistor_density: 'compute_parameters/transistor_density',
+  architecture_efficiency: 'compute_parameters/architecture_efficiency',
+  dennard_scaling_end: 'compute_parameters/dennard_scaling_end',
+  watts_per_tpp: 'compute_parameters/watts_per_tpp',
+  watts_per_tpp_before_dennard: 'compute_parameters/watts_per_tpp_before_dennard',
+  watts_per_tpp_after_dennard: 'compute_parameters/watts_per_tpp_after_dennard',
+  energy_efficiency_improvement: 'compute_parameters/energy_efficiency_improvement',
+  largest_ai_project: 'compute_parameters/largest_ai_project',
+  prc_scanner_rampup: 'compute_parameters/prc_scanner_rampup',
+  prc_sme_indigenization: 'compute_parameters/prc_sme_indigenization',
+  chips_per_wafer: 'compute_parameters/chips_per_wafer',
+  scanner_production_capacity: 'compute_parameters/scanner_production_capacity',
+  fab_construction_time: 'compute_parameters/fab_construction_time',
+  operating_labor_production: 'compute_parameters/operating_labor_production',
+  ai_chip_lifespan: 'compute_parameters/ai_chip_lifespan',
+
+  // Data center and energy parameters (data_center_and_energy_parameters.py)
+  energy_efficiency: 'data_center_and_energy_parameters/energy_efficiency',
+  prc_energy: 'data_center_and_energy_parameters/prc_energy',
+  prc_energy_consumption: 'data_center_and_energy_parameters/prc_energy_consumption',
+  mw_per_worker: 'data_center_and_energy_parameters/mw_per_worker',
+  construction_workers: 'data_center_and_energy_parameters/construction_workers',
+  h100_power: 'data_center_and_energy_parameters/h100_power',
+
+  // Black project parameters (black_project_parameters.py)
+  fraction_diverted: 'black_project_parameters/fraction_diverted',
+  max_energy_proportion: 'black_project_parameters/max_energy_proportion',
+  covert_unconcealed: 'black_project_parameters/covert_unconcealed',
+  datacenter_start_year: 'black_project_parameters/datacenter_start_year',
+  retrofitted_capacity: 'black_project_parameters/retrofitted_capacity',
+  project_property: 'black_project_parameters/project_property',
+
+  // Perceptions parameters (perceptions_parameters.py)
+  prior_odds: 'perceptions_parameters/prior_odds',
+  chip_stock_detection: 'perceptions_parameters/chip_stock_detection',
+  energy_accounting_detection: 'perceptions_parameters/energy_accounting_detection',
+  satellite_datacenter_detection: 'perceptions_parameters/satellite_datacenter_detection',
+  sme_inventory_detection: 'perceptions_parameters/sme_inventory_detection',
+  detection_time: 'perceptions_parameters/detection_time',
 } as const;
 
 export type TooltipDocName = keyof typeof TOOLTIP_DOCS;

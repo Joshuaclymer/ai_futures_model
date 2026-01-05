@@ -3,7 +3,7 @@
 .bp-dashboard {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .bp-dashboard-item {

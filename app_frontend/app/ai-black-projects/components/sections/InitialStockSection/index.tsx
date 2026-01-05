@@ -350,7 +350,7 @@ export function InitialStockSection({
         </Dashboard>
 
         {/* Detection Probability Bar Chart */}
-        <div className="plot-container" style={{ flex: '1 1 200px', minWidth: 200, padding: 20 }}>
+        <div className="plot-container" style={{ flex: '1 1 200px', minWidth: 200, paddingLeft: 20, paddingRight: 20, paddingBottom: 20 }}>
           <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
             Detection probability by likelihood ratio
           </div>
@@ -379,7 +379,7 @@ export function InitialStockSection({
         </div>
 
         {/* Initial Compute Stock Distribution */}
-        <div className="plot-container" style={{ flex: '1 1 200px', minWidth: 200, padding: 20 }}>
+        <div className="plot-container" style={{ flex: '1 1 200px', minWidth: 200, paddingLeft: 20, paddingRight: 20, paddingBottom: 20 }}>
           <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
             Initial PRC dark compute distribution
           </div>

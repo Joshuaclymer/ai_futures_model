@@ -135,7 +135,7 @@ function ComputeCCDFChart({ ccdfData }: { ccdfData?: Record<number, CCDFPoint[]>
           y: 0.98,
           xanchor: 'right',
           yanchor: 'top',
-          bgcolor: 'rgba(255,255,255,0.9)',
+          bgcolor: 'rgba(255,255,248,0.9)',
           borderwidth: 0,
           font: { size: CHART_FONT_SIZES.legend },
         },
@@ -622,7 +622,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginBottom: '10px', alignItems: 'stretch' }}>
         <CovertFabDashboard dashboard={dashboard} />
 
-        <div className="bp-plot-container" style={{ flex: '1 1 200px', minWidth: '200px', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+        <div className="bp-plot-container" style={{ flex: '1 1 200px', minWidth: '200px', paddingLeft: '20px', paddingRight: '20px', paddingBottom: '20px', display: 'flex', flexDirection: 'column' }}>
           <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
             Covert compute produced before detection
           </div>
@@ -631,7 +631,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
           </div>
         </div>
 
-        <div className="bp-plot-container" style={{ flex: '1 1 200px', minWidth: '200px', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+        <div className="bp-plot-container" style={{ flex: '1 1 200px', minWidth: '200px', paddingLeft: '20px', paddingRight: '20px', paddingBottom: '20px', display: 'flex', flexDirection: 'column' }}>
           <div className="plot-title" style={{ textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: 8, marginBottom: 10 }}>
             Simulation runs
           </div>
