@@ -31,4 +31,8 @@ register_all_routes(app)
 
 
 if __name__ == '__main__':
-    app.run(port=5329, debug=True)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=5329)
+    args = parser.parse_args()
+    app.run(port=args.port, debug=True)

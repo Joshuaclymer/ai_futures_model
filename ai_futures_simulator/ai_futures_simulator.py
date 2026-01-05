@@ -12,7 +12,7 @@ from torchdiffeq import odeint, odeint_event
 from typing import Dict, List, Tuple
 
 from classes.world.world import World
-from classes.world.flat_world import FlatWorld
+from classes.flat_world import FlatWorld
 from classes.simulation_primitives import SimulationResult
 from parameters.simulation_parameters import SimulationParameters, ModelParameters
 from initialize_world_history import initialize_world_for_year

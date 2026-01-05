@@ -10,7 +10,7 @@ from torch import Tensor
 from dataclasses import fields, is_dataclass
 from typing import Dict, Any, List, Tuple
 
-from classes.world.tensor_dataclass import TensorDataclass, is_tensor_dataclass
+from classes.tensor_dataclass import TensorDataclass, is_tensor_dataclass
 
 
 def generate_state_schema(template_world: 'World') -> Dict[str, int]:

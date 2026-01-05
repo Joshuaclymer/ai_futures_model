@@ -12,7 +12,7 @@ from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.simulation_parameters import SimulationParameters
 
 if TYPE_CHECKING:
-    from classes.world.flat_world import FlatWorld, FlatStateDerivative
+    from classes.flat_world import FlatWorld, FlatStateDerivative
 
 
 class CombinedUpdater(WorldUpdater):
@@ -184,7 +184,7 @@ class FlatCombinedUpdater(nn.Module):
         Instead, we use FlatWorld/FlatStateDerivative with proxy objects
         that map attribute access to tensor indices.
         """
-        from classes.world.flat_world import FlatWorld, FlatStateDerivative
+        from classes.flat_world import FlatWorld, FlatStateDerivative
 
         # Create FlatWorld wrapping the state tensor (no clone!)
         flat_world = FlatWorld(

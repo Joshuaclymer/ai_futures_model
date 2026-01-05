@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
-from classes.world.tensor_dataclass import TensorDataclass
+from classes.tensor_dataclass import TensorDataclass
 from classes.world.assets import Assets, Compute, Fabs, Datacenters
 from classes.world.software_progress import AISoftwareProgress
 
@@ -105,7 +105,8 @@ class AIBlackProject(AISoftwareDeveloper):
     concealed_datacenter_capacity_construction_labor: float = field(metadata={'is_state': True})
     concealed_max_total_capacity_gw: float = field(metadata={'is_state': True})
 
-    ## Compute tracking (state variables for attrition model)
+    ## State variables for attrition model)
+
     # Initial diverted compute (constant, set at project start, never changes)
     initial_diverted_compute_h100e: float = field(metadata={'is_state': True})
     # Fab-produced compute stock (integrated via ODE, includes attrition)

@@ -10,7 +10,7 @@ from torch import Tensor
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
-from classes.world.tensor_dataclass import TensorDataclass
+from classes.tensor_dataclass import TensorDataclass
 from classes.world.entities import Coalition, Nation, AISoftwareDeveloper, AIBlackProject
 from classes.world.policies import AIPolicy
 from classes.world.perceptions import Perceptions
@@ -53,7 +53,7 @@ class World(TensorDataclass):
         """
         if template is not None:
             # Check if template is a FlatWorld
-            from classes.world.flat_world import FlatWorld
+            from classes.flat_world import FlatWorld
             if isinstance(template, FlatWorld):
                 return FlatWorld.zeros(template)
             return super().zeros(template)

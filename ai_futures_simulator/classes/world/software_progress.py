@@ -10,7 +10,7 @@ from torch import Tensor
 from dataclasses import dataclass, field
 from typing import Optional
 
-from classes.world.tensor_dataclass import TensorDataclass
+from classes.tensor_dataclass import TensorDataclass
 
 
 @dataclass

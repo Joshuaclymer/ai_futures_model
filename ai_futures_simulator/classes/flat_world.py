@@ -10,7 +10,7 @@ from torch import Tensor
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
 from dataclasses import fields
 
-from classes.world.state_schema import (
+from classes.state_schema import (
     generate_state_schema,
     get_nested_attr,
     set_nested_attr,
@@ -19,7 +19,7 @@ from classes.world.state_schema import (
     flat_tensor_to_world,
     _parse_path,
 )
-from classes.world.tensor_dataclass import TensorDataclass
+from classes.tensor_dataclass import TensorDataclass
 
 if TYPE_CHECKING:
     from classes.world.world import World

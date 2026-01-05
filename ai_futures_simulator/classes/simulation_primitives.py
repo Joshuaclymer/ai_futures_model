@@ -17,7 +17,7 @@ from classes.world.world import World
 from parameters.simulation_parameters import SimulationParameters
 
 if TYPE_CHECKING:
-    from classes.world.flat_world import FlatWorld, FlatStateDerivative
+    from classes.flat_world import FlatWorld, FlatStateDerivative
 
 
 @dataclass
@@ -47,7 +47,7 @@ class StateDerivative:
         This allows existing code that does `StateDerivative(d_world)` to work
         transparently with both World and FlatWorld.
         """
-        from classes.world.flat_world import FlatWorld, FlatStateDerivative
+        from classes.flat_world import FlatWorld, FlatStateDerivative
         if isinstance(world, FlatWorld):
             return FlatStateDerivative(
                 world._state, world._schema, world._metadata, world._template
@@ -58,7 +58,7 @@ class StateDerivative:
     def __init__(self, world: World):
         """Initialize with a World instance."""
         # Skip if this is actually a FlatStateDerivative (handled by __new__)
-        from classes.world.flat_world import FlatWorld
+        from classes.flat_world import FlatWorld
         if isinstance(world, FlatWorld):
             return
         self.world = world
@@ -69,7 +69,7 @@ class StateDerivative:
 
     def __add__(self, other: 'StateDerivative') -> 'StateDerivative':
         """Add two state derivatives element-wise."""
-        from classes.world.flat_world import FlatStateDerivative
+        from classes.flat_world import FlatStateDerivative
         if isinstance(other, FlatStateDerivative):
             # Convert self to flat and add
             my_tensor = self.to_state_tensor()
@@ -105,7 +105,7 @@ class StateDerivative:
         If template is a FlatWorld, returns a FlatStateDerivative instead.
         """
         # Check if template is a FlatWorld
-        from classes.world.flat_world import FlatWorld, FlatStateDerivative
+        from classes.flat_world import FlatWorld, FlatStateDerivative
         if isinstance(template, FlatWorld):
             return FlatStateDerivative.zeros(template)
         return cls(World.zeros(template))
