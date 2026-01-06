@@ -256,8 +256,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--params",
         type=str,
-        default="parameters/modal_parameters.yaml",
-        help="Path to YAML config file (default: parameters/modal_parameters.yaml)"
+        default="ai_futures_simulator/parameters/monte_carlo_parameters.yaml",
+        help="Path to YAML config file"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="simulation_output.json",
+        help="Path to output JSON file"
     )
     args = parser.parse_args()
 
@@ -275,5 +281,5 @@ if __name__ == "__main__":
     # Run single simulation
     result = simulator.run_simulation()
 
-    # Print summary
-    print_simulation_summary(result)
+    # Print summary and save to output file
+    print_simulation_summary(result, output_file=args.output)

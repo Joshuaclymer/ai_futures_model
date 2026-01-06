@@ -200,9 +200,9 @@ def get_legend_style(position='top_left'):
 
     return {
         **pos,
-        'bgcolor': 'rgba(255, 255, 255, 0.7)',
-        'bordercolor': AXIS_LINE_COLOR,
-        'borderwidth': 1,
+        'bgcolor': 'rgba(0, 0, 0, 0)',
+        'bordercolor': 'rgba(0, 0, 0, 0)',
+        'borderwidth': 0,
         'font': dict(size=FONT_SIZE_LEGEND),
     }
 

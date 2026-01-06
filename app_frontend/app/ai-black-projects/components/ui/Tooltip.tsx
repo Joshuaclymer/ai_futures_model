@@ -310,8 +310,13 @@ export function Tooltip({ content, visible, triggerRect, onMouseEnter, onMouseLe
     // Get the natural content height (content div has no constraints)
     const contentHeight = contentRef.current.scrollHeight + 30; // +30 for padding
 
-    // Try positions in order of preference: right, left, below, above
-    const positions: Position[] = ['right', 'left', 'below', 'above'];
+    // Determine position order based on where trigger is on screen
+    // If trigger is on right half, prefer left; if on left half, prefer right
+    const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+    const isOnRightSide = triggerCenterX > viewportWidth / 2;
+    const positions: Position[] = isOnRightSide
+      ? ['left', 'right', 'below', 'above']
+      : ['right', 'left', 'below', 'above'];
 
     let bestPosition: CalculatedPosition | null = null;
     let bestAvailableHeight = 0;
@@ -477,46 +482,63 @@ export function Tooltip({ content, visible, triggerRect, onMouseEnter, onMouseLe
 // Export tooltip doc names as constants for type safety
 export const TOOLTIP_DOCS = {
   // Compute parameters (compute_parameters.py)
-  prc_capacity: 'compute_parameters/prc_capacity',
-  transistor_density: 'compute_parameters/transistor_density',
-  architecture_efficiency: 'compute_parameters/architecture_efficiency',
-  dennard_scaling_end: 'compute_parameters/dennard_scaling_end',
-  watts_per_tpp: 'compute_parameters/watts_per_tpp',
-  watts_per_tpp_before_dennard: 'compute_parameters/watts_per_tpp_before_dennard',
-  watts_per_tpp_after_dennard: 'compute_parameters/watts_per_tpp_after_dennard',
-  energy_efficiency_improvement: 'compute_parameters/energy_efficiency_improvement',
-  largest_ai_project: 'compute_parameters/largest_ai_project',
-  prc_scanner_rampup: 'compute_parameters/prc_scanner_rampup',
-  prc_sme_indigenization: 'compute_parameters/prc_sme_indigenization',
-  chips_per_wafer: 'compute_parameters/chips_per_wafer',
-  scanner_production_capacity: 'compute_parameters/scanner_production_capacity',
-  fab_construction_time: 'compute_parameters/fab_construction_time',
-  operating_labor_production: 'compute_parameters/operating_labor_production',
-  ai_chip_lifespan: 'compute_parameters/ai_chip_lifespan',
+  total_prc_compute_tpp_h100e_in_2025: 'compute_parameters/total_prc_compute_tpp_h100e_in_2025/total_prc_compute_tpp_h100e_in_2025',
+  transistor_density_scaling_exponent: 'compute_parameters/transistor_density_scaling_exponent/transistor_density_scaling_exponent',
+  state_of_the_art_architecture_efficiency_improvement_per_year: 'compute_parameters/state_of_the_art_architecture_efficiency_improvement_per_year/state_of_the_art_architecture_efficiency_improvement_per_year',
+  transistor_density_at_end_of_dennard_scaling_m_per_mm2: 'compute_parameters/transistor_density_at_end_of_dennard_scaling_m_per_mm2/transistor_density_at_end_of_dennard_scaling_m_per_mm2',
+  watts_per_tpp: 'compute_parameters/watts_per_tpp/watts_per_tpp',
+  watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: 'compute_parameters/watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended/watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended',
+  watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: 'compute_parameters/watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended/watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended',
+  state_of_the_art_energy_efficiency_improvement_per_year: 'compute_parameters/state_of_the_art_energy_efficiency_improvement_per_year/state_of_the_art_energy_efficiency_improvement_per_year',
+  us_frontier_project_compute_tpp_h100e_in_2025: 'compute_parameters/us_frontier_project_compute_tpp_h100e_in_2025/us_frontier_project_compute_tpp_h100e_in_2025',
+  prc_lithography_scanners_produced_in_first_year: 'compute_parameters/prc_lithography_scanners_produced_in_first_year/prc_lithography_scanners_produced_in_first_year',
+  p_localization_28nm_2030: 'compute_parameters/p_localization_28nm_2030/p_localization_28nm_2030',
+  h100_sized_chips_per_wafer: 'compute_parameters/h100_sized_chips_per_wafer/h100_sized_chips_per_wafer',
+  wafers_per_month_per_lithography_scanner: 'compute_parameters/wafers_per_month_per_lithography_scanner/wafers_per_month_per_lithography_scanner',
+  construction_time_for_5k_wafers_per_month: 'compute_parameters/construction_time_for_5k_wafers_per_month/construction_time_for_5k_wafers_per_month',
+  fab_wafers_per_month_per_operating_worker: 'compute_parameters/fab_wafers_per_month_per_operating_worker/fab_wafers_per_month_per_operating_worker',
+  initial_annual_hazard_rate: 'compute_parameters/initial_annual_hazard_rate/initial_annual_hazard_rate',
 
   // Data center and energy parameters (data_center_and_energy_parameters.py)
-  energy_efficiency: 'data_center_and_energy_parameters/energy_efficiency',
-  prc_energy: 'data_center_and_energy_parameters/prc_energy',
-  prc_energy_consumption: 'data_center_and_energy_parameters/prc_energy_consumption',
-  mw_per_worker: 'data_center_and_energy_parameters/mw_per_worker',
-  construction_workers: 'data_center_and_energy_parameters/construction_workers',
-  h100_power: 'data_center_and_energy_parameters/h100_power',
+  energy_efficiency_of_compute_stock_relative_to_state_of_the_art: 'data_center_and_energy_parameters/energy_efficiency_of_compute_stock_relative_to_state_of_the_art/energy_efficiency_of_compute_stock_relative_to_state_of_the_art',
+  total_prc_energy_consumption_gw: 'data_center_and_energy_parameters/total_prc_energy_consumption_gw/total_prc_energy_consumption_gw',
+  data_center_mw_per_year_per_construction_worker: 'data_center_and_energy_parameters/data_center_mw_per_year_per_construction_worker/data_center_mw_per_year_per_construction_worker',
+  data_center_mw_per_operating_worker: 'data_center_and_energy_parameters/data_center_mw_per_operating_worker/data_center_mw_per_operating_worker',
+  h100_power_watts: 'data_center_and_energy_parameters/h100_power_watts/h100_power_watts',
 
   // Black project parameters (black_project_parameters.py)
-  fraction_diverted: 'black_project_parameters/fraction_diverted',
-  max_energy_proportion: 'black_project_parameters/max_energy_proportion',
-  covert_unconcealed: 'black_project_parameters/covert_unconcealed',
-  datacenter_start_year: 'black_project_parameters/datacenter_start_year',
-  retrofitted_capacity: 'black_project_parameters/retrofitted_capacity',
-  project_property: 'black_project_parameters/project_property',
+  fraction_of_initial_compute_stock_to_divert_at_black_project_start: 'black_project_parameters/fraction_of_initial_compute_stock_to_divert_at_black_project_start/fraction_of_initial_compute_stock_to_divert_at_black_project_start',
+  max_fraction_of_total_national_energy_consumption: 'black_project_parameters/max_fraction_of_total_national_energy_consumption/max_fraction_of_total_national_energy_consumption',
+  fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 'black_project_parameters/fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start/fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start',
+  years_before_black_project_start_to_begin_datacenter_construction: 'black_project_parameters/years_before_black_project_start_to_begin_datacenter_construction/years_before_black_project_start_to_begin_datacenter_construction',
+  black_fab_min_process_node: 'black_project_parameters/black_fab_min_process_node/black_fab_min_process_node',
+  total_labor: 'black_project_parameters/total_labor/total_labor',
 
   // Perceptions parameters (perceptions_parameters.py)
-  prior_odds: 'perceptions_parameters/prior_odds',
-  chip_stock_detection: 'perceptions_parameters/chip_stock_detection',
-  energy_accounting_detection: 'perceptions_parameters/energy_accounting_detection',
-  satellite_datacenter_detection: 'perceptions_parameters/satellite_datacenter_detection',
-  sme_inventory_detection: 'perceptions_parameters/sme_inventory_detection',
-  detection_time: 'perceptions_parameters/detection_time',
+  prior_odds_of_covert_project: 'perceptions_parameters/prior_odds_of_covert_project/prior_odds_of_covert_project',
+  intelligence_median_error_in_estimate_of_compute_stock: 'perceptions_parameters/intelligence_median_error_in_estimate_of_compute_stock/intelligence_median_error_in_estimate_of_compute_stock',
+  intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 'perceptions_parameters/intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity/intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity',
+  intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 'perceptions_parameters/intelligence_median_error_in_satellite_estimate_of_datacenter_capacity/intelligence_median_error_in_satellite_estimate_of_datacenter_capacity',
+  intelligence_median_error_in_estimate_of_fab_stock: 'perceptions_parameters/intelligence_median_error_in_estimate_of_fab_stock/intelligence_median_error_in_estimate_of_fab_stock',
+  mean_detection_time_for_100_workers: 'perceptions_parameters/mean_detection_time_for_100_workers/mean_detection_time_for_100_workers',
+  mean_detection_time_for_1000_workers: 'perceptions_parameters/mean_detection_time_for_1000_workers/mean_detection_time_for_1000_workers',
+
+  // UI aliases (short names used in component code that map to full parameter names)
+  prc_capacity: 'compute_parameters/total_prc_compute_tpp_h100e_in_2025/total_prc_compute_tpp_h100e_in_2025',
+  fraction_diverted: 'black_project_parameters/fraction_of_initial_compute_stock_to_divert_at_black_project_start/fraction_of_initial_compute_stock_to_divert_at_black_project_start',
+  retrofitted_capacity: 'black_project_parameters/fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start/fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start',
+  prc_energy: 'data_center_and_energy_parameters/total_prc_energy_consumption_gw/total_prc_energy_consumption_gw',
+  max_energy_proportion: 'black_project_parameters/max_fraction_of_total_national_energy_consumption/max_fraction_of_total_national_energy_consumption',
+  covert_unconcealed: 'black_project_parameters/fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start/fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start',
+  construction_workers: 'data_center_and_energy_parameters/data_center_mw_per_year_per_construction_worker/data_center_mw_per_year_per_construction_worker',
+  mw_per_worker: 'data_center_and_energy_parameters/data_center_mw_per_year_per_construction_worker/data_center_mw_per_year_per_construction_worker',
+  datacenter_start_year: 'black_project_parameters/years_before_black_project_start_to_begin_datacenter_construction/years_before_black_project_start_to_begin_datacenter_construction',
+  fab_construction_time: 'compute_parameters/construction_time_for_5k_wafers_per_month/construction_time_for_5k_wafers_per_month',
+  operating_labor_production: 'compute_parameters/fab_wafers_per_month_per_operating_worker/fab_wafers_per_month_per_operating_worker',
+  chips_per_wafer: 'compute_parameters/h100_sized_chips_per_wafer/h100_sized_chips_per_wafer',
+  transistor_density: 'compute_parameters/transistor_density_scaling_exponent/transistor_density_scaling_exponent',
+  architecture_efficiency: 'compute_parameters/state_of_the_art_architecture_efficiency_improvement_per_year/state_of_the_art_architecture_efficiency_improvement_per_year',
+  h100_power: 'data_center_and_energy_parameters/h100_power_watts/h100_power_watts',
 } as const;
 
 export type TooltipDocName = keyof typeof TOOLTIP_DOCS;

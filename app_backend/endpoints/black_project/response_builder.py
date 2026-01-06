@@ -216,8 +216,8 @@ def _compute_energy_data(all_data: List[Dict], years: List[float]) -> tuple:
     fab_eff = 700.0 / all_data[0]['black_project']['fab_watts_per_h100e'] if all_data and all_data[0]['black_project'] and 'fab_watts_per_h100e' in all_data[0]['black_project'] else 0.07
 
     source_labels = [
-        f"Initial Dark Compute ({initial_eff:.2f}x energy efficiency)",
-        f"Covert Fab Compute ({fab_eff:.2f}x energy efficiency)",
+        f"Initial Dark Compute ({initial_eff:.2f}x energy eff.)",
+        f"Covert Fab Compute ({fab_eff:.2f}x energy eff.)",
     ]
 
     return energy_by_source, source_labels
