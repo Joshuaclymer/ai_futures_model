@@ -50,7 +50,7 @@ export async function GET(
     return new NextResponse(content, {
       headers: {
         'Content-Type': mimeType,
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'no-cache, no-store, must-revalidate', // Disable caching for development
       },
     });
   } catch (error) {

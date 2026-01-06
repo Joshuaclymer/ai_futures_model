@@ -193,7 +193,7 @@ export function InitialStockSection({
 
     if (validEnergySamples.length === 0) return [];
 
-    const trace = createHistogramTrace(validEnergySamples, COLOR_PALETTE.datacenters_and_energy, 20);
+    const trace = createHistogramTrace(validEnergySamples, COLOR_PALETTE.datacenters_and_energy, 20, true);
     return trace ? [trace] : [];
   }, [initialStock]);
 
@@ -638,6 +638,7 @@ export function InitialStockSection({
                   xaxis: {
                     title: { text: 'Energy Requirements (GW)', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
+                    type: 'log',
                   },
                   yaxis: {
                     title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },

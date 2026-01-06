@@ -14,55 +14,25 @@
 #   - beta: {dist: beta, alpha: 2, beta: 3, min: 0, max: 1}
 #   - choice: {dist: choice, values: [-5, -2, -1], p: [0.25, 0.5, 0.25]}
 
-time_range: [2025.0, 2040.0]
 initial_progress: 0.0
 seed: 42
 
-parameters:
+# =============================================================================
+# SIMULATION SETTINGS
+# =============================================================================
+settings:
+  simulation_start_year: 2026
+  simulation_end_year: 2040.0
+  n_eval_points: 100
+
+# =============================================================================
+# SOFTWARE R&D PARAMETERS
+# =============================================================================
+software_r_and_d:
   # =========================================================================
-  # HORIZON / MILESTONE PARAMETERS
+  # MODE FLAGS
   # =========================================================================
-  # Superhuman coder time horizon (minutes)
-  # ci80: [0.1 work year, 225,000 work years]
-  ac_time_horizon_minutes:
-    dist: lognormal
-    ci80: [12456, 28000000000]
-    min: 960  # At least 16 hours (longest METR tasks)
-
-  horizon_extrapolation_type: "decaying doubling time"
-
-  # Pre-gap AC horizon (minutes)
-  # ci80: [0.1 work year, 10 work years]
-  pre_gap_ac_time_horizon:
-    dist: lognormal
-    ci80: [12456, 1245600]
-    min: 26  # At least GPT-5's horizon
-
-  # Gap mode
-  include_gap:
-    dist: choice
-    values: ["no gap", "gap"]
-    p: [0.55, 0.45]
-
-  gap_years:
-    dist: lognormal
-    ci80: [0.3, 7.5]
-    min: 0.0
-
-  # Manual horizon fitting
-  present_day: 2025.6
-  present_horizon: 26.0
-
-  present_doubling_time:
-    dist: lognormal
-    ci80: [0.29, 0.717]
-    min: 0.0
-
-  doubling_difficulty_growth_factor:
-    dist: normal
-    ci80: [0.82, 1.02]
-    min: 0.6
-    max: 1.02
+  update_software_progress: true
 
   # =========================================================================
   # PRODUCTION FUNCTION PARAMETERS (CES)
@@ -75,12 +45,13 @@ parameters:
 
   coding_labor_normalization: 1.0
 
-  # Experiment capacity
-  rho_experiment_capacity: -0.155
-  alpha_experiment_capacity: 0.777
-  experiment_compute_exponent: 0.655
+  # Experiment capacity CES (calibrated from anchor params)
+  direct_input_exp_cap_ces_params: false
+  rho_experiment_capacity: null
+  alpha_experiment_capacity: null
+  experiment_compute_exponent: null
 
-  # Experiment capacity asymptotes
+  # Experiment capacity anchor parameters
   inf_compute_asymptote:
     dist: shifted_lognormal
     ci80: [25, 40000]
@@ -93,6 +64,9 @@ parameters:
     shift: 1.0
     min: 1.0
 
+  labor_anchor_exp_cap: 1.6
+  compute_anchor_exp_cap: null
+
   inv_compute_anchor_exp_cap:
     dist: shifted_lognormal
     ci80: [0.8, 5.3]
@@ -100,6 +74,7 @@ parameters:
     min: 1.0
     max: 10
 
+  # Parallel penalty
   parallel_penalty:
     dist: beta
     alpha: 3
@@ -110,7 +85,7 @@ parameters:
   # =========================================================================
   # SOFTWARE PROGRESS PARAMETERS
   # =========================================================================
-  r_software: 2.40
+  r_software: null  # Calibrated
 
   software_progress_rate_at_reference_year:
     dist: lognormal
@@ -120,6 +95,7 @@ parameters:
   # AUTOMATION SCHEDULE PARAMETERS
   # =========================================================================
   automation_fraction_at_coding_automation_anchor: 1.0
+  automation_anchors: null
   automation_interp_type: "linear"
   automation_logistic_asymptote: 1.05
 
@@ -180,6 +156,42 @@ parameters:
     beta: 2
     clip_to_bounds: false
 
+  # =========================================================================
+  # HORIZON / MILESTONE PARAMETERS
+  # =========================================================================
+  progress_at_aa: null
+
+  # Superhuman coder time horizon (minutes)
+  # ci80: [0.1 work year, 225,000 work years]
+  ac_time_horizon_minutes:
+    dist: lognormal
+    ci80: [12456, 28000000000]
+    min: 960  # At least 16 hours (longest METR tasks)
+
+  # Pre-gap AC horizon (minutes)
+  # ci80: [0.1 work year, 10 work years]
+  pre_gap_ac_time_horizon:
+    dist: lognormal
+    ci80: [12456, 1245600]
+    min: 26  # At least GPT-5's horizon
+
+  horizon_extrapolation_type: "decaying doubling time"
+
+  # Manual horizon fitting
+  present_day: 2025.6
+  present_horizon: 26.0
+
+  present_doubling_time:
+    dist: lognormal
+    ci80: [0.29, 0.717]
+    min: 0.0
+
+  doubling_difficulty_growth_factor:
+    dist: normal
+    ci80: [0.82, 1.02]
+    min: 0.6
+    max: 1.02
+
   # Capability milestones
   strat_ai_m2b: 2.0
 
@@ -189,40 +201,168 @@ parameters:
     min: 0
 
   # =========================================================================
-  # TRAINING COMPUTE GROWTH PARAMETERS
+  # GAP MODE PARAMETERS
   # =========================================================================
-  constant_training_compute_growth_rate:
-    dist: normal
-    ci80: [0.55, 0.65]
+  include_gap:
+    dist: choice
+    values: ["no gap", "gap"]
+    p: [0.55, 0.45]
+
+  gap_years:
+    dist: lognormal
+    ci80: [0.3, 7.5]
     min: 0.0
 
-  slowdown_year:
-    dist: uniform
-    min: 2026.0
-    max: 2030.0
+# =============================================================================
+# COMPUTE PARAMETERS
+# =============================================================================
+compute:
+  # Exogenous technology trends
+  exogenous_trends:
+    transistor_density_scaling_exponent: 1.49
+    state_of_the_art_architecture_efficiency_improvement_per_year: 1.23
+    transistor_density_at_end_of_dennard_scaling_m_per_mm2: 10.0
+    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: -1.0
+    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: -0.33
+    state_of_the_art_energy_efficiency_improvement_per_year: 1.26
 
-  post_slowdown_training_compute_growth_rate:
-    dist: normal
-    ci80: [0.15, 0.35]
-    min: 0.0
+  # Chip survival/attrition parameters
+  survival_rate_parameters:
+    initial_annual_hazard_rate: 0.01
+    annual_hazard_rate_increase_per_year: 0.0035
+    hazard_rate_multiplier:
+      dist: metalog
+      p25: 0.1
+      p50: 1.0
+      p75: 6.0
 
-  # =========================================================================
-  # MODE FLAGS (fixed for standard runs)
-  # =========================================================================
-  update_software_progress: true
-  sos_mode: false
-  plan_a_mode: false
-  is_blacksite: false
+  # US compute parameters
+  us_compute:
+    us_frontier_project_compute_tpp_h100e_in_2025: 120325.0
+    us_frontier_project_compute_annual_growth_rate: 4.0
+    proportion_of_compute_in_largest_ai_sw_developer: 0.3
+    slowdown_year:
+      dist: uniform
+      min: 2026.0
+      max: 2030.0
+    post_slowdown_training_compute_growth_rate:
+      dist: normal
+      ci80: [0.15, 0.35]
+      min: 0.0
 
-  # =========================================================================
-  # INITIAL CONDITIONS
-  # =========================================================================
-  initial_compute_tpp_h100e: 100000.0
-  initial_human_researchers: 1000
+  # PRC compute parameters
+  prc_compute:
+    total_prc_compute_tpp_h100e_in_2025: 100000.0
+    annual_growth_rate_of_prc_compute_stock:
+      dist: metalog
+      p10: 1.3
+      p50: 2.2
+      p90: 3.0
+    proportion_of_compute_in_largest_ai_sw_developer: 0.5
+    prc_architecture_efficiency_relative_to_state_of_the_art: 1.0
+    proportion_of_prc_chip_stock_produced_domestically_2026: 0.10
+    proportion_of_prc_chip_stock_produced_domestically_2030: 0.40
+    prc_lithography_scanners_produced_in_first_year:
+      dist: lognormal
+      ci80: [13.7, 29.2]
+    prc_additional_lithography_scanners_produced_per_year:
+      dist: lognormal
+      ci80: [11.0, 23.3]
+    p_localization_28nm_2030: 0.25
+    p_localization_14nm_2030: 0.10
+    p_localization_7nm_2030: 0.06
+    h100_sized_chips_per_wafer: 28.0
+    wafers_per_month_per_lithography_scanner:
+      dist: lognormal
+      ci80: [776, 1288]
+    construction_time_for_5k_wafers_per_month: 1.40
+    construction_time_for_100k_wafers_per_month: 2.41
+    fab_construction_time_multiplier:
+      dist: lognormal
+      ci80: [0.64, 1.56]
+    fab_wafers_per_month_per_operating_worker:
+      dist: lognormal
+      ci80: [11.9, 51.2]
+    fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
 
-# =========================================================================
+# =============================================================================
+# DATACENTER AND ENERGY PARAMETERS
+# =============================================================================
+datacenter_and_energy:
+  prc_energy_consumption:
+    energy_efficiency_of_compute_stock_relative_to_state_of_the_art: 0.20
+    total_prc_energy_consumption_gw: 1100.0
+    data_center_mw_per_year_per_construction_worker:
+      dist: lognormal
+      ci80: [0.079, 0.213]
+    data_center_mw_per_operating_worker:
+      dist: lognormal
+      ci80: [0.61, 1.64]
+    h100_power_watts: 700.0
+
+# =============================================================================
+# POLICY PARAMETERS
+# =============================================================================
+policy:
+  ai_slowdown_start_year: 2030.0
+
+# =============================================================================
+# BLACK PROJECT PARAMETERS
+# =============================================================================
+black_project:
+  run_a_black_project: true
+  black_project_start_year: 2029.0
+
+  properties:
+    total_labor: 11300
+    fraction_of_labor_devoted_to_datacenter_construction: 0.885
+    fraction_of_labor_devoted_to_black_fab_construction: 0.022
+    fraction_of_labor_devoted_to_black_fab_operation: 0.049
+    fraction_of_labor_devoted_to_ai_research: 0.044
+    fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05
+    fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 0.01
+    fraction_of_lithography_scanners_to_divert_at_black_project_start: 0.10
+    max_fraction_of_total_national_energy_consumption: 0.05
+    years_before_black_project_start_to_begin_datacenter_construction: 1.0
+    black_fab_min_process_node: 28.0
+
+    # PRC localization years
+    prc_localization_year_28nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
+      p: [0.042, 0.042, 0.042, 0.042, 0.042, 0.042, 0.748]
+
+    prc_localization_year_14nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
+      p: [0.017, 0.017, 0.017, 0.017, 0.017, 0.017, 0.898]
+
+    prc_localization_year_7nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
+      p: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.94]
+
+# =============================================================================
+# PERCEPTIONS PARAMETERS
+# =============================================================================
+perceptions:
+  update_perceptions: true
+
+  black_project_perception_parameters:
+    prior_odds_of_covert_project: 0.25
+    intelligence_median_error_in_estimate_of_compute_stock: 0.07
+    intelligence_median_error_in_estimate_of_fab_stock: 0.07
+    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.05
+    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.05
+    mean_detection_time_for_100_workers: 6.95
+    mean_detection_time_for_1000_workers: 3.42
+    variance_of_detection_time_given_num_workers: 15.05
+    detection_threshold: 100.0
+    detection_thresholds: [1, 2, 4]
+
+# =============================================================================
 # CORRELATION MATRIX (optional)
-# =========================================================================
+# =============================================================================
 # Creates correlations between related parameters using Spearman rank correlation
 correlation_matrix:
   parameters:
@@ -261,100 +401,3 @@ correlation_matrix:
     # inf_compute_asymptote
     - [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.50,  1.00]
   correlation_type: "spearman"
-
-# =========================================================================
-# COMPUTE PARAMETERS WITH UNCERTAINTY
-# =========================================================================
-compute:
-  prc_compute:
-    # Annual growth rate of PRC compute stock
-    # Reference model uses metalog distribution with p10=1.3, p50=2.2, p90=3.0
-    annual_growth_rate_of_prc_compute_stock:
-      dist: metalog
-      p10: 1.3
-      p50: 2.2
-      p90: 3.0
-    # Scanner productivity: wafers produced per lithography scanner per month
-    # Discrete model: median=1000, relative_sigma=0.20
-    wafers_per_month_per_lithography_scanner:
-      dist: lognormal
-      ci80: [776, 1288]
-
-    # Construction time for small fab (5k wafers/month capacity)
-    # These are deterministic reference points; uncertainty is applied via fab_construction_time_multiplier
-    construction_time_for_5k_wafers_per_month: 1.40
-
-    # Construction time for large fab (100k wafers/month capacity)
-    construction_time_for_100k_wafers_per_month: 2.41
-
-    # Fab construction time multiplier - applies uncertainty to computed duration
-    # Discrete model: relative_sigma=0.35 applied to computed duration
-    # CI80 calculated from lognormal with relative_sigma=0.35: [0.64, 1.56]
-    fab_construction_time_multiplier:
-      dist: lognormal
-      ci80: [0.64, 1.56]
-
-    # PRC lithography scanner production in first year
-    # Discrete model: median=20, relative_sigma=0.30
-    prc_lithography_scanners_produced_in_first_year:
-      dist: lognormal
-      ci80: [13.7, 29.2]
-
-    # Additional PRC lithography scanners produced per year after first year
-    # Discrete model: median=16, relative_sigma=0.30
-    prc_additional_lithography_scanners_produced_per_year:
-      dist: lognormal
-      ci80: [11.0, 23.3]
-
-    # Labor productivity: wafers produced per operating worker per month (for black projects)
-    # Discrete model: median=24.64, relative_sigma=0.62
-    fab_wafers_per_month_per_operating_worker:
-      dist: lognormal
-      ci80: [11.9, 51.2]
-
-# =========================================================================
-# DATACENTER AND ENERGY PARAMETERS WITH UNCERTAINTY
-# =========================================================================
-datacenter_and_energy:
-  prc_energy_consumption:
-    # Datacenter construction productivity: MW of capacity per worker per year
-    # Discrete model: median=0.13, relative_sigma=0.40
-    data_center_mw_per_year_per_construction_worker:
-      dist: lognormal
-      ci80: [0.079, 0.213]
-
-    # Datacenter operating labor: MW of capacity per operating worker
-    # Discrete model: median=1.0 (1 worker per MW), relative_sigma=0.40
-    data_center_mw_per_operating_worker:
-      dist: lognormal
-      ci80: [0.61, 1.64]
-
-# =========================================================================
-# BLACK PROJECT PARAMETERS WITH UNCERTAINTY
-# =========================================================================
-black_project:
-  properties:
-    # PRC localization years - separate distributions for each process node
-    # Based on reference model: linear interpolation from 0% at 2025 to X% at 2031
-    # 28nm: 25% by 2031, 14nm: 10% by 2031, 7nm: 6% by 2031
-
-    # 28nm localization: 25% probability by 2031
-    prc_localization_year_28nm:
-      dist: choice
-      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
-      p: [0.042, 0.042, 0.042, 0.042, 0.042, 0.042, 0.748]
-
-    # 14nm localization: 10% probability by 2031
-    prc_localization_year_14nm:
-      dist: choice
-      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
-      p: [0.017, 0.017, 0.017, 0.017, 0.017, 0.017, 0.898]
-
-    # 7nm localization: 6% probability by 2031
-    prc_localization_year_7nm:
-      dist: choice
-      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]
-      p: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.94]
-
-    # Fraction of lithography scanners to divert (fixed 10% to match reference model)
-    fraction_of_lithography_scanners_to_divert_at_black_project_start: 0.10

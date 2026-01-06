@@ -1,0 +1,242 @@
+{
+  "world": {
+    "hvm": {
+      "180nm": {
+        "DUV_scanner": 1996.5,
+        "Photomask_writer": 1984,
+        "Photoresist": 1995.5,
+        "Overlay_metrology": 1996,
+        "Ion_implanter": 1996,
+        "Electroplating": 1998.5,
+        "deposition": null
+      },
+      "90nm": {
+        "DUV_scanner": 2001.5,
+        "Photomask_writer": 1984,
+        "Photoresist": 2001.5,
+        "Overlay_metrology": 2001.5,
+        "Ion_implanter": null,
+        "Electroplating": 1998.5,
+        "deposition": null
+      },
+      "45nm": {
+        "DUV_scanner": 2006,
+        "Photomask_writer": 1984,
+        "Photoresist": 2006,
+        "Overlay_metrology": 2006.5,
+        "Ion_implanter": 2005.5,
+        "Electroplating": 2004,
+        "deposition": null
+      },
+      "28nm": {
+        "DUV_scanner": 2010,
+        "Photomask_writer": 1998,
+        "Photoresist": 2010.5,
+        "Overlay_metrology": 2009.5,
+        "Ion_implanter": 2012.5,
+        "Electroplating": 2007,
+        "deposition": 2010.5
+      },
+      "14nm": {
+        "DUV_scanner": 2013.5,
+        "Photomask_writer": 1998,
+        "Photoresist": 2013.5,
+        "Overlay_metrology": 2012.5,
+        "Ion_implanter": 2013.5,
+        "Electroplating": 2012,
+        "deposition": 2014.5
+      },
+      "7nm": {
+        "DUV_scanner": 2016.5,
+        "Photomask_writer": 2002,
+        "Photoresist": 2017.5,
+        "Overlay_metrology": 2017.5,
+        "Ion_implanter": 2021.5,
+        "Electroplating": 2014.5,
+        "deposition": 2017.5
+      }
+    },
+    "pilot": {
+      "180nm": {
+        "DUV_scanner": 1995,
+        "Photomask_writer": 1984,
+        "Photoresist": 1993.5,
+        "Overlay_metrology": 1994,
+        "Ion_implanter": 1991.5,
+        "Electroplating": 1996.5,
+        "deposition": null
+      },
+      "90nm": {
+        "DUV_scanner": 2000,
+        "Photomask_writer": 1984,
+        "Photoresist": 1998.5,
+        "Overlay_metrology": 1999,
+        "Ion_implanter": null,
+        "Electroplating": 1998,
+        "deposition": null
+      },
+      "45nm": {
+        "DUV_scanner": 2004,
+        "Photomask_writer": 1984,
+        "Photoresist": 2004,
+        "Overlay_metrology": 2005.5,
+        "Ion_implanter": 2004,
+        "Electroplating": 2002,
+        "deposition": null
+      },
+      "28nm": {
+        "DUV_scanner": 2008.5,
+        "Photomask_writer": 1998,
+        "Photoresist": 2008.5,
+        "Overlay_metrology": 2008,
+        "Ion_implanter": 2010.5,
+        "Electroplating": 2006,
+        "deposition": 2009.5
+      },
+      "14nm": {
+        "DUV_scanner": 2013,
+        "Photomask_writer": 1998,
+        "Photoresist": 2012.5,
+        "Overlay_metrology": 2011.5,
+        "Ion_implanter": 2012.5,
+        "Electroplating": 2009.5,
+        "deposition": 2012.5
+      },
+      "7nm": {
+        "DUV_scanner": 2015,
+        "Photomask_writer": 2002,
+        "Photoresist": 2015.5,
+        "Overlay_metrology": 2016,
+        "Ion_implanter": 2019.5,
+        "Electroplating": 2012,
+        "deposition": 2016.5
+      }
+    }
+  },
+  "china": {
+    "hvm": {
+      "180nm": {
+        "DUV_scanner": 2012,
+        "Photomask_writer": null,
+        "Photoresist": 2018,
+        "Overlay_metrology": 2022,
+        "Ion_implanter": null,
+        "Electroplating": null,
+        "deposition": 2015,
+        "etch": 2011
+      },
+      "90nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": 2018,
+        "Overlay_metrology": 2022,
+        "Ion_implanter": null,
+        "Electroplating": null,
+        "deposition": 2015,
+        "etch": 2011
+      },
+      "45nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": null,
+        "Overlay_metrology": null,
+        "Ion_implanter": 2016,
+        "Electroplating": null,
+        "deposition": 2015,
+        "etch": 2012.5
+      },
+      "28nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": null,
+        "Overlay_metrology": null,
+        "Ion_implanter": 2023,
+        "Electroplating": 2022,
+        "deposition": 2015,
+        "etch": 2012.5
+      },
+      "14nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": null,
+        "Overlay_metrology": null,
+        "Ion_implanter": null,
+        "Electroplating": null,
+        "deposition": null,
+        "etch": 2014.5
+      },
+      "7nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": null,
+        "Overlay_metrology": null,
+        "Ion_implanter": null,
+        "Electroplating": null,
+        "deposition": null,
+        "etch": 2018.5
+      }
+    },
+    "pilot": {
+      "180nm": {
+        "DUV_scanner": 2009,
+        "Photomask_writer": null,
+        "Photoresist": 2009,
+        "Overlay_metrology": 2022,
+        "Ion_implanter": null,
+        "Electroplating": null,
+        "deposition": 2012,
+        "etch": 2007
+      },
+      "90nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": 2009,
+        "Overlay_metrology": 2022,
+        "Ion_implanter": null,
+        "Electroplating": null,
+        "deposition": 2012,
+        "etch": 2007
+      },
+      "45nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": 2020,
+        "Overlay_metrology": 2023,
+        "Ion_implanter": 2015,
+        "Electroplating": null,
+        "deposition": 2012,
+        "etch": 2011
+      },
+      "28nm": {
+        "DUV_scanner": 2023,
+        "Photomask_writer": null,
+        "Photoresist": 2021,
+        "Overlay_metrology": 2023,
+        "Ion_implanter": 2012.5,
+        "Electroplating": 2019,
+        "deposition": 2012,
+        "etch": 2011
+      },
+      "14nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": null,
+        "Overlay_metrology": null,
+        "Ion_implanter": null,
+        "Electroplating": null,
+        "deposition": 2015.5,
+        "etch": 2013
+      },
+      "7nm": {
+        "DUV_scanner": null,
+        "Photomask_writer": null,
+        "Photoresist": null,
+        "Overlay_metrology": null,
+        "Ion_implanter": null,
+        "Electroplating": null,
+        "deposition": 2018,
+        "etch": 2018
+      }
+    }
+  }
+}
