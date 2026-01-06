@@ -14,7 +14,7 @@ from typing import Dict, Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator"))
 
 from ai_futures_simulator import AIFuturesSimulator
-from parameters.classes import ModelParameters
+from parameters.model_parameters import ModelParameters
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +34,8 @@ def run_black_project_simulations(
     """
     start_time = time.perf_counter()
 
-    # Load model parameters from YAML - use dedicated black project monte carlo config
-    config_path = Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator" / "parameters" / "black_project_monte_carlo_parameters.yaml"
+    # Load model parameters from YAML - use shared monte carlo config
+    config_path = Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator" / "parameters" / "monte_carlo_parameters.yaml"
     logger.info(f"[black-project] Loading config from: {config_path}")
 
     try:
@@ -44,6 +44,10 @@ def run_black_project_simulations(
     except Exception as e:
         logger.exception(f"[black-project] Failed to load model parameters: {e}")
         raise
+
+    # For black project page: disable software progress updates (only compute matters)
+    model_params.software_r_and_d['update_software_progress'] = False
+    logger.info("[black-project] Set update_software_progress=False for black project simulations")
 
     agreement_year = float(time_range[0]) if time_range else 2027.0
     end_year = float(time_range[1]) if len(time_range) > 1 else 2037.0

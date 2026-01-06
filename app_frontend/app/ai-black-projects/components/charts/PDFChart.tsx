@@ -192,22 +192,24 @@ export function PDFChart({
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
       gridcolor: 'rgba(128, 128, 128, 0.2)',
       // For log scale, show only order-of-magnitude ticks (no 2, 5 intermediate ticks)
-      dtick: logScale ? 1 : undefined,
+      ...(logScale ? { dtick: 1 } : {}),
     },
     yaxis: {
       title: { text: effectiveYLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
-      tickformat: isProbability ? '.0%' : undefined,
+      ...(isProbability ? { tickformat: '.0%' } : {}),
       gridcolor: 'rgba(128, 128, 128, 0.2)',
     },
     // Secondary y-axis for median line (invisible, just for positioning)
-    yaxis2: showMedianLine ? {
-      overlaying: 'y',
-      range: [0, 1],
-      showgrid: false,
-      showticklabels: false,
-      zeroline: false,
-    } : undefined,
+    ...(showMedianLine ? {
+      yaxis2: {
+        overlaying: 'y',
+        range: [0, 1],
+        showgrid: false,
+        showticklabels: false,
+        zeroline: false,
+      },
+    } : {}),
     // Annotation for median value on x-axis (aligned with tick labels)
     annotations: showMedianLine && median > 0 ? [{
       x: logScale ? Math.log10(median) : median,

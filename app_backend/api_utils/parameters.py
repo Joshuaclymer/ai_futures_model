@@ -11,8 +11,8 @@ from typing import Any
 #            ai_futures_simulator/ai_futures_simulator/parameters/...
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator"))
 
+from parameters.model_parameters import ModelParameters
 from parameters.classes import (
-    ModelParameters,
     SimulationParameters,
     SimulationSettings,
 )
@@ -21,7 +21,7 @@ from parameters.classes import (
 DEVELOPER_ID = "us_frontier_lab"
 
 # Default YAML config path
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "modal_parameters.yaml"
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "monte_carlo_parameters.yaml"
 
 # Cache the model parameters (loaded once at startup)
 _cached_model_params = None

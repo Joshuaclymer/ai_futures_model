@@ -205,7 +205,13 @@ class ModelParameters:
             survival_rate_parameters=SurvivalRateParameters(**sampled_compute.get("survival_rate_parameters", {})),
             USComputeParameters=USComputeParameters(**sampled_compute.get("us_compute", {})),
             PRCComputeParameters=PRCComputeParameters(**sampled_compute.get("prc_compute", {})),
-            compute_allocations=ComputeAllocations(**sampled_compute.get("compute_allocations", {})),
+            compute_allocations=ComputeAllocations(**sampled_compute.get("compute_allocations", {
+                "fraction_for_ai_r_and_d_inference": 0.29,
+                "fraction_for_ai_r_and_d_training": 0.25,
+                "fraction_for_external_deployment": 0.3,
+                "fraction_for_alignment_research": 0.01,
+                "fraction_for_frontier_training": 0.15,
+            })),
         )
 
         # Build nested datacenter and energy parameters
