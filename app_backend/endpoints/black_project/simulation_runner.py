@@ -14,7 +14,7 @@ from typing import Dict, Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator"))
 
 from ai_futures_simulator import AIFuturesSimulator
-from parameters.simulation_parameters import ModelParameters
+from parameters.classes import ModelParameters
 
 logger = logging.getLogger(__name__)
 

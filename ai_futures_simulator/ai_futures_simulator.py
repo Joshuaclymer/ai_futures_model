@@ -14,7 +14,7 @@ from typing import Dict, List, Tuple
 from classes.world.world import World
 from classes.flat_world import FlatWorld
 from classes.simulation_primitives import SimulationResult
-from parameters.simulation_parameters import SimulationParameters, ModelParameters
+from parameters.classes import SimulationParameters, ModelParameters
 from initialize_world_history import initialize_world_for_year
 from world_updaters.combined_updater import CombinedUpdater, FlatCombinedUpdater
 

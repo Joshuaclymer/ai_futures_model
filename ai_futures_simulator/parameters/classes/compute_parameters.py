@@ -18,12 +18,20 @@ class ExogenousComputeTrends:
 
 @dataclass
 class USComputeParameters:
-    us_frontier_project_compute_tpp_h100e_in_2025: float
-    us_frontier_project_compute_annual_growth_rate: float # annual multiplier
+    us_frontier_developer_operating_compute_tpp_h100e_in_2025: float
+    us_frontier_developer_operating_compute_annual_growth_rate: float # annual multiplier
     proportion_of_compute_in_largest_ai_sw_developer: float
     # Training compute slowdown parameters (to match old model's behavior)
     slowdown_year: float  # Year when training compute growth rate slows down
-    post_slowdown_training_compute_growth_rate: float  # OOMs/year after slowdown
+    post_slowdown_operating_compute_growth_rate: float  # OOMs/year after slowdown
+
+@dataclass
+class ComputeAllocations:
+    fraction_for_ai_r_and_d_inference: float 
+    fraction_for_ai_r_and_d_training: float 
+    fraction_for_external_deployment: float
+    fraction_for_alignment_research: float
+    fraction_for_frontier_training: float
 
 @dataclass
 class PRCComputeParameters:
@@ -72,3 +80,4 @@ class ComputeParameters:
     survival_rate_parameters : SurvivalRateParameters
     USComputeParameters: USComputeParameters
     PRCComputeParameters: PRCComputeParameters
+    compute_allocations: ComputeAllocations

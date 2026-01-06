@@ -9,7 +9,7 @@ from typing import Dict
 
 from classes.world.world import World
 from classes.world.entities import NamedNations
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 from initialize_world_history.initialize_nations import initialize_usa, initialize_prc
 from initialize_world_history.initialize_ai_software_developers.initialize_ai_software_developers import initialize_us_frontier_lab
 

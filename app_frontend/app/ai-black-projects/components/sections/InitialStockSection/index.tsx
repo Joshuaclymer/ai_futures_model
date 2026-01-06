@@ -16,6 +16,84 @@ interface InitialStockSectionProps {
   parameters: Parameters;
 }
 
+// Format number with SI notation (K, M, G) to 2 significant figures
+function formatSINotation(num: number): string {
+  if (num === 0) return '0';
+
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+
+  // Helper to format to 2 significant figures without scientific notation
+  const formatSigFigs = (val: number): string => {
+    if (val >= 100) return Math.round(val).toString();
+    if (val >= 10) return val.toFixed(1).replace(/\.0$/, '');
+    return val.toFixed(2).replace(/\.?0+$/, '');
+  };
+
+  if (abs >= 1e9) {
+    return sign + formatSigFigs(abs / 1e9) + 'G';
+  } else if (abs >= 1e6) {
+    return sign + formatSigFigs(abs / 1e6) + 'M';
+  } else if (abs >= 1e3) {
+    return sign + formatSigFigs(abs / 1e3) + 'K';
+  } else if (abs >= 1) {
+    return sign + formatSigFigs(abs);
+  } else if (abs >= 0.001) {
+    return sign + abs.toFixed(3).replace(/\.?0+$/, '');
+  } else {
+    return sign + abs.toExponential(1);
+  }
+}
+
+// Calculate median from samples
+function calculateMedian(samples: number[]): number | null {
+  if (!samples || samples.length === 0) return null;
+  const sorted = [...samples].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+// Create median line trace for histograms
+function createMedianLineTrace(median: number): Plotly.Data {
+  return {
+    x: [median, median],
+    y: [0, 1],
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: '#333', width: 2, dash: 'dash' },
+    yaxis: 'y2',
+    showlegend: false,
+    hoverinfo: 'skip',
+  } as Plotly.Data;
+}
+
+// Create median annotation for x-axis label (aligned with tick labels)
+function createMedianAnnotation(median: number, useLogScale: boolean = false): Partial<Plotly.Annotations> {
+  return {
+    x: useLogScale ? Math.log10(median) : median,
+    y: 0,
+    xref: 'x',
+    yref: 'paper',
+    text: formatSINotation(median),
+    showarrow: false,
+    font: { size: CHART_FONT_SIZES.tickLabel, color: '#333' },
+    yanchor: 'top',
+    yshift: -1,
+    bgcolor: 'white',
+    borderpad: 0,
+  };
+}
+
+// Layout additions for median line (secondary y-axis)
+const medianLineLayoutAdditions: Partial<Plotly.Layout> = {
+  yaxis2: {
+    overlaying: 'y',
+    range: [0, 1],
+    showgrid: false,
+    showticklabels: false,
+    zeroline: false,
+  },
+};
+
 // Create histogram trace with probability normalization
 // For log-scale x-axis, we need to bin in log space
 function createHistogramTrace(
@@ -80,6 +158,7 @@ function createHistogramTrace(
         line: { color: color, width: 1 },
       },
       hovertemplate: 'Value: %{x:.2s}<br>Probability: %{y:.3f}<extra></extra>',
+      showlegend: false,
     } as Plotly.Data;
   }
 
@@ -93,6 +172,7 @@ function createHistogramTrace(
       line: { color: color, width: 1 },
     },
     hovertemplate: 'Value: %{x:.2s}<br>Probability: %{y:.3f}<extra></extra>',
+    showlegend: false,
   } as Plotly.Data;
 }
 
@@ -166,35 +246,52 @@ export function InitialStockSection({
   }, [initialStock]);
 
   // Create histogram data for initial compute stock (log-binned for log scale x-axis)
-  const computeHistogramData = useMemo(() => {
+  const computeHistogram = useMemo(() => {
     const samples = initialStock?.initial_compute_stock_samples;
-    if (!samples?.length) return [];
-    const trace = createHistogramTrace(samples, COLOR_PALETTE.chip_stock, 25, true);
-    return trace ? [trace] : [];
+    if (!samples?.length) return { data: [], median: null };
+    const validSamples = samples.filter(s => s > 0);
+    const trace = createHistogramTrace(validSamples, COLOR_PALETTE.chip_stock, 25, true);
+    const median = calculateMedian(validSamples);
+    const traces = trace ? [trace] : [];
+    if (median !== null) {
+      traces.push(createMedianLineTrace(median));
+    }
+    return { data: traces, median };
   }, [initialStock]);
 
   // Create histogram data for initial PRC stock (log-binned for log scale x-axis)
-  const prcStockHistogramData = useMemo(() => {
+  const prcStockHistogram = useMemo(() => {
     const samples = initialStock?.initial_prc_stock_samples;
-    if (!samples?.length) return [];
-    const trace = createHistogramTrace(samples, COLOR_PALETTE.chip_stock, 25, true);
-    return trace ? [trace] : [];
+    if (!samples?.length) return { data: [], median: null };
+    const validSamples = samples.filter(s => s > 0);
+    const trace = createHistogramTrace(validSamples, COLOR_PALETTE.chip_stock, 25, true);
+    const median = calculateMedian(validSamples);
+    const traces = trace ? [trace] : [];
+    if (median !== null) {
+      traces.push(createMedianLineTrace(median));
+    }
+    return { data: traces, median };
   }, [initialStock]);
 
   // Create energy requirements histogram (from API-provided samples)
-  const energyRequirementsData = useMemo(() => {
+  const energyRequirementsHistogram = useMemo(() => {
     const energySamples = initialStock?.initial_energy_samples;
-    if (!energySamples?.length) return [];
+    if (!energySamples?.length) return { data: [], median: null };
 
     // Filter out any invalid values
     const validEnergySamples = energySamples.filter(e =>
       typeof e === 'number' && !isNaN(e) && isFinite(e) && e > 0
     );
 
-    if (validEnergySamples.length === 0) return [];
+    if (validEnergySamples.length === 0) return { data: [], median: null };
 
     const trace = createHistogramTrace(validEnergySamples, COLOR_PALETTE.datacenters_and_energy, 20, true);
-    return trace ? [trace] : [];
+    const median = calculateMedian(validEnergySamples);
+    const traces = trace ? [trace] : [];
+    if (median !== null) {
+      traces.push(createMedianLineTrace(median));
+    }
+    return { data: traces, median };
   }, [initialStock]);
 
   // Create PRC compute over time time series data
@@ -385,12 +482,13 @@ export function InitialStockSection({
           </div>
           <div style={{ height: 240 }}>
             <PlotlyChart
-              data={computeHistogramData}
+              data={computeHistogram.data}
               layout={{
                 xaxis: {
                   title: { text: 'PRC Dark Compute Stock (H100 equivalents)', font: { size: CHART_FONT_SIZES.axisTitle } },
                   tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   type: 'log',
+                  dtick: 1,
                   automargin: true,
                 },
                 yaxis: {
@@ -398,9 +496,11 @@ export function InitialStockSection({
                   tickfont: { size: CHART_FONT_SIZES.tickLabel },
                 },
                 margin: { l: 50, r: 10, t: 10, b: 55 },
+                ...medianLineLayoutAdditions,
+                annotations: computeHistogram.median !== null ? [createMedianAnnotation(computeHistogram.median, true)] : [],
               }}
               isLoading={isLoading}
-              isEmpty={computeHistogramData.length === 0}
+              isEmpty={computeHistogram.data.length === 0}
             />
           </div>
         </div>
@@ -471,21 +571,24 @@ export function InitialStockSection({
           <div className="breakdown-item">
             <div className="breakdown-plot">
               <PlotlyChart
-                data={prcStockHistogramData}
+                data={prcStockHistogram.data}
                 layout={{
                   xaxis: {
                     title: { text: 'H100 equivalents', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     type: 'log',
+                    dtick: 1,
                   },
                   yaxis: {
                     title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   margin: { l: 45, r: 10, t: 10, b: 45 },
+                  ...medianLineLayoutAdditions,
+                  annotations: prcStockHistogram.median !== null ? [createMedianAnnotation(prcStockHistogram.median, true)] : [],
                 }}
                 isLoading={isLoading}
-                isEmpty={prcStockHistogramData.length === 0}
+                isEmpty={prcStockHistogram.data.length === 0}
               />
             </div>
             <div className="breakdown-label">PRC chip stock at agreement start</div>
@@ -516,21 +619,24 @@ export function InitialStockSection({
           <div className="breakdown-item">
             <div className="breakdown-plot">
               <PlotlyChart
-                data={computeHistogramData}
+                data={computeHistogram.data}
                 layout={{
                   xaxis: {
                     title: { text: 'H100 equivalents', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     type: 'log',
+                    dtick: 1,
                   },
                   yaxis: {
                     title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   margin: { l: 45, r: 10, t: 10, b: 45 },
+                  ...medianLineLayoutAdditions,
+                  annotations: computeHistogram.median !== null ? [createMedianAnnotation(computeHistogram.median, true)] : [],
                 }}
                 isLoading={isLoading}
-                isEmpty={computeHistogramData.length === 0}
+                isEmpty={computeHistogram.data.length === 0}
               />
             </div>
             <div className="breakdown-label">Initial PRC unreported chip stock</div>
@@ -567,21 +673,24 @@ export function InitialStockSection({
           <div className="breakdown-item">
             <div className="breakdown-plot">
               <PlotlyChart
-                data={computeHistogramData}
+                data={computeHistogram.data}
                 layout={{
                   xaxis: {
                     title: { text: 'Dark Compute Stock (H100e)', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     type: 'log',
+                    dtick: 1,
                   },
                   yaxis: {
                     title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   margin: { l: 40, r: 5, t: 5, b: 45 },
+                  ...medianLineLayoutAdditions,
+                  annotations: computeHistogram.median !== null ? [createMedianAnnotation(computeHistogram.median, true)] : [],
                 }}
                 isLoading={isLoading}
-                isEmpty={computeHistogramData.length === 0}
+                isEmpty={computeHistogram.data.length === 0}
               />
             </div>
             <div className="breakdown-label">Initial PRC unreported chip stock</div>
@@ -633,21 +742,24 @@ export function InitialStockSection({
           <div className="breakdown-item">
             <div className="breakdown-plot">
               <PlotlyChart
-                data={energyRequirementsData}
+                data={energyRequirementsHistogram.data}
                 layout={{
                   xaxis: {
                     title: { text: 'Energy Requirements (GW)', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
                     type: 'log',
+                    dtick: 1,
                   },
                   yaxis: {
                     title: { text: 'Probability', font: { size: CHART_FONT_SIZES.axisTitle } },
                     tickfont: { size: CHART_FONT_SIZES.tickLabel },
                   },
                   margin: { l: 40, r: 5, t: 5, b: 45 },
+                  ...medianLineLayoutAdditions,
+                  annotations: energyRequirementsHistogram.median !== null ? [createMedianAnnotation(energyRequirementsHistogram.median, true)] : [],
                 }}
                 isLoading={isLoading}
-                isEmpty={energyRequirementsData.length === 0}
+                isEmpty={energyRequirementsHistogram.data.length === 0}
               />
             </div>
             <div className="breakdown-label">Energy requirements of initial stock (GW)</div>

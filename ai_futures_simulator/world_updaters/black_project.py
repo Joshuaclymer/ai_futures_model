@@ -20,12 +20,12 @@ from classes.world.entities import AIBlackProject, AISoftwareDeveloper, Nation, 
 from classes.world.assets import Compute, Fabs, Datacenters
 from classes.world.software_progress import AISoftwareProgress
 from classes.simulation_primitives import StateDerivative, WorldUpdater
-from parameters.simulation_parameters import SimulationParameters
-from parameters.black_project_parameters import BlackProjectParameters, BlackProjectProperties
-from parameters.compute_parameters import ComputeParameters, PRCComputeParameters, ExogenousComputeTrends, SurvivalRateParameters
-from parameters.data_center_and_energy_parameters import DataCenterAndEnergyParameters, PRCDataCenterAndEnergyParameters
-from parameters.perceptions_parameters import BlackProjectPerceptionsParameters
-from parameters.policy_parameters import PolicyParameters
+from parameters.classes import SimulationParameters
+from parameters.classes import BlackProjectParameters, BlackProjectProperties
+from parameters.classes import ComputeParameters, PRCComputeParameters, ExogenousComputeTrends, SurvivalRateParameters
+from parameters.classes import DataCenterAndEnergyParameters, PRCDataCenterAndEnergyParameters
+from parameters.classes import BlackProjectPerceptionsParameters
+from parameters.classes import PolicyParameters
 from world_updaters.compute.chip_survival import (
     calculate_survival_rate,
     calculate_functional_compute,

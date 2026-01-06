@@ -11,7 +11,7 @@ from typing import Any
 #            ai_futures_simulator/ai_futures_simulator/parameters/...
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator"))
 
-from parameters.simulation_parameters import (
+from parameters.classes import (
     ModelParameters,
     SimulationParameters,
     SimulationSettings,
@@ -75,7 +75,7 @@ PARAM_ALIASES = {
     'initial_hazard_rate': 'compute.survival_rate_parameters.initial_annual_hazard_rate',
     'hazard_rate_increase_per_year': 'compute.survival_rate_parameters.annual_hazard_rate_increase_per_year',
     # US compute (alias for backwards compatibility)
-    'us_frontier_project_compute_growth_rate': 'compute.USComputeParameters.us_frontier_project_compute_annual_growth_rate',
+    'us_frontier_project_compute_growth_rate': 'compute.USComputeParameters.us_frontier_developer_operating_compute_annual_growth_rate',
 }
 
 # Parameters that need special transformation before being set

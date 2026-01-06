@@ -25,6 +25,7 @@ export interface ChartDataPoint {
     humanLabor?: number | null;
     inferenceCompute?: number | null;
     experimentCompute?: number | null;
+    frontierTrainingCompute?: number | null;
     researchEffort?: number | null;
     researchStock?: number | null;
     softwareProgressRate?: number | null;

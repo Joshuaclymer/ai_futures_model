@@ -11,6 +11,7 @@ from parameters.classes.compute_parameters import (
     SurvivalRateParameters,
     USComputeParameters,
     PRCComputeParameters,
+    ComputeAllocations,
 )
 from parameters.classes.policy_parameters import PolicyParameters
 from parameters.classes.data_center_and_energy_parameters import (
@@ -49,6 +50,7 @@ __all__ = [
     "SurvivalRateParameters",
     "USComputeParameters",
     "PRCComputeParameters",
+    "ComputeAllocations",
     # Policy
     "PolicyParameters",
     # Datacenter and Energy

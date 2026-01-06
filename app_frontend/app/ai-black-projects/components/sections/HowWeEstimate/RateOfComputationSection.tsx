@@ -102,9 +102,10 @@ interface PDFBreakdownChartProps {
   xLabel?: string;
   onClick?: () => void;
   tooltip?: string;
+  showMedianLine?: boolean;
 }
 
-function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'H100e', onClick, tooltip }: PDFBreakdownChartProps) {
+function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'H100e', onClick, tooltip, showMedianLine = true }: PDFBreakdownChartProps) {
   const isClickable = !!onClick;
 
   return (
@@ -121,6 +122,7 @@ function PDFBreakdownChart({ title, description, descriptionNode, samples, color
           yLabel="Prob"
           logScale={true}
           numBins={15}
+          showMedianLine={showMedianLine}
         />
       </div>
       <div className="breakdown-label">{title}</div>
@@ -201,6 +203,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             xLabel="H100e"
             onClick={() => scrollToSection('initialStockSection')}
             tooltip="Click for more details"
+            showMedianLine={false}
           />
 
           <Operator>+</Operator>

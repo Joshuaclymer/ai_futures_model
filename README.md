@@ -40,15 +40,17 @@ You can also visualize the outputs of the model with the app in `app_frontend` a
 
 1. **Separate *modeling decisions* from *parameter values***. Modeling decisions are represented as code in the `/world_updaters` directory. Parameter values are stored in `/parameters` as yaml files.
 
-2. **Separate *model state* from *metrics***. *State* includes the minimal set of variables needed to determine how the world changes at a given time. *Metrics* are derived quantities computed from state. For example, since all AI R&D metrics (time horizon, speedup, etc) can be calculated from OOMs of effective compute and research stock, OOMs of effective compute and research stock are the only state variables. State and metrics live in the same dataclass, but state fields are marked with `metadata={'is_state': True}` so they can be identified programmatically.
+2. **Represent uncertainty in the monte_carlo.yaml configuration**. If you have uncertainty over parameters, represent this uncertainty with distributions over the parameters specified according to the format provided in `ai_futures_simulator/parameters/monte_carlo_parameters.yaml`
 
-3. **Separate *data structures* from *object instances* and *logic***. Define all data structures in `classes/world`. This makes it easier to keep track of what kinds of data the model represents.
+3. **Separate *model state* from *metrics***. *State* includes the minimal set of variables needed to determine how the world changes at a given time. *Metrics* are derived quantities computed from state. For example, since all AI R&D metrics (time horizon, speedup, etc) can be calculated from OOMs of effective compute and research stock, OOMs of effective compute and research stock are the only state variables. State and metrics live in the same dataclass, but state fields are marked with `metadata={'is_state': True}` so they can be identified programmatically.
 
-4. **Organize components by *what part of the state they affect***. Each module in `/world_updaters` can contribute to `d(state)/dt` or set state/metric values directly. We want it to be easy to determine *what code* affects a given part of the world state.
+4. **Separate *data structures* from *object instances* and *logic***. Define all data structures in `classes/world`. This makes it easier to keep track of what kinds of data the model represents.
 
-5. **Differentiable by default**. Avoid discrete logic to preserve differentiability when possible.
+5. **Organize components by *what part of the state they affect***. Each module in `/world_updaters` can contribute to `d(state)/dt` or set state/metric values directly. We want it to be easy to determine *what code* affects a given part of the world state.
 
-6. **Document components**. Document components with a README.md file that includes:
+6. **Differentiable by default**. Avoid discrete logic to preserve differentiability when possible.
+
+7. **Document components**. Document components with a README.md file that includes:
    - State the component reads
    - State the component writes (which derivatives it contributes to)
    - An explanation of the code, which ideally links to an interactive visualization in /app.

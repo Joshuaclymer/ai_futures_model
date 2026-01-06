@@ -24,7 +24,7 @@ import ModelDiagram from '@/svgs/model-diagram-semantic.svg';
 
 // Utils and constants
 import { formatTo3SigFigs, formatWorkTimeDuration, formatUplift, formatCompactNumberNode, formatAsPowerOfTenText, formatSCHorizon, formatTimeDuration, yearsToMinutes } from '@/utils/formatting';
-import { DEFAULT_PARAMETERS, ParametersType } from '@/constants/parameters';
+import { DEFAULT_PARAMETERS, ParametersType, H100E_TPP_TO_FLOP_OOM_OFFSET } from '@/constants/parameters';
 import { CHART_LAYOUT } from '@/constants/chartLayout';
 import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, ParameterRecord } from '@/utils/monteCarlo';
 import { encodeFullStateToParams, decodeFullStateFromParams, DEFAULT_CHECKBOX_STATES } from '@/utils/urlState';
@@ -70,7 +70,10 @@ function processInitialData(data: ComputeApiResponse): ChartDataPoint[] {
     horizonLength: point.horizonLength,
     horizonFormatted: formatWorkTimeDuration(point.horizonLength),
     effectiveCompute: point.effectiveCompute,
-    trainingCompute: point.trainingCompute ?? null,
+    // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
+    trainingCompute: point.frontierTrainingCompute && point.frontierTrainingCompute > 0
+      ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
+      : null,
     automationFraction: point.automationFraction ?? null,
     aiSoftwareProgressMultiplier: point.aiSoftwareProgressMultiplier,
     aiSwProgressMultRefPresentDay: point.aiSwProgressMultRefPresentDay,
@@ -173,7 +176,10 @@ export default function PlaygroundClient({
         horizonFormatted: formatWorkTimeDuration(point.horizonLength),
         effectiveCompute: point.effectiveCompute,
         automationFraction: point.automationFraction,
-        trainingCompute: point.trainingCompute ?? null,
+        // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
+        trainingCompute: point.frontierTrainingCompute && point.frontierTrainingCompute > 0
+          ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
+          : null,
         aiSwProgressMultRefPresentDay: point.aiSwProgressMultRefPresentDay,
       })) as ChartDataPoint[],
       params: sample.params

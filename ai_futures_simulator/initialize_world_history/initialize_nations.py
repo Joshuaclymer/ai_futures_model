@@ -6,7 +6,7 @@ Initializes Nation entities for a given year.
 
 from classes.world.entities import Nation, NamedNations
 from classes.world.assets import Compute, Fabs, Datacenters
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 
 # H100 reference power consumption in watts
 H100_POWER_W = 700.0

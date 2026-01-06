@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import List, Union, TYPE_CHECKING
 
 from classes.world.world import World
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 
 if TYPE_CHECKING:
     from classes.flat_world import FlatWorld, FlatStateDerivative

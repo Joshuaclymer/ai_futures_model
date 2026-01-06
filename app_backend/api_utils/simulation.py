@@ -145,6 +145,7 @@ def _extract_time_series_point(year: float, world: dict, horizon_params: dict) -
     human_labor = developer.get('human_ai_capability_researchers', 0.0)
     inference_compute = developer.get('ai_r_and_d_inference_compute_tpp_h100e', 0.0)
     experiment_compute = developer.get('ai_r_and_d_training_compute_tpp_h100e', 0.0)
+    frontier_training_compute = developer.get('frontier_training_compute_tpp_h100e', 0.0)
     training_compute_growth_rate = developer.get('training_compute_growth_rate', 0.0)
 
     point = {
@@ -163,6 +164,7 @@ def _extract_time_series_point(year: float, world: dict, horizon_params: dict) -
         'humanLabor': human_labor if human_labor and math.isfinite(human_labor) else 0.0,
         'inferenceCompute': inference_compute if inference_compute and math.isfinite(inference_compute) else 0.0,
         'experimentCompute': experiment_compute if experiment_compute and math.isfinite(experiment_compute) else 0.0,
+        'frontierTrainingCompute': frontier_training_compute if frontier_training_compute and math.isfinite(frontier_training_compute) else 0.0,
         'experimentCapacity': _safe_get(prog, 'experiment_capacity'),
         'aiResearchTaste': _safe_get(prog, 'ai_research_taste'),
         'aggregateResearchTaste': _safe_get(prog, 'aggregate_research_taste', 1.0),

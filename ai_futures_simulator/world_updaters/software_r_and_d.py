@@ -21,7 +21,7 @@ from torch import Tensor
 from classes.world.world import World
 from classes.world.entities import AISoftwareDeveloper
 from classes.simulation_primitives import StateDerivative, WorldUpdater
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 from parameters.calibrate import calibrate_from_params, CalibratedParameters
 
 # Import key functions from the progress_model package
@@ -168,8 +168,8 @@ class SoftwareRAndD(WorldUpdater):
                 us_params = getattr(self.params.compute, 'USComputeParameters', None)
                 if us_params is not None:
                     slowdown_year = getattr(us_params, 'slowdown_year', slowdown_year)
-                    post_slowdown_rate = getattr(us_params, 'post_slowdown_training_compute_growth_rate', post_slowdown_rate)
-                    annual_growth = getattr(us_params, 'us_frontier_project_compute_annual_growth_rate', 4.0)
+                    post_slowdown_rate = getattr(us_params, 'post_slowdown_operating_compute_growth_rate', post_slowdown_rate)
+                    annual_growth = getattr(us_params, 'us_frontier_developer_operating_compute_annual_growth_rate', 4.0)
                     pre_slowdown_rate = math.log10(annual_growth)
 
             # Compute growth factor with proper slowdown handling
@@ -280,7 +280,7 @@ class SoftwareRAndD(WorldUpdater):
         # Our custom fields for time-varying training compute growth
         'us_frontier_project_compute_growth_rate',
         'slowdown_year',
-        'post_slowdown_training_compute_growth_rate',
+        'post_slowdown_operating_compute_growth_rate',
         # Fields that are calibrated (will be set from _calibrated)
         'r_software',
         'rho_experiment_capacity',

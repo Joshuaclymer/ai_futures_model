@@ -251,7 +251,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                 customFormatValue={(v) => `${v.toFixed(1)}`}
                             />
                             <Slider
-                                paramName="post_slowdown_training_compute_growth_rate"
+                                paramName="post_slowdown_operating_compute_growth_rate"
                                 label="Post-Slowdown Training Compute Growth Rate"
                                 description="Annual growth rate of training compute after the slowdown year (OOMs/year)"
                                 step={0.01}

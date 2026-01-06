@@ -9,7 +9,7 @@ from typing import List, Optional, TYPE_CHECKING
 
 from classes.world.world import World
 from classes.simulation_primitives import StateDerivative, WorldUpdater
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 
 if TYPE_CHECKING:
     from classes.flat_world import FlatWorld, FlatStateDerivative

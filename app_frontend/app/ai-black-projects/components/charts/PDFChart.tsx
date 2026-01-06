@@ -4,6 +4,35 @@ import { PlotlyChart } from './PlotlyChart';
 import { hexToRgba } from '../colors';
 import { CHART_FONT_SIZES, CHART_MARGINS } from '../chartConfig';
 
+// Format number with SI notation (K, M, G) to 2 significant figures
+function formatSINotation(num: number): string {
+  if (num === 0) return '0';
+
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+
+  // Helper to format to 2 significant figures without scientific notation
+  const formatSigFigs = (val: number): string => {
+    if (val >= 100) return Math.round(val).toString();
+    if (val >= 10) return val.toFixed(1).replace(/\.0$/, '');
+    return val.toFixed(2).replace(/\.?0+$/, '');
+  };
+
+  if (abs >= 1e9) {
+    return sign + formatSigFigs(abs / 1e9) + 'G';
+  } else if (abs >= 1e6) {
+    return sign + formatSigFigs(abs / 1e6) + 'M';
+  } else if (abs >= 1e3) {
+    return sign + formatSigFigs(abs / 1e3) + 'K';
+  } else if (abs >= 1) {
+    return sign + formatSigFigs(abs);
+  } else if (abs >= 0.001) {
+    return sign + abs.toFixed(3).replace(/\.?0+$/, '');
+  } else {
+    return sign + abs.toExponential(1);
+  }
+}
+
 interface PDFChartProps {
   samples: number[];
   color: string;
@@ -14,6 +43,8 @@ interface PDFChartProps {
   isLoading?: boolean;
   /** 'probability' normalizes so bars sum to 1; 'density' divides by bin width too */
   normalize?: 'probability' | 'density';
+  /** Show a dashed vertical line at the median (default: true) */
+  showMedianLine?: boolean;
 }
 
 /**
@@ -29,6 +60,7 @@ export function PDFChart({
   numBins = 12,
   isLoading = false,
   normalize = 'probability',
+  showMedianLine = true,
 }: PDFChartProps) {
   // Default yLabel based on normalization
   const effectiveYLabel = yLabel ?? (normalize === 'density' ? 'Density' : 'Probability');
@@ -120,6 +152,10 @@ export function PDFChart({
   const hoverYFormat = isProbability ? '%{y:.1%}' : '%{y:.4f}';
   const hovertemplate = `${xLabel}: %{x:.2f}<br>${effectiveYLabel}: ${hoverYFormat}<extra></extra>`;
 
+  // Calculate median
+  const sortedSamples = [...validSamples].sort((a, b) => a - b);
+  const median = sortedSamples[Math.floor(sortedSamples.length / 2)];
+
   const data: Plotly.Data[] = [
     {
       type: 'bar',
@@ -131,8 +167,23 @@ export function PDFChart({
         line: { width: isProbability ? 1 : 0.5, color: isProbability ? color : 'white' },
       },
       hovertemplate,
+      showlegend: false,
     },
   ];
+
+  // Add median line trace if enabled
+  if (showMedianLine && median > 0) {
+    data.push({
+      x: [median, median],
+      y: [0, 1],
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: '#333', width: 2, dash: 'dash' },
+      yaxis: 'y2',
+      showlegend: false,
+      hoverinfo: 'skip',
+    } as Plotly.Data);
+  }
 
   const layout: Partial<Plotly.Layout> = {
     xaxis: {
@@ -140,6 +191,8 @@ export function PDFChart({
       type: logScale ? 'log' : 'linear',
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
       gridcolor: 'rgba(128, 128, 128, 0.2)',
+      // For log scale, show only order-of-magnitude ticks (no 2, 5 intermediate ticks)
+      dtick: logScale ? 1 : undefined,
     },
     yaxis: {
       title: { text: effectiveYLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
@@ -147,6 +200,28 @@ export function PDFChart({
       tickformat: isProbability ? '.0%' : undefined,
       gridcolor: 'rgba(128, 128, 128, 0.2)',
     },
+    // Secondary y-axis for median line (invisible, just for positioning)
+    yaxis2: showMedianLine ? {
+      overlaying: 'y',
+      range: [0, 1],
+      showgrid: false,
+      showticklabels: false,
+      zeroline: false,
+    } : undefined,
+    // Annotation for median value on x-axis (aligned with tick labels)
+    annotations: showMedianLine && median > 0 ? [{
+      x: logScale ? Math.log10(median) : median,
+      y: 0,
+      xref: 'x',
+      yref: 'paper',
+      text: formatSINotation(median),
+      showarrow: false,
+      font: { size: CHART_FONT_SIZES.tickLabel, color: '#333' },
+      yanchor: 'top',
+      yshift: -1,
+      bgcolor: 'white',
+      borderpad: 0,
+    }] : [],
     margin: CHART_MARGINS.compact,
     bargap: 0.05,
   };

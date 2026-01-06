@@ -11,7 +11,7 @@ from typing import Dict, Any
 # Add ai_futures_simulator subdirectory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator"))
 
-from parameters.simulation_parameters import ModelParameters
+from parameters.classes import ModelParameters
 from .utils import is_fab_built
 
 

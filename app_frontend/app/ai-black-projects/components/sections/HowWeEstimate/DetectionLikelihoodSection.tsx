@@ -94,6 +94,7 @@ function PDFBreakdownChart({ title, description, descriptionNode, samples, color
           yLabel="Prob"
           logScale={true}
           numBins={10}
+          showMedianLine={false}
         />
       </div>
       <div className="breakdown-label">{title}</div>

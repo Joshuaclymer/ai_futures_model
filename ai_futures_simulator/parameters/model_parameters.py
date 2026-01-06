@@ -26,6 +26,7 @@ from parameters.classes import (
     SurvivalRateParameters,
     USComputeParameters,
     PRCComputeParameters,
+    ComputeAllocations,
     PolicyParameters,
     DataCenterAndEnergyParameters,
     PRCDataCenterAndEnergyParameters,
@@ -67,7 +68,7 @@ class ModelParameters:
           survival_rate_parameters:
             initial_annual_hazard_rate: 0.05
           us_compute:
-            us_frontier_project_compute_tpp_h100e_in_2025: 120325.0
+            us_frontier_developer_operating_compute_tpp_h100e_in_2025: 120325.0
           prc_compute:
             total_prc_compute_tpp_h100e_in_2025: 100000.0
 
@@ -204,6 +205,7 @@ class ModelParameters:
             survival_rate_parameters=SurvivalRateParameters(**sampled_compute.get("survival_rate_parameters", {})),
             USComputeParameters=USComputeParameters(**sampled_compute.get("us_compute", {})),
             PRCComputeParameters=PRCComputeParameters(**sampled_compute.get("prc_compute", {})),
+            compute_allocations=ComputeAllocations(**sampled_compute.get("compute_allocations", {})),
         )
 
         # Build nested datacenter and energy parameters

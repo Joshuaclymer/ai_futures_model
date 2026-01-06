@@ -14,7 +14,7 @@ from torch import Tensor
 
 from classes.world.world import World
 from classes.simulation_primitives import StateDerivative, WorldUpdater
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 
 from world_updaters.compute.nation_compute import NationComputeUpdater
 from world_updaters.compute.ai_sw_developer_compute import AISoftwareDeveloperComputeUpdater

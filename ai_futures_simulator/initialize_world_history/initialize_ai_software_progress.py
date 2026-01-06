@@ -10,7 +10,7 @@ ODE integration doesn't fail with zero initial conditions.
 import torch
 
 from classes.world.software_progress import AISoftwareProgress
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 from parameters.calibrate import calibrate_from_params
 
 

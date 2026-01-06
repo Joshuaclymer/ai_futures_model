@@ -11,6 +11,31 @@ from typing import Dict, List
 from .global_compute import get_global_compute_production_between_years
 
 
+# Largest AI project parameters (from reference model ExogenousTrends)
+# These represent the compute trajectory of the largest global AI project (e.g., OpenAI/Google)
+# Used for comparing covert project compute to what the largest company would achieve without slowdown
+LARGEST_AI_PROJECT_COMPUTE_STOCK_IN_2025 = 1.2e5  # H100e
+ANNUAL_GROWTH_RATE_OF_LARGEST_AI_PROJECT_COMPUTE_STOCK = 2.91  # multiplier per year
+
+
+def get_largest_ai_project_compute_stock(year: float) -> float:
+    """
+    Get the compute stock of the largest AI project at a given year.
+
+    Compute grows exponentially from the 2025 baseline.
+
+    Args:
+        year: The year to calculate compute for
+
+    Returns:
+        Compute stock in H100 equivalents
+    """
+    years_since_2025 = year - 2025
+    return LARGEST_AI_PROJECT_COMPUTE_STOCK_IN_2025 * (
+        ANNUAL_GROWTH_RATE_OF_LARGEST_AI_PROJECT_COMPUTE_STOCK ** years_since_2025
+    )
+
+
 def compute_reduction_ratios(
     all_data: List[Dict],
     years: List[float],
@@ -35,7 +60,6 @@ def compute_reduction_ratios(
         Dict with 'chip_global', 'chip_prc', 'chip_largest', 'ai_largest', 'ai_prc' keys
     """
     pre_slowdown_growth_rate = 2.2
-    largest_company_fraction = 0.3
     SMALL_RATIO = 1e-10
 
     chip_global = []
@@ -59,7 +83,7 @@ def compute_reduction_ratios(
         if detection_year > years[-1]:
             detection_year = years[-1]
 
-        # Compute metrics up to detection
+        # Compute covert project H100-years up to detection
         op_compute = bp.get('operational_compute', [])
         bp_h100_years = 0.0
         for j, year in enumerate(years):
@@ -68,6 +92,7 @@ def compute_reduction_ratios(
             if j < len(op_compute):
                 bp_h100_years += op_compute[j] * dt
 
+        # Compute covert chip production (fab production during agreement period)
         fab_prod = bp.get('fab_cumulative_production_h100e', [])
         prod_at_detection = 0.0
         prod_at_agreement = 0.0
@@ -79,6 +104,7 @@ def compute_reduction_ratios(
                     prod_at_detection = fab_prod[j]
         bp_chip_production = max(0.0, prod_at_detection - prod_at_agreement)
 
+        # Get PRC compute at agreement year
         agreement_idx = 0
         for j, year in enumerate(years):
             if year >= agreement_year:
@@ -87,16 +113,31 @@ def compute_reduction_ratios(
         prc_at_agreement = prc_stock[agreement_idx] if agreement_idx < len(prc_stock) else prc_stock[0]
         duration = max(0.0, detection_year - agreement_year)
 
+        # Compute counterfactual chip production (no slowdown scenario)
         global_production = get_global_compute_production_between_years(agreement_year, detection_year)
         prc_production = prc_at_agreement * (pre_slowdown_growth_rate ** duration - 1)
-        largest_production = prc_at_agreement * largest_company_fraction * (pre_slowdown_growth_rate ** duration - 1)
 
+        # Largest AI project chip production = stock(detection) - stock(agreement)
+        largest_stock_at_agreement = get_largest_ai_project_compute_stock(agreement_year)
+        largest_stock_at_detection = get_largest_ai_project_compute_stock(detection_year)
+        largest_production = largest_stock_at_detection - largest_stock_at_agreement
+
+        # Compute counterfactual H100-years (integrated compute over time)
+        # For PRC: integrate prc_at_agreement * growth_rate^t from 0 to duration
         if pre_slowdown_growth_rate > 1.001:
             growth_factor = (pre_slowdown_growth_rate ** duration - 1) / np.log(pre_slowdown_growth_rate)
         else:
             growth_factor = duration
         prc_h100_years = prc_at_agreement * growth_factor
-        largest_h100_years = prc_h100_years * largest_company_fraction
+
+        # For largest AI project: integrate compute stock over time from agreement to detection
+        # Using same growth formula: integral of S_0 * g^t dt = S_0 * (g^T - 1) / ln(g)
+        largest_growth_rate = ANNUAL_GROWTH_RATE_OF_LARGEST_AI_PROJECT_COMPUTE_STOCK
+        if largest_growth_rate > 1.001:
+            largest_growth_factor = (largest_growth_rate ** duration - 1) / np.log(largest_growth_rate)
+        else:
+            largest_growth_factor = duration
+        largest_h100_years = largest_stock_at_agreement * largest_growth_factor
 
         # Compute ratios as covert / no-slowdown (values between 0 and 1)
         if bp_chip_production <= 0:

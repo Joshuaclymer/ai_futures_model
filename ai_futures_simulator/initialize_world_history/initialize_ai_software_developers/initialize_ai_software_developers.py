@@ -11,7 +11,7 @@ from pathlib import Path
 
 from classes.world.entities import AISoftwareDeveloper, ComputeAllocation
 from classes.world.assets import Compute
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 from initialize_world_history.initialize_ai_software_progress import initialize_ai_software_progress
 
 # Load historical data from CSV (internal to ai_futures_simulator)
@@ -36,11 +36,11 @@ def initialize_us_frontier_lab(params: SimulationParameters, year: int) -> AISof
     human_researchers = float(data['human_researchers'])
     training_compute_growth_rate = data['training_compute_growth_rate']
 
+    # Get compute allocations from parameters
+    allocations = params.compute.compute_allocations
+
     # Total compute is the sum of inference and experiment compute
-    # The allocation fractions will recover the original values
     total_compute = inference_compute + experiment_compute
-    inference_fraction = inference_compute / total_compute if total_compute > 0 else 0.1
-    training_fraction = experiment_compute / total_compute if total_compute > 0 else 0.1
 
     # Create the compute object for operating compute
     compute = Compute(
@@ -59,11 +59,11 @@ def initialize_us_frontier_lab(params: SimulationParameters, year: int) -> AISof
         id="us_frontier_lab",
         operating_compute=[compute],  # List of Compute objects
         compute_allocation=ComputeAllocation(
-            fraction_for_ai_r_and_d_inference=inference_fraction,
-            fraction_for_ai_r_and_d_training=training_fraction,
-            fraction_for_external_deployment=0.0,  # No external deployment in R&D model
-            fraction_for_alignment_research=0.0,
-            fraction_for_frontier_training=0.0,
+            fraction_for_ai_r_and_d_inference=allocations.fraction_for_ai_r_and_d_inference,
+            fraction_for_ai_r_and_d_training=allocations.fraction_for_ai_r_and_d_training,
+            fraction_for_external_deployment=allocations.fraction_for_external_deployment,
+            fraction_for_alignment_research=allocations.fraction_for_alignment_research,
+            fraction_for_frontier_training=allocations.fraction_for_frontier_training,
         ),
         human_ai_capability_researchers=human_researchers,
         ai_software_progress=ai_software_progress,
@@ -71,10 +71,10 @@ def initialize_us_frontier_lab(params: SimulationParameters, year: int) -> AISof
     )
 
     # Set metric attributes (init=False fields, set after construction)
-    developer._set_frozen_field('ai_r_and_d_inference_compute_tpp_h100e', total_compute * inference_fraction)
-    developer._set_frozen_field('ai_r_and_d_training_compute_tpp_h100e', total_compute * training_fraction)
-    developer._set_frozen_field('external_deployment_compute_tpp_h100e', 0.0)
-    developer._set_frozen_field('alignment_research_compute_tpp_h100e', 0.0)
-    developer._set_frozen_field('frontier_training_compute_tpp_h100e', 0.0)
+    developer._set_frozen_field('ai_r_and_d_inference_compute_tpp_h100e', total_compute * allocations.fraction_for_ai_r_and_d_inference)
+    developer._set_frozen_field('ai_r_and_d_training_compute_tpp_h100e', total_compute * allocations.fraction_for_ai_r_and_d_training)
+    developer._set_frozen_field('external_deployment_compute_tpp_h100e', total_compute * allocations.fraction_for_external_deployment)
+    developer._set_frozen_field('alignment_research_compute_tpp_h100e', total_compute * allocations.fraction_for_alignment_research)
+    developer._set_frozen_field('frontier_training_compute_tpp_h100e', total_compute * allocations.fraction_for_frontier_training)
 
     return developer

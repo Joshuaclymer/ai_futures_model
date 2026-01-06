@@ -152,12 +152,12 @@ compute:
 
   # US compute parameters
   us_compute:
-    us_frontier_project_compute_tpp_h100e_in_2025: 120325.0
-    us_frontier_project_compute_annual_growth_rate: 4.0  # ~4x per year
+    us_frontier_developer_operating_compute_tpp_h100e_in_2025: 120325.0
+    us_frontier_developer_operating_compute_annual_growth_rate: 4.0  # ~4x per year
     proportion_of_compute_in_largest_ai_sw_developer: 0.3
     # Training compute slowdown (matches old model's behavior from new_simulator_default.csv)
     slowdown_year: 2028.0
-    post_slowdown_training_compute_growth_rate: 0.25  # OOMs/year (10^0.25 ≈ 1.78x/year)
+    post_slowdown_operating_compute_growth_rate: 0.25  # OOMs/year (10^0.25 ≈ 1.78x/year)
 
   # PRC compute parameters (with uncertainty for Monte Carlo)
   prc_compute:

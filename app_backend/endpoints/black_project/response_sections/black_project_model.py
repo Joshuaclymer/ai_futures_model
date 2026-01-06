@@ -153,7 +153,6 @@ def build_black_project_model_section(
         },
         "chip_production_reduction_ccdf": {
             "global": compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, 4)['chip_global']),
-            "largest_company": compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, 4)['chip_largest']),
             "prc": compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, 4)['chip_prc']),
         },
         "ai_rd_reduction_ccdf": {

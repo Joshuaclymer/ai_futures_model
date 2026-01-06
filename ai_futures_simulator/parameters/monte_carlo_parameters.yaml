@@ -287,6 +287,12 @@ compute:
       dist: lognormal
       ci80: [11.9, 51.2]
     fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
+  compute_allocations:
+    fraction_for_ai_r_and_d_inference: 0.29
+    fraction_for_ai_r_and_d_training: 0.25 
+    fraction_for_external_deployment: 0.3
+    fraction_for_alignment_research: 0.01
+    fraction_for_frontier_training: 0.15
 
 # =============================================================================
 # DATACENTER AND ENERGY PARAMETERS

@@ -69,7 +69,7 @@ export const PARAMETER_BOUNDS_OVERRIDES: ParameterBoundsOverrides = {
   
   // Training Compute Growth
   us_frontier_project_compute_growth_rate: { min: 0, max: 10 },  // Pre-Slowdown
-  post_slowdown_training_compute_growth_rate: { min: 0, max: 10 },  // Post-Slowdown
+  post_slowdown_operating_compute_growth_rate: { min: 0, max: 10 },  // Post-Slowdown
 
   // Extra Parameters
   present_day: undefined,

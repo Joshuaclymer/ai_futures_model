@@ -105,7 +105,7 @@ import math
 from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
-    from parameters.compute_parameters import SurvivalRateParameters
+    from parameters.classes import SurvivalRateParameters
 
 
 def calculate_hazard_rate(

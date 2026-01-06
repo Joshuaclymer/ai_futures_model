@@ -146,8 +146,8 @@ compute:
 
   # US compute parameters
   us_compute:
-    us_frontier_project_compute_tpp_h100e_in_2025: 120325.0
-    us_frontier_project_compute_annual_growth_rate: 4.0  # ~4x per year
+    us_frontier_developer_operating_compute_tpp_h100e_in_2025: 120325.0
+    us_frontier_developer_operating_compute_annual_growth_rate: 4.0  # ~4x per year
 
   # PRC compute parameters (with uncertainty for Monte Carlo)
   prc_compute:

@@ -16,8 +16,8 @@ from classes.world.world import World
 from classes.world.entities import NamedNations
 from classes.world.perceptions import Perceptions
 from classes.simulation_primitives import StateDerivative, WorldUpdater
-from parameters.simulation_parameters import SimulationParameters
-from parameters.perceptions_parameters import PerceptionsParameters
+from parameters.classes import SimulationParameters
+from parameters.classes import PerceptionsParameters
 
 
 def probability_to_odds(probability: float) -> float:

@@ -68,7 +68,7 @@
     "blacksite_start_time": 2030.0,
     "us_frontier_project_compute_growth_rate": 0.6,
     "slowdown_year": 2028.0,
-    "post_slowdown_training_compute_growth_rate": 0.25
+    "post_slowdown_operating_compute_growth_rate": 0.25
   },
   "parameter_bounds": {
     "rho_coding_labor": [
@@ -267,7 +267,7 @@
       2020.0,
       2040.0
     ],
-    "post_slowdown_training_compute_growth_rate": [
+    "post_slowdown_operating_compute_growth_rate": [
       0.0,
       2.0
     ]
@@ -328,7 +328,7 @@
     "optimal_ces_eta_init": 0.05,
     "us_frontier_project_compute_growth_rate": 0.6,
     "slowdown_year": 2028.0,
-    "post_slowdown_training_compute_growth_rate": 0.25
+    "post_slowdown_operating_compute_growth_rate": 0.25
   },
   "model_constants": {
     "training_compute_reference_year": 2025.13,

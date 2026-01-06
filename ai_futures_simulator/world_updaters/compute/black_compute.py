@@ -20,7 +20,7 @@ from classes.world.assets import Compute, Fabs, Datacenters
 
 if TYPE_CHECKING:
     from classes.world.entities import AIBlackProject
-    from parameters.compute_parameters import PRCComputeParameters, ExogenousComputeTrends
+    from parameters.classes import PRCComputeParameters, ExogenousComputeTrends
 
 
 # =============================================================================

@@ -35,6 +35,7 @@ export interface TimeSeriesPoint {
   humanLabor?: number;
   inferenceCompute?: number;
   experimentCompute?: number;
+  frontierTrainingCompute?: number;
   researchEffort?: number;
   researchStock?: number;
   softwareProgressRate?: number;

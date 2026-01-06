@@ -139,8 +139,8 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
             legendPosition="bottom-left"
             creamBackground={true}
             thresholdLabels={{
-              'global': 'Relative to global production (no slowdown)',
-              'prc': 'Relative to PRC production (no slowdown)',
+              'global': 'Relative to global production (no slowdown)       ',
+              'prc': 'Relative to PRC production (no slowdown)        ',
             }}
             thresholdColors={{
               'global': '#9B8AC4',
@@ -174,8 +174,8 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
             height={CHART_HEIGHT}
             creamBackground={true}
             thresholdLabels={{
-              'largest_company': 'Relative to largest AI company (no slowdown)',
-              'prc': 'Relative to PRC (no slowdown)',
+              'largest_company': 'Relative to largest AI company (no slowdown)        ',
+              'prc': 'Relative to PRC (no slowdown)        ',
             }}
             thresholdColors={{
               'largest_company': '#7A9EC2',
@@ -212,7 +212,7 @@ function Dashboard({ values }: { values: DashboardValues }) {
         value={values.aiRdReduction}
         label="Reduction in AI R&D computation of largest company*"
       />
-      <DashboardItem value={values.chipsProduced} label="Chips covertly produced*" isLast />
+      <DashboardItem value={values.chipsProduced} label="H100e covertly produced*" isLast />
     </div>
   );
 }

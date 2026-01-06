@@ -54,6 +54,12 @@ def build_initial_stock_section(
 
     This section contains 13 keys including initial compute samples and PRC projections.
     """
+    # Extract lr_prc_accounting samples for detection probability calculation
+    lr_prc_accounting_samples = [
+        d['black_project']['lr_prc_accounting'] if d['black_project'] else 1.0
+        for d in all_data
+    ]
+
     return {
         "years": years,
         "diversion_proportion": 0.05,
@@ -77,10 +83,7 @@ def build_initial_stock_section(
             else 0
             for d in all_data
         ],
-        "lr_prc_accounting_samples": [
-            d['black_project']['lr_prc_accounting'] if d['black_project'] else 1.0
-            for d in all_data
-        ],
+        "lr_prc_accounting_samples": lr_prc_accounting_samples,
         "lr_sme_inventory_samples": [
             d['black_project']['lr_sme_inventory'] if d['black_project'] else 1.0
             for d in all_data
@@ -89,10 +92,11 @@ def build_initial_stock_section(
             d['black_project']['lr_satellite_datacenter'] if d['black_project'] else 1.0
             for d in all_data
         ],
+        # Detection probabilities based on lr_prc_accounting likelihood ratio thresholds
         "initial_black_project_detection_probs": {
-            "1x": sum(1 for t in detection_times if t < 1) / max(1, num_sims),
-            "2x": sum(1 for t in detection_times if t < 2) / max(1, num_sims),
-            "4x": sum(1 for t in detection_times if t < 4) / max(1, num_sims),
+            "1x": sum(1 for lr in lr_prc_accounting_samples if lr >= 1) / max(1, num_sims),
+            "2x": sum(1 for lr in lr_prc_accounting_samples if lr >= 2) / max(1, num_sims),
+            "4x": sum(1 for lr in lr_prc_accounting_samples if lr >= 4) / max(1, num_sims),
         },
         "prc_compute_years": prc_capacity_years,
         # Compute PRC stock for each year using sampled growth rate

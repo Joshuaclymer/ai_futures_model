@@ -12,7 +12,7 @@ from typing import Optional
 from classes.world.world import World
 from classes.world.entities import AISoftwareDeveloper, NamedNations
 from classes.simulation_primitives import WorldUpdater
-from parameters.simulation_parameters import SimulationParameters
+from parameters.classes import SimulationParameters
 
 
 class AISoftwareDeveloperResearcherUpdater(WorldUpdater):

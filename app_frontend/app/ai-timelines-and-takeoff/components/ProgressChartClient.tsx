@@ -10,7 +10,7 @@ import { CustomMetricChart } from './charts/CustomMetricChart';
 import type { DataPoint } from '@/components/CustomLineChart';
 
 import { formatTo3SigFigs, formatTimeDuration, formatSCHorizon, yearsToMinutes, formatYearMonth, formatWorkTimeDuration, formatWorkTimeDurationDetailed, formatUplift, formatCompactNumberNode, formatAsPowerOfTenText } from '@/utils/formatting';
-import { DEFAULT_PARAMETERS, ParametersType, ParameterPrimitive } from '@/constants/parameters';
+import { DEFAULT_PARAMETERS, ParametersType, ParameterPrimitive, H100E_TPP_TO_FLOP_OOM_OFFSET } from '@/constants/parameters';
 import { CHART_LAYOUT } from '@/constants/chartLayout';
 import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, ParameterRecord } from '@/utils/monteCarlo';
 import { ParameterSlider } from './ui/ParameterSlider';
@@ -94,6 +94,7 @@ interface TimeSeriesPoint {
   humanLabor?: number;
   inferenceCompute?: number;
   experimentCompute?: number;
+  frontierTrainingCompute?: number;
   researchEffort?: number;
   softwareProgressRate?: number;
   softwareEfficiency?: number;
@@ -556,7 +557,10 @@ function processInitialData(data: ComputeApiResponse | undefined): ChartDataPoin
       horizonFormatted: formatWorkTimeDuration(point.horizonLength),
       effectiveCompute: point.effectiveCompute,
       automationFraction: point.automationFraction,
-      trainingCompute: point.trainingCompute ?? null,
+      // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
+      trainingCompute: point.frontierTrainingCompute && point.frontierTrainingCompute > 0
+        ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
+        : null,
       experimentCapacity: point.experimentCapacity,
       aiResearchTaste: point.aiResearchTaste,
       aiSoftwareProgressMultiplier: point.aiSoftwareProgressMultiplier,
@@ -594,7 +598,10 @@ export default function ProgressChart({
         horizonLength: point.horizonLength,
         effectiveCompute: point.effectiveCompute,
         automationFraction: point.automationFraction,
-        trainingCompute: point.trainingCompute ?? null,
+        // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
+        trainingCompute: point.frontierTrainingCompute && point.frontierTrainingCompute > 0
+          ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
+          : null,
         aiSwProgressMultRefPresentDay: point.aiSwProgressMultRefPresentDay,
       })) as ChartDataPoint[],
       params: sample.params
@@ -1237,7 +1244,10 @@ export default function ProgressChart({
               horizonFormatted: formatWorkTimeDuration(point.horizonLength),
               effectiveCompute: toEffectiveComputeOOM(point.effectiveCompute),
               automationFraction: point.automationFraction,
-              trainingCompute: point.trainingCompute ? toEffectiveComputeOOM(point.trainingCompute) : null,
+              // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
+              trainingCompute: point.frontierTrainingCompute && point.frontierTrainingCompute > 0
+                ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
+                : null,
               experimentCapacity: point.experimentCapacity,
               aiResearchTaste: point.aiResearchTaste,
               aiSoftwareProgressMultiplier: point.aiSoftwareProgressMultiplier,
@@ -1305,7 +1315,10 @@ export default function ProgressChart({
             year: point.year,
             horizonLength: point.horizonLength,
             effectiveCompute: toEffectiveComputeOOM(point.effectiveCompute),
-            trainingCompute: point.trainingCompute ? toEffectiveComputeOOM(point.trainingCompute) : null,
+            // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
+            trainingCompute: point.frontierTrainingCompute && point.frontierTrainingCompute > 0
+              ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
+              : null,
             aiSwProgressMultRefPresentDay: point.aiSwProgressMultRefPresentDay,
           }));
 
