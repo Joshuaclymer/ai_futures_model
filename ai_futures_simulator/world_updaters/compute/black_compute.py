@@ -42,7 +42,7 @@ def calculate_fab_construction_duration(
     Uses a fixed-proportions production function where construction time depends on:
     1. Fab capacity: Larger fabs take longer to build (log-linear relationship)
     2. Construction labor: Fewer workers than required extends construction time
-    3. Uncertainty multiplier: Sampled from lognormal (median=1.0, relative_sigma=0.35)
+    3. Uncertainty multiplier: fab_construction_time_multiplier (sampled from distribution in YAML)
 
     This matches the discrete model's estimate_construction_duration function.
     """
@@ -86,8 +86,7 @@ def calculate_fab_construction_duration(
     if fab_construction_labor < construction_labor_requirement and fab_construction_labor > 0:
         construction_duration *= (construction_labor_requirement / fab_construction_labor)
 
-    # Step 4: Apply uncertainty multiplier (sampled from lognormal in monte carlo mode)
-    # This matches discrete model which samples from lognormal with relative_sigma=0.35
+    # Step 4: Apply uncertainty multiplier (sampled from distribution in YAML config)
     construction_duration *= construction_time_multiplier
 
     return construction_duration
@@ -98,38 +97,18 @@ def calculate_fab_wafer_starts_per_month(
     fab_number_of_lithography_scanners: float,
     wafers_per_month_per_worker: float = 24.64,
     wafers_per_month_per_scanner: float = 1000.0,
-    labor_productivity_relative_sigma: float = 0.62,
-    scanner_productivity_relative_sigma: float = 0.20,
 ) -> float:
     """Calculate wafer starts per month based on labor and scanner constraints.
 
-    Matches reference model which applies lognormal uncertainty to both
-    labor and scanner productivity:
-    - Labor productivity: 62% relative sigma (variation in management, skills, etc.)
-    - Scanner productivity: 20% relative sigma (variation in uptime, yield, etc.)
+    Uses fixed-proportions production where output is limited by the binding constraint
+    (either labor or scanners). Uncertainty is captured by the distributions on
+    wafers_per_month_per_worker and wafers_per_month_per_scanner in the YAML config.
     """
-    # Base labor capacity (median)
-    median_labor_capacity = fab_operating_labor * wafers_per_month_per_worker
+    # Labor capacity
+    from_labor = fab_operating_labor * wafers_per_month_per_worker
 
-    # Sample labor capacity from lognormal distribution
-    # Convert relative_sigma to log-space sigma: sigma = sqrt(ln(1 + r^2))
-    if labor_productivity_relative_sigma > 0 and median_labor_capacity > 0:
-        sigma_labor = math.sqrt(math.log(1 + labor_productivity_relative_sigma**2))
-        mu_labor = math.log(median_labor_capacity)
-        from_labor = np.random.lognormal(mean=mu_labor, sigma=sigma_labor)
-    else:
-        from_labor = median_labor_capacity
-
-    # Base scanner capacity (median)
-    median_scanner_capacity = fab_number_of_lithography_scanners * wafers_per_month_per_scanner
-
-    # Sample scanner capacity from lognormal distribution
-    if scanner_productivity_relative_sigma > 0 and median_scanner_capacity > 0:
-        sigma_scanner = math.sqrt(math.log(1 + scanner_productivity_relative_sigma**2))
-        mu_scanner = math.log(median_scanner_capacity)
-        from_scanners = np.random.lognormal(mean=mu_scanner, sigma=sigma_scanner)
-    else:
-        from_scanners = median_scanner_capacity
+    # Scanner capacity
+    from_scanners = fab_number_of_lithography_scanners * wafers_per_month_per_scanner
 
     # Return minimum of labor and scanner capacity (fixed-proportions production)
     result = min(from_labor, from_scanners)

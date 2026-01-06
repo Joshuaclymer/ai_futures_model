@@ -143,6 +143,9 @@ def frontend_params_to_simulation_params(frontend_params: dict, time_range: list
         simulation_start_year=start_year,
         simulation_end_year=end_year,
         n_eval_points=n_eval_points,
+        ode_rtol=1.0e-3,
+        ode_atol=1.0e-6,
+        ode_max_step=0.1,
     )
 
     # Normalize frontend params to full paths

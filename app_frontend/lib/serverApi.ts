@@ -3,12 +3,13 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { DEFAULT_PARAMETERS, ParametersType } from '@/constants/parameters';
 import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, ParameterRecord } from '@/utils/monteCarlo';
-import { 
-  SamplingConfig, 
-  SeededRandom, 
-  setSamplingRng, 
+import {
+  SamplingConfig,
+  SeededRandom,
+  setSamplingRng,
   generateParameterSample,
-  initializeCorrelationSampling 
+  initializeCorrelationSampling,
+  flattenMonteCarloConfig
 } from '@/utils/sampling';
 
 const SIMULATION_START_YEAR = 2026;
@@ -64,12 +65,15 @@ export interface SampleTrajectory {
   params: Record<string, number | string | boolean>;
 }
 
-// Load sampling config from YAML file
+// Load sampling config from monte_carlo_parameters.yaml
 async function loadSamplingConfig(): Promise<SamplingConfig | null> {
   try {
-    const configPath = path.join(process.cwd(), 'config/sampling_config.yaml');
+    // Use monte_carlo_parameters.yaml as the single source of truth
+    const configPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'monte_carlo_parameters.yaml');
     const fileContents = await fs.readFile(configPath, 'utf8');
-    const config = yaml.load(fileContents) as SamplingConfig;
+    const rawConfig = yaml.load(fileContents) as Record<string, unknown>;
+    // Flatten nested structure into the format expected by sampling utilities
+    const config = flattenMonteCarloConfig(rawConfig);
     return config;
   } catch (error) {
     console.error('Failed to load sampling config:', error);

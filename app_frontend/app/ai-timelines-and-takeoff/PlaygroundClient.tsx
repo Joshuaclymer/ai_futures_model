@@ -29,7 +29,7 @@ import { CHART_LAYOUT } from '@/constants/chartLayout';
 import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, ParameterRecord } from '@/utils/monteCarlo';
 import { encodeFullStateToParams, decodeFullStateFromParams, DEFAULT_CHECKBOX_STATES } from '@/utils/urlState';
 import type { MilestoneMap } from '@/types/milestones';
-import { SamplingConfig, generateParameterSampleWithUserValues, initializeCorrelationSampling, extractSamplingConfigBounds } from '@/utils/sampling';
+import { SamplingConfig, generateParameterSampleWithUserValues, initializeCorrelationSampling, extractSamplingConfigBounds, flattenMonteCarloConfig } from '@/utils/sampling';
 import type { ComputeApiResponse } from '@/lib/serverApi';
 
 interface SampleTrajectoryWithParams {
@@ -299,15 +299,17 @@ export default function PlaygroundClient({
         }
         const data = await response.json();
         if (!isCancelled && data.success) {
-          initializeCorrelationSampling(data.config.correlation_matrix);
-          setSamplingConfig(data.config);
-          
+          // Flatten nested monte_carlo_parameters.yaml structure into flat SamplingConfig
+          const flatConfig = flattenMonteCarloConfig(data.config);
+          initializeCorrelationSampling(flatConfig.correlation_matrix);
+          setSamplingConfig(flatConfig);
+
           const allParams = new Set<string>();
-          for (const paramName of Object.keys(data.config.parameters)) {
+          for (const paramName of Object.keys(flatConfig.parameters)) {
             allParams.add(paramName);
           }
-          if (data.config.time_series_parameters) {
-            for (const paramName of Object.keys(data.config.time_series_parameters)) {
+          if (flatConfig.time_series_parameters) {
+            for (const paramName of Object.keys(flatConfig.time_series_parameters)) {
               allParams.add(paramName);
             }
           }

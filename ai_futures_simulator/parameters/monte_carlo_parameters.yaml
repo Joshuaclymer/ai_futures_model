@@ -24,6 +24,9 @@ settings:
   simulation_start_year: 2026
   simulation_end_year: 2040.0
   n_eval_points: 100
+  ode_rtol: 1.0e-3
+  ode_atol: 1.0e-6
+  ode_max_step: 0.1
 
 # =============================================================================
 # SOFTWARE R&D PARAMETERS

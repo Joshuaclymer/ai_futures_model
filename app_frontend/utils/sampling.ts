@@ -123,6 +123,82 @@ export interface SamplingConfig {
   num_rollouts?: number;
 }
 
+// Sections in monte_carlo_parameters.yaml that should NOT be flattened into parameters
+const NON_PARAMETER_SECTIONS = new Set([
+  'settings',
+  'seed',
+  'initial_progress',
+  'correlation_matrix',
+  'num_rollouts',
+  'time_range',
+  'input_data',
+  'per_sample_timeout',
+]);
+
+// Check if a value looks like a distribution config
+function isDistributionConfig(value: unknown): value is DistributionConfig {
+  if (typeof value !== 'object' || value === null) return false;
+  const obj = value as Record<string, unknown>;
+  return 'dist' in obj || typeof obj === 'number' || typeof obj === 'string';
+}
+
+// Recursively extract distribution configs from a nested object
+function extractDistributions(
+  obj: Record<string, unknown>,
+  result: Record<string, DistributionConfig>
+): void {
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined) continue;
+
+    // If it's a primitive (number, string, boolean), treat as fixed distribution
+    if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') {
+      result[key] = { dist: 'fixed', value: value as number | string };
+    }
+    // If it has a 'dist' key, it's a distribution config
+    else if (typeof value === 'object' && 'dist' in (value as Record<string, unknown>)) {
+      result[key] = value as DistributionConfig;
+    }
+    // If it's an array, skip (could be correlation matrix data or other non-param arrays)
+    else if (Array.isArray(value)) {
+      continue;
+    }
+    // Otherwise recurse into nested object
+    else if (typeof value === 'object') {
+      extractDistributions(value as Record<string, unknown>, result);
+    }
+  }
+}
+
+/**
+ * Flatten a nested monte_carlo_parameters.yaml config into the flat SamplingConfig format.
+ * This handles the nested structure (software_r_and_d, compute.us_compute, etc.)
+ * and extracts all distribution configs into a single flat `parameters` object.
+ */
+export function flattenMonteCarloConfig(nestedConfig: Record<string, unknown>): SamplingConfig {
+  const parameters: Record<string, DistributionConfig> = {};
+
+  // If config already has a flat 'parameters' key, use it directly
+  if (nestedConfig.parameters && typeof nestedConfig.parameters === 'object') {
+    return nestedConfig as unknown as SamplingConfig;
+  }
+
+  // Otherwise, flatten the nested structure
+  for (const [section, value] of Object.entries(nestedConfig)) {
+    // Skip non-parameter sections
+    if (NON_PARAMETER_SECTIONS.has(section)) continue;
+
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      extractDistributions(value as Record<string, unknown>, parameters);
+    }
+  }
+
+  return {
+    parameters,
+    correlation_matrix: nestedConfig.correlation_matrix as CorrelationConfig | undefined,
+    num_rollouts: nestedConfig.num_rollouts as number | undefined,
+  };
+}
+
 // Standard normal CDF inverse (approximation using Rational approximation)
 function normalCdfInverse(p: number): number {
   if (p <= 0) return -Infinity;

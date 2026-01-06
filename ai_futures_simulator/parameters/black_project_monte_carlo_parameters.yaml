@@ -177,8 +177,6 @@ compute:
     # PRC lithography scanner production
     prc_lithography_scanners_produced_in_first_year: 20.0
     prc_additional_lithography_scanners_produced_per_year: 16.0
-    # Uncertainty in PRC scanner production (lognormal relative sigma) - matches reference model
-    prc_scanner_production_relative_sigma: 0.30
     # PRC localization probabilities (by process node and year)
     p_localization_28nm_2030: 0.25
     p_localization_14nm_2030: 0.10

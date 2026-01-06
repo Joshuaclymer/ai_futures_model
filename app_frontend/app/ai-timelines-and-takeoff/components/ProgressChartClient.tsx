@@ -29,7 +29,7 @@ import { HeaderContent } from '@/components/HeaderContent';
 import { WithChartTooltip } from '@/components/ChartTitleTooltip';
 import ModelArchitecture from '@/components/ModelArchitecture';
 import { SharePredictionModal } from '@/components/SharePredictionModal';
-import { SamplingConfig, generateParameterSample, generateParameterSampleWithFixedParams, generateParameterSampleWithUserValues, getDistributionMedian, initializeCorrelationSampling, extractSamplingConfigBounds } from '@/utils/sampling';
+import { SamplingConfig, generateParameterSample, generateParameterSampleWithFixedParams, generateParameterSampleWithUserValues, getDistributionMedian, initializeCorrelationSampling, extractSamplingConfigBounds, flattenMonteCarloConfig } from '@/utils/sampling';
 import type { ComputeApiResponse } from '@/lib/serverApi';
 
 interface ModelDefaults {
@@ -1089,9 +1089,11 @@ export default function ProgressChart({
         }
         const data = await response.json();
         if (!isCancelled && data.success) {
+          // Flatten nested monte_carlo_parameters.yaml structure into flat SamplingConfig
+          const flatConfig = flattenMonteCarloConfig(data.config);
           // Initialize correlation sampling with the loaded config
-          initializeCorrelationSampling(data.config.correlation_matrix);
-          setSamplingConfig(data.config);
+          initializeCorrelationSampling(flatConfig.correlation_matrix);
+          setSamplingConfig(flatConfig);
         }
       } catch (error) {
         if (!isCancelled) {

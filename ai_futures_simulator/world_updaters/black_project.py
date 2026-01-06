@@ -652,19 +652,11 @@ def initialize_black_project(
 
         # Calculate total accumulated PRC scanners using linear production ramp-up
         # Total = first_year_production * (n+1) + additional_per_year * n * (n+1) / 2
+        # Uncertainty is already captured by the distributions on scanner production parameters
         n = years_since_localization
         first_year_prod = prc_compute.prc_lithography_scanners_produced_in_first_year
         additional_per_year = prc_compute.prc_additional_lithography_scanners_produced_per_year
-        median_total_scanners = first_year_prod * (n + 1) + additional_per_year * n * (n + 1) / 2
-
-        # Apply lognormal uncertainty to scanner production (matches reference model)
-        sigma_relative = getattr(prc_compute, 'prc_scanner_production_relative_sigma', 0.30)
-        if sigma_relative > 0 and median_total_scanners > 0:
-            sigma_log = np.sqrt(np.log(1 + sigma_relative**2))
-            mu_log = np.log(median_total_scanners)
-            total_prc_scanners = np.random.lognormal(mean=mu_log, sigma=sigma_log)
-        else:
-            total_prc_scanners = median_total_scanners
+        total_prc_scanners = first_year_prod * (n + 1) + additional_per_year * n * (n + 1) / 2
 
         # Scanners devoted to fab = total * diversion proportion
         num_scanners = int(total_prc_scanners * props.fraction_of_lithography_scanners_to_divert_at_black_project_start)
