@@ -204,10 +204,10 @@ function mapToCovertFabData(data: SimulationData | null): CovertFabApiData | nul
   // H100 power consumption in watts (standard value)
   const H100_POWER_WATTS = 700;
 
-  // Use black_fab_flow_all_sims for compute per month (same as "Acquired hardware")
-  const computePerMonthMedian = bpm?.black_fab_flow_all_sims?.median || [];
-  const computePerMonthP25 = bpm?.black_fab_flow_all_sims?.p25 || [];
-  const computePerMonthP75 = bpm?.black_fab_flow_all_sims?.p75 || [];
+  // Use black_fab_monthly_flow_all_sims for compute per month (monthly production rate, not cumulative)
+  const computePerMonthMedian = bpm?.black_fab_monthly_flow_all_sims?.median || [];
+  const computePerMonthP25 = bpm?.black_fab_monthly_flow_all_sims?.p25 || [];
+  const computePerMonthP75 = bpm?.black_fab_monthly_flow_all_sims?.p75 || [];
 
   // Compute energy per month: compute_per_month * watts_per_tpp * H100_power / 1e9 (to GW)
   // This gives the energy required to run the chips produced each month

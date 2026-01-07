@@ -37,6 +37,9 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
         'years': times,
         'prc_compute_stock': [],
         'prc_operating_compute': [],
+        # Counterfactual (no slowdown) nation data for reduction ratio calculations
+        'prc_counterfactual_compute_stock': [],  # PRC compute trajectory without slowdown
+        'usa_counterfactual_compute_stock': [],  # Largest AI company compute trajectory without slowdown
         'black_project': None,
         'prc_params': prc_params,  # Store sampled parameters for yearly calculations
     }
@@ -52,6 +55,23 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
         else:
             data['prc_compute_stock'].append(0.0)
             data['prc_operating_compute'].append(0.0)
+
+        # Extract counterfactual nation data (for AI R&D reduction ratio calculations)
+        prc_cf = world.nations.get(NamedNations.PRC_COUNTERFACTUAL_NO_SLOWDOWN)
+        if prc_cf:
+            data['prc_counterfactual_compute_stock'].append(
+                to_float(prc_cf.compute_stock.functional_tpp_h100e) if prc_cf.compute_stock else 0.0
+            )
+        else:
+            data['prc_counterfactual_compute_stock'].append(0.0)
+
+        usa_cf = world.nations.get(NamedNations.USA_COUNTERFACTUAL_NO_SLOWDOWN)
+        if usa_cf:
+            data['usa_counterfactual_compute_stock'].append(
+                to_float(usa_cf.compute_stock.functional_tpp_h100e) if usa_cf.compute_stock else 0.0
+            )
+        else:
+            data['usa_counterfactual_compute_stock'].append(0.0)
 
     # Extract black project data if present
     if world.black_projects:

@@ -173,6 +173,9 @@ def _filter_data_to_agreement_year(
         d['years'] = d['years'][start_idx:]
         d['prc_compute_stock'] = d['prc_compute_stock'][start_idx:]
         d['prc_operating_compute'] = d['prc_operating_compute'][start_idx:]
+        # Also filter counterfactual compute stocks (used in reduction ratio calculations)
+        d['prc_counterfactual_compute_stock'] = d['prc_counterfactual_compute_stock'][start_idx:]
+        d['usa_counterfactual_compute_stock'] = d['usa_counterfactual_compute_stock'][start_idx:]
 
         if d['black_project']:
             bp = d['black_project']

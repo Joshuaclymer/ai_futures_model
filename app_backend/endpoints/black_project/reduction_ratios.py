@@ -3,6 +3,11 @@ Reduction ratio computations for black project simulation.
 
 Computes chip production and AI R&D reduction ratios comparing
 covert project output vs. no-slowdown scenarios.
+
+The "no slowdown" counterfactual is computed using counterfactual nation entities
+(PRC_COUNTERFACTUAL_NO_SLOWDOWN, USA_COUNTERFACTUAL_NO_SLOWDOWN) that are simulated
+alongside the main nations but with exponential growth at fixed rates. This matches
+the reference model's approach of using fixed baseline parameters.
 """
 
 import numpy as np
@@ -11,29 +16,8 @@ from typing import Dict, List
 from .global_compute import get_global_compute_production_between_years
 
 
-# Largest AI project parameters (from reference model ExogenousTrends)
-# These represent the compute trajectory of the largest global AI project (e.g., OpenAI/Google)
-# Used for comparing covert project compute to what the largest company would achieve without slowdown
-LARGEST_AI_PROJECT_COMPUTE_STOCK_IN_2025 = 1.2e5  # H100e
-ANNUAL_GROWTH_RATE_OF_LARGEST_AI_PROJECT_COMPUTE_STOCK = 2.91  # multiplier per year
-
-
-def get_largest_ai_project_compute_stock(year: float) -> float:
-    """
-    Get the compute stock of the largest AI project at a given year.
-
-    Compute grows exponentially from the 2025 baseline.
-
-    Args:
-        year: The year to calculate compute for
-
-    Returns:
-        Compute stock in H100 equivalents
-    """
-    years_since_2025 = year - 2025
-    return LARGEST_AI_PROJECT_COMPUTE_STOCK_IN_2025 * (
-        ANNUAL_GROWTH_RATE_OF_LARGEST_AI_PROJECT_COMPUTE_STOCK ** years_since_2025
-    )
+# Fraction of PRC compute spent on AI R&D (from reference model SlowdownCounterfactualParameters)
+FRACTION_OF_PRC_COMPUTE_SPENT_ON_AI_RD = 0.5
 
 
 def compute_reduction_ratios(
@@ -46,11 +30,15 @@ def compute_reduction_ratios(
     """
     Compute reduction ratios for CCDFs.
 
-    Computes ratios of covert project chip production and AI compute
-    relative to what would have been produced without slowdown.
+    Computes ratios of counterfactual AI compute (no slowdown scenario) to
+    covert project AI compute, using discrete time-step integration matching
+    the reference model.
+
+    The counterfactual is computed using counterfactual nation entities that
+    track the no-slowdown compute trajectory.
 
     Args:
-        all_data: List of simulation data dicts
+        all_data: List of simulation data dicts (including counterfactual nation data)
         years: Time points
         agreement_year: Year when agreement starts
         dt: Time step size
@@ -59,8 +47,6 @@ def compute_reduction_ratios(
     Returns:
         Dict with 'chip_global', 'chip_prc', 'chip_largest', 'ai_largest', 'ai_prc' keys
     """
-    pre_slowdown_growth_rate = 2.2
-
     chip_global = []
     chip_prc = []
     ai_largest = []
@@ -68,31 +54,41 @@ def compute_reduction_ratios(
 
     for d in all_data:
         bp = d.get('black_project')
-        prc_stock = d.get('prc_compute_stock', [])
-        if not bp or not prc_stock:
+        if not bp:
             continue
+
+        # Get counterfactual nation data
+        prc_cf_stock = d.get('prc_counterfactual_compute_stock', [])
+        usa_cf_stock = d.get('usa_counterfactual_compute_stock', [])
 
         # Find detection year for this threshold
         cumulative_lr = bp.get('cumulative_lr', [])
-        detection_year = years[-1] + 1
+        detection_year = years[-1]  # Default to end of simulation
         for j, lr in enumerate(cumulative_lr):
             if lr >= lr_threshold and j < len(years):
                 detection_year = years[j]
                 break
-        if detection_year > years[-1]:
-            detection_year = years[-1]
+
+        # Build years_in_range: years where agreement_year <= year <= detection_year
+        # This matches reference model's filtering
+        years_in_range = [y for y in years if agreement_year <= y <= detection_year]
 
         # Compute covert project H100-years from agreement_year to detection_year
-        # (matching reference model which filters: agreement_year <= y <= current_year)
+        # Using discrete time-step integration to match reference model
         op_compute = bp.get('operational_compute', [])
         bp_h100_years = 0.0
-        for j, year in enumerate(years):
-            if year < agreement_year:
-                continue  # Skip years before agreement
-            if year >= detection_year:
-                break
-            if j < len(op_compute):
-                bp_h100_years += op_compute[j] * dt
+        for i in range(len(years_in_range) - 1):
+            year = years_in_range[i]
+            next_year = years_in_range[i + 1]
+            time_step = next_year - year
+            # Find the index of this year in the full years list
+            year_idx = None
+            for j, y in enumerate(years):
+                if abs(y - year) < 1e-6:
+                    year_idx = j
+                    break
+            if year_idx is not None and year_idx < len(op_compute):
+                bp_h100_years += op_compute[year_idx] * time_step
 
         # Compute covert chip production (fab production during agreement period)
         fab_prod = bp.get('fab_cumulative_production_h100e', [])
@@ -106,44 +102,54 @@ def compute_reduction_ratios(
                     prod_at_detection = fab_prod[j]
         bp_chip_production = max(0.0, prod_at_detection - prod_at_agreement)
 
-        # Get PRC compute at agreement year
-        # Apply fraction of PRC compute spent on AI R&D (from reference model)
-        # This represents the portion of PRC compute used for AI research, not total PRC compute
-        FRACTION_OF_PRC_COMPUTE_SPENT_ON_AI_RD = 0.5
-        agreement_idx = 0
-        for j, year in enumerate(years):
-            if year >= agreement_year:
-                agreement_idx = j
-                break
-        total_prc_at_agreement = prc_stock[agreement_idx] if agreement_idx < len(prc_stock) else prc_stock[0]
-        prc_at_agreement = total_prc_at_agreement * FRACTION_OF_PRC_COMPUTE_SPENT_ON_AI_RD
-        duration = max(0.0, detection_year - agreement_year)
+        # Compute counterfactual PRC AI R&D H100-years (no slowdown scenario)
+        # Uses data from PRC_COUNTERFACTUAL_NO_SLOWDOWN entity
+        # Reference: prc_h100_years += prc_compute * prc_ai_rd_fraction * time_step
+        prc_h100_years = 0.0
+        for i in range(len(years_in_range) - 1):
+            year = years_in_range[i]
+            next_year = years_in_range[i + 1]
+            time_step = next_year - year
+            # Find the index of this year in the full years list
+            year_idx = None
+            for j, y in enumerate(years):
+                if abs(y - year) < 1e-6:
+                    year_idx = j
+                    break
+            if year_idx is not None and year_idx < len(prc_cf_stock):
+                prc_compute = prc_cf_stock[year_idx]
+                prc_h100_years += prc_compute * FRACTION_OF_PRC_COMPUTE_SPENT_ON_AI_RD * time_step
+
+        # Compute counterfactual largest AI project H100-years (no slowdown scenario)
+        # Uses data from USA_COUNTERFACTUAL_NO_SLOWDOWN entity
+        largest_h100_years = 0.0
+        for i in range(len(years_in_range) - 1):
+            year = years_in_range[i]
+            next_year = years_in_range[i + 1]
+            time_step = next_year - year
+            # Find the index of this year in the full years list
+            year_idx = None
+            for j, y in enumerate(years):
+                if abs(y - year) < 1e-6:
+                    year_idx = j
+                    break
+            if year_idx is not None and year_idx < len(usa_cf_stock):
+                largest_h100_years += usa_cf_stock[year_idx] * time_step
 
         # Compute counterfactual chip production (no slowdown scenario)
+        # Global: from historical data
         global_production = get_global_compute_production_between_years(agreement_year, detection_year)
-        prc_production = prc_at_agreement * (pre_slowdown_growth_rate ** duration - 1)
 
-        # Largest AI project chip production = stock(detection) - stock(agreement)
-        largest_stock_at_agreement = get_largest_ai_project_compute_stock(agreement_year)
-        largest_stock_at_detection = get_largest_ai_project_compute_stock(detection_year)
-        largest_production = largest_stock_at_detection - largest_stock_at_agreement
-
-        # Compute counterfactual H100-years (integrated compute over time)
-        # For PRC: integrate prc_at_agreement * growth_rate^t from 0 to duration
-        pre_slowdown_growth_rate = 2.2
-        if pre_slowdown_growth_rate > 1.001 and duration > 0:
-            growth_factor = (pre_slowdown_growth_rate ** duration - 1) / np.log(pre_slowdown_growth_rate)
-        else:
-            growth_factor = duration
-        prc_h100_years = prc_at_agreement * growth_factor
-
-        # For largest AI project: integrate compute stock over time from agreement to detection
-        largest_growth_rate = ANNUAL_GROWTH_RATE_OF_LARGEST_AI_PROJECT_COMPUTE_STOCK
-        if largest_growth_rate > 1.001 and duration > 0:
-            largest_growth_factor = (largest_growth_rate ** duration - 1) / np.log(largest_growth_rate)
-        else:
-            largest_growth_factor = duration
-        largest_h100_years = largest_stock_at_agreement * largest_growth_factor
+        # PRC chip production: stock at detection - stock at agreement (from counterfactual entity)
+        prc_stock_at_agreement = 0.0
+        prc_stock_at_detection = 0.0
+        for j, year in enumerate(years):
+            if j < len(prc_cf_stock):
+                if year <= agreement_year:
+                    prc_stock_at_agreement = prc_cf_stock[j]
+                if year <= detection_year:
+                    prc_stock_at_detection = prc_cf_stock[j]
+        prc_production = prc_stock_at_detection - prc_stock_at_agreement
 
         # Compute ratios as counterfactual / covert (matching reference model format)
         # Large values mean covert project got much less than counterfactual would have

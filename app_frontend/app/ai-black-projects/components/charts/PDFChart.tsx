@@ -103,9 +103,9 @@ export function PDFChart({
       binEdges.push(Math.pow(10, paddedLogMin + i * (paddedLogMax - paddedLogMin) / numBins));
     }
 
-    // Calculate bin centers (geometric mean for log scale) and widths
+    // Calculate bin centers (arithmetic mean for proper bar positioning) and widths
     for (let i = 0; i < binEdges.length - 1; i++) {
-      binCenters.push(Math.sqrt(binEdges[i] * binEdges[i + 1]));
+      binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
       binWidths.push(binEdges[i + 1] - binEdges[i]);
     }
   } else {

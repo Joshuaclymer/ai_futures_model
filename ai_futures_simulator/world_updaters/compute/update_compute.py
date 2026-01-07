@@ -18,6 +18,7 @@ from parameters.classes import SimulationParameters
 
 from world_updaters.compute.nation_compute import NationComputeUpdater
 from world_updaters.compute.ai_sw_developer_compute import AISoftwareDeveloperComputeUpdater
+from world_updaters.compute.counterfactual_compute import CounterfactualComputeUpdater
 
 
 class ComputeUpdater(WorldUpdater):
@@ -41,11 +42,13 @@ class ComputeUpdater(WorldUpdater):
 
         # Create sub-updaters in execution order
         self.nation_compute_updater = NationComputeUpdater(params)
+        self.counterfactual_compute_updater = CounterfactualComputeUpdater(params)
         self.ai_sw_developer_updater = AISoftwareDeveloperComputeUpdater(params)
 
         # Register as submodules for proper parameter tracking
         self._updaters = nn.ModuleList([
             self.nation_compute_updater,
+            self.counterfactual_compute_updater,
             self.ai_sw_developer_updater,
         ])
 
@@ -53,13 +56,16 @@ class ComputeUpdater(WorldUpdater):
         """
         Combine state derivative contributions from compute updaters.
 
-        Only NationComputeUpdater contributes derivatives (for exponential growth).
-        Other updaters only set metric attributes.
+        NationComputeUpdater and CounterfactualComputeUpdater contribute derivatives
+        for exponential growth. Other updaters only set metric attributes.
         """
         total_derivative = StateDerivative.zeros(world)
 
         # Nation compute contributes derivatives for exponential growth
         total_derivative = total_derivative + self.nation_compute_updater.contribute_state_derivatives(t, world)
+
+        # Counterfactual compute contributes derivatives for simple exponential growth
+        total_derivative = total_derivative + self.counterfactual_compute_updater.contribute_state_derivatives(t, world)
 
         return total_derivative
 
@@ -69,12 +75,16 @@ class ComputeUpdater(WorldUpdater):
 
         Order matters:
         1. Nation compute metrics (operating compute limited by datacenter capacity)
-        2. AI software developer compute (fraction of nation's functional compute)
+        2. Counterfactual nation metrics (simple operating compute)
+        3. AI software developer compute (fraction of nation's functional compute)
         """
         # 1. Update nation compute metrics
         world = self.nation_compute_updater.set_metric_attributes(t, world)
 
-        # 2. Update AI software developer compute
+        # 2. Update counterfactual nation compute metrics
+        world = self.counterfactual_compute_updater.set_metric_attributes(t, world)
+
+        # 3. Update AI software developer compute
         # This uses nation's functional compute to allocate to developers
         world = self.ai_sw_developer_updater.set_metric_attributes(t, world)
 

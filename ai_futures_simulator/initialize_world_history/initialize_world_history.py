@@ -10,7 +10,12 @@ from typing import Dict
 from classes.world.world import World
 from classes.world.entities import NamedNations
 from parameters.classes import SimulationParameters
-from initialize_world_history.initialize_nations import initialize_usa, initialize_prc
+from initialize_world_history.initialize_nations import (
+    initialize_usa,
+    initialize_prc,
+    initialize_prc_counterfactual_no_slowdown,
+    initialize_usa_counterfactual_no_slowdown,
+)
 from initialize_world_history.initialize_ai_software_developers.initialize_ai_software_developers import initialize_us_frontier_lab
 
 FIRST_YEAR_IN_HISTORY = 2012
@@ -31,10 +36,16 @@ def initialize_world_for_year(params: SimulationParameters, year: int) -> World:
     # Initialize PRC
     prc = initialize_prc(params, year)
 
+    # Initialize counterfactual nations (no slowdown) - for AI R&D reduction ratio calculations
+    prc_counterfactual = initialize_prc_counterfactual_no_slowdown(params, year)
+    usa_counterfactual = initialize_usa_counterfactual_no_slowdown(params, year)
+
     # Create nations dict
     nations = {
         NamedNations.USA: usa,
         NamedNations.PRC: prc,
+        NamedNations.PRC_COUNTERFACTUAL_NO_SLOWDOWN: prc_counterfactual,
+        NamedNations.USA_COUNTERFACTUAL_NO_SLOWDOWN: usa_counterfactual,
     }
 
     # Initialize black projects dict

@@ -53,6 +53,10 @@ class NamedNations:
     """Named nation identifiers."""
     PRC = "PRC"
     USA = "USA"
+    # Counterfactual nations representing compute trajectories WITHOUT any slowdown agreement
+    # Used for computing AI R&D reduction ratios (comparing covert project to counterfactuals)
+    PRC_COUNTERFACTUAL_NO_SLOWDOWN = "PRC_COUNTERFACTUAL_NO_SLOWDOWN"
+    USA_COUNTERFACTUAL_NO_SLOWDOWN = "USA_COUNTERFACTUAL_NO_SLOWDOWN"  # For "largest AI company" comparison
 
 
 @dataclass

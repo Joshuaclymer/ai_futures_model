@@ -47,6 +47,7 @@ export interface BlackProjectModel {
   initial_black_project: TimeSeriesPercentiles;
   black_fab_flow: TimeSeriesPercentiles;
   black_fab_flow_all_sims: TimeSeriesPercentiles;
+  black_fab_monthly_flow_all_sims: TimeSeriesPercentiles;
   survival_rate: TimeSeriesPercentiles;
   total_black_project: TimeSeriesPercentiles;
   datacenter_capacity: TimeSeriesPercentiles;

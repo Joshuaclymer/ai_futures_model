@@ -452,7 +452,13 @@ function WattsPerTppPlot({
 
   // Compute curve dynamically based on parameters
   // W/TPP = density^exponent, normalized so W/TPP = 1 at density = 1 (H100)
-  const densityPoints = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0];
+  // Add more points around dennardScalingEnd to make the kink visible
+  const densityPoints = [
+    0.001, 0.002, 0.003, 0.005, 0.007, 0.01,
+    0.015, 0.02, 0.025, dennardScalingEnd, 0.035, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+    0.1, 0.15, 0.2, 0.3, 0.5, 0.7,
+    1.0, 2.0, 3.0, 5.0, 10.0, 20.0, 30.0, 50.0, 100.0
+  ];
 
   const computeWattsPerTpp = (density: number): number => {
     if (density < dennardScalingEnd) {

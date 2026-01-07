@@ -55,12 +55,17 @@ def build_black_project_model_section(
             all_data,
             lambda d: d['black_project']['total_compute'] if d['black_project'] else [0.0] * len(years)
         ),
-        # black_fab_flow: FILTERED to only fab-built simulations
+        # black_fab_flow: FILTERED to only fab-built simulations (cumulative)
         "black_fab_flow": _get_fab_flow_percentiles(all_data, years),
-        # black_fab_flow_all_sims: ALL simulations (for Dark Compute Stock Breakdown)
+        # black_fab_flow_all_sims: ALL simulations - CUMULATIVE production (for Dark Compute Stock Breakdown)
         "black_fab_flow_all_sims": get_percentiles_with_individual(
             all_data,
             lambda d: d['black_project']['fab_cumulative_production_h100e'] if d['black_project'] else [0.0] * len(years)
+        ),
+        # black_fab_monthly_flow_all_sims: ALL simulations - MONTHLY production rate
+        "black_fab_monthly_flow_all_sims": get_percentiles_with_individual(
+            all_data,
+            lambda d: d['black_project']['fab_monthly_production_h100e'] if d['black_project'] else [0.0] * len(years)
         ),
         "survival_rate": get_percentiles_with_individual(
             all_data,
