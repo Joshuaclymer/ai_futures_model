@@ -345,6 +345,9 @@ function IsOperationalPlot({ data }: { data?: TimeSeriesData }) {
       color={COLOR_PALETTE.fab}
       yLabel="Probability"
       showBand={false}
+      fillToZero={true}
+      fillAlpha={0.15}
+      yRange={[0, 1]}
     />
   );
 }

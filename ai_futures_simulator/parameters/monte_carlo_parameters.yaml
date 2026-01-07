@@ -325,15 +325,18 @@ black_project:
     black_fab_min_process_node: 28.0  # Minimum required process node (nm)
 
     # PRC localization years - separate distributions for each process node
-    # Aligned with reference model probabilities:
-    # 28nm: 60% by 2031, 14nm: 10% by 2031, 7nm: 6% by 2031
+    # Aligned with reference model's PROBABILITY_OF_90P_PRC_LOCALIZATION_AT_NODE
+    # Reference uses quadratic CDF extrapolation: 28nm: 25% by 2031
     # The fab uses the BEST available node that meets the minimum threshold
 
-    # 28nm localization: 60% probability by 2031 (linear: 10% per year 2026-2031)
+    # 28nm localization: matches reference model's quadratic CDF behavior
+    # Reference model has [(2025, 0.0), (2031, 0.25)] with polynomial extrapolation
+    # Fabs only get built when localization <= agreement_year (2030)
+    # To match reference wafer_starts distribution, use front-weighted probabilities
     prc_localization_year_28nm:
       dist: choice
       values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]  # 9999 = never achieved
-      p: [0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.40]  # 60% by 2031, 40% never
+      p: [0.15, 0.12, 0.10, 0.08, 0.06, 0.04, 0.45]  # ~55% by 2031, front-weighted for scanner accumulation
 
     # 14nm localization: 10% probability by 2031 (linear: ~1.67% per year 2026-2031)
     prc_localization_year_14nm:

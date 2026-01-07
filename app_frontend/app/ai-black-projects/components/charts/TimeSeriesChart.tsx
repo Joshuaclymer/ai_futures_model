@@ -19,6 +19,8 @@ interface TimeSeriesChartProps {
   yLogScale?: boolean;
   additionalTraces?: Plotly.Data[];
   yRange?: [number, number];
+  fillToZero?: boolean;
+  fillAlpha?: number;
 }
 
 export function TimeSeriesChart({
@@ -36,6 +38,8 @@ export function TimeSeriesChart({
   yLogScale = false,
   additionalTraces = [],
   yRange,
+  fillToZero = false,
+  fillAlpha = 0.2,
 }: TimeSeriesChartProps) {
   const isEmpty = !years || !median || years.length === 0;
 
@@ -67,6 +71,7 @@ export function TimeSeriesChart({
       line: { color, width: 2 },
       name: 'Median    ',
       hovertemplate: '%{x}: %{y:.2f}<extra></extra>',
+      ...(fillToZero ? { fill: 'tozeroy', fillcolor: hexToRgba(color, fillAlpha) } : {}),
     });
 
     // Add any additional traces

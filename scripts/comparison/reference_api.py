@@ -51,11 +51,15 @@ def fetch_reference_api(
         print(f"  Calling reference API ({num_simulations} simulations)...")
 
     num_years = end_year - start_year
-    data = json.dumps({
+    request_data = {
         'simulation_settings.num_simulations': num_simulations,
         'simulation_settings.agreement_start_year': start_year,
         'simulation_settings.num_years_to_simulate': num_years,
-    }).encode()
+    }
+    # When local cache is disabled, also disable backend cache to ensure fresh results
+    if not use_cache:
+        request_data['use_cache'] = False
+    data = json.dumps(request_data).encode()
 
     req = urllib.request.Request(
         REFERENCE_API_URL,

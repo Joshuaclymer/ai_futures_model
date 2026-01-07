@@ -3,114 +3,147 @@ import fs from 'fs';
 import path from 'path';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import yaml from 'js-yaml';
 
 export const metadata = {
-  title: 'Black Project Parameters Documentation',
-  description: 'Documentation for all parameters in the Black Project simulation model',
+  title: 'Model Parameters',
+  description: 'What the parameters represent and how we chose their values.',
 };
 
-// Parameter documentation categories
-const parameterCategories: Record<string, { title: string; files: string[] }> = {
-  'detection': {
-    title: 'Detection Parameters',
-    files: [
-      'detection_time.md',
-      'chip_stock_detection.md',
-      'energy_accounting_detection.md',
-      'satellite_datacenter_detection.md',
-      'sme_inventory_detection.md',
-      'covert_unconcealed.md',
-      'prior_odds.md',
-    ],
-  },
-  'chips-and-fabs': {
-    title: 'Chips and Fabs',
-    files: [
-      'fraction_diverted.md',
-      'chips_per_wafer.md',
-      'fab_construction_time.md',
-      'operating_labor_production.md',
-      'scanner_production_capacity.md',
-      'prc_scanner_rampup.md',
-      'prc_sme_indigenization.md',
-      'retrofitted_capacity.md',
-      'transistor_density.md',
-      'ai_chip_lifespan.md',
-      'prc_capacity.md',
-    ],
-  },
-  'datacenters-and-energy': {
-    title: 'Datacenters and Energy',
-    files: [
-      'datacenter_start_year.md',
-      'construction_workers.md',
-      'prc_energy.md',
-      'prc_energy_consumption.md',
-      'mw_per_worker.md',
-      'h100_power.md',
-      'energy_efficiency.md',
-      'energy_efficiency_improvement.md',
-      'max_energy_proportion.md',
-    ],
-  },
-  'compute-trends': {
-    title: 'Compute Trends',
-    files: [
-      'architecture_efficiency.md',
-      'dennard_scaling_end.md',
-      'watts_per_tpp.md',
-      'watts_per_tpp_after_dennard.md',
-      'watts_per_tpp_before_dennard.md',
-      'largest_ai_project.md',
-    ],
-  },
-  'other': {
-    title: 'Other Parameters',
-    files: [
-      'project_property.md',
-    ],
-  },
+// Category configuration mapping directory names to display info
+const categoryConfig: Record<string, { id: string; title: string; order: number }> = {
+  'perceptions_parameters': { id: 'detection', title: 'Detection Parameters', order: 1 },
+  'compute_parameters': { id: 'compute', title: 'Compute and Chips', order: 2 },
+  'data_center_and_energy_parameters': { id: 'datacenters', title: 'Datacenters and Energy', order: 3 },
+  'black_project_parameters': { id: 'black-project', title: 'Black Project Configuration', order: 4 },
 };
 
-// Read markdown files from the parameter_documentation folder
-function getParameterDocs(): Record<string, { title: string; docs: { filename: string; content: string }[] }> {
-  const docsPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'parameter_documentation');
+// Load monte carlo parameters and extract CI values
+function loadMonteCarloCI(): Record<string, string> {
+  const ciMap: Record<string, string> = {};
 
-  const categories: Record<string, { title: string; docs: { filename: string; content: string }[] }> = {};
+  try {
+    const yamlPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'monte_carlo_parameters.yaml');
+    const yamlContent = fs.readFileSync(yamlPath, 'utf-8');
+    const config = yaml.load(yamlContent) as Record<string, unknown>;
 
-  for (const [categoryId, category] of Object.entries(parameterCategories)) {
-    const docs: { filename: string; content: string }[] = [];
-
-    for (const filename of category.files) {
-      const filePath = path.join(docsPath, filename);
-      try {
-        if (fs.existsSync(filePath)) {
-          const content = fs.readFileSync(filePath, 'utf-8');
-          docs.push({ filename, content });
+    // Recursively extract ci80 values from the yaml structure
+    function extractCI(obj: unknown, prefix: string = '') {
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        const record = obj as Record<string, unknown>;
+        for (const [key, value] of Object.entries(record)) {
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            const valueRecord = value as Record<string, unknown>;
+            if ('ci80' in valueRecord && Array.isArray(valueRecord.ci80)) {
+              const ci = valueRecord.ci80 as number[];
+              ciMap[key] = `[${ci[0]}, ${ci[1]}]`;
+            } else {
+              extractCI(value, key);
+            }
+          }
         }
-      } catch {
-        // File doesn't exist, skip it
       }
     }
 
-    if (docs.length > 0) {
-      categories[categoryId] = {
-        title: category.title,
-        docs,
-      };
-    }
+    extractCI(config);
+  } catch {
+    // Yaml file doesn't exist or can't be parsed
   }
 
-  return categories;
+  return ciMap;
+}
+
+// Read markdown files from the parameter_documentation folder by scanning subdirectories
+function getParameterDocs(): Record<string, { title: string; docs: { filename: string; paramName: string; content: string }[] }> {
+  const docsPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'parameter_documentation');
+  const ciMap = loadMonteCarloCI();
+
+  const categories: Record<string, { title: string; docs: { filename: string; content: string }[]; order: number }> = {};
+
+  // Scan each category directory
+  try {
+    const categoryDirs = fs.readdirSync(docsPath, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory() && categoryConfig[dirent.name]);
+
+    for (const categoryDir of categoryDirs) {
+      const config = categoryConfig[categoryDir.name];
+      const categoryPath = path.join(docsPath, categoryDir.name);
+      const docs: { filename: string; content: string }[] = [];
+
+      // Scan each parameter subdirectory within the category
+      const paramDirs = fs.readdirSync(categoryPath, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory());
+
+      for (const paramDir of paramDirs) {
+        const paramPath = path.join(categoryPath, paramDir.name);
+        // Look for markdown file with same name as directory
+        const mdFilename = `${paramDir.name}.md`;
+        const mdPath = path.join(paramPath, mdFilename);
+
+        try {
+          if (fs.existsSync(mdPath)) {
+            let content = fs.readFileSync(mdPath, 'utf-8');
+            // Strip the first H1 heading from markdown (we use paramName as title instead)
+            content = content.replace(/^#\s+.+\n+/, '');
+
+            // Replace "Range" header with "CI" in tables
+            content = content.replace(/\|\s*Range\s*\|/gi, '| CI |');
+            content = content.replace(/\|\s*-+\s*\|(\s*-+\s*\|)(\s*-+\s*\|)(\s*-+\s*\|)/g, (match) => match);
+
+            // Get CI value for this parameter from yaml, or use N/A
+            const paramName = paramDir.name;
+            const ciValue = ciMap[paramName] || 'N/A';
+
+            // Replace the range column values in table rows with CI from yaml
+            // Match table rows: | text | text | range_value | text |
+            content = content.replace(
+              /\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|/g,
+              (match, col1, col2, col3, col4) => {
+                // Skip header row (contains "Range" or "CI") and separator row (contains only dashes)
+                if (col3.includes('Range') || col3.includes('CI') || /^[\s-]+$/.test(col3)) {
+                  return match;
+                }
+                return `|${col1}|${col2}| ${ciValue} |${col4}|`;
+              }
+            );
+
+            docs.push({ filename: mdFilename, paramName, content });
+          }
+        } catch {
+          // File doesn't exist or can't be read, skip it
+        }
+      }
+
+      if (docs.length > 0) {
+        categories[config.id] = {
+          title: config.title,
+          docs,
+          order: config.order,
+        };
+      }
+    }
+  } catch {
+    // Directory doesn't exist or can't be read
+  }
+
+  // Sort categories by order and return without the order field
+  const sortedEntries = Object.entries(categories)
+    .sort(([, a], [, b]) => a.order - b.order);
+
+  const result: Record<string, { title: string; docs: { filename: string; paramName: string; content: string }[] }> = {};
+  for (const [id, { title, docs }] of sortedEntries) {
+    result[id] = { title, docs };
+  }
+
+  return result;
 }
 
 // Category icons for visual interest
 const categoryIcons: Record<string, string> = {
   'detection': '◉',
-  'chips-and-fabs': '⬡',
-  'datacenters-and-energy': '⚡',
-  'compute-trends': '↗',
-  'other': '◇',
+  'compute': '⬡',
+  'datacenters': '⚡',
+  'black-project': '◇',
 };
 
 export default function BlackProjectParametersPage() {
@@ -125,7 +158,7 @@ export default function BlackProjectParametersPage() {
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-6 bg-gradient-to-b from-stone-800 to-stone-400 rounded-full" />
             <h1 className="text-lg font-medium tracking-tight text-stone-800">
-              Parameter Documentation
+              Model Parameters
             </h1>
           </div>
           <Link
@@ -146,11 +179,10 @@ export default function BlackProjectParametersPage() {
             Black Project Model
           </p>
           <h2 className="text-3xl font-semibold text-stone-900 tracking-tight mb-4" style={{ fontFamily: 'Georgia, serif' }}>
-            Technical Parameters
+            Model Parameters
           </h2>
           <p className="text-stone-600 text-lg leading-relaxed max-w-2xl">
-            Comprehensive documentation of all parameters governing the covert compute
-            simulation—from detection mechanisms to manufacturing constraints.
+            What the parameters represent and how we chose their values.
           </p>
         </div>
 
@@ -210,6 +242,11 @@ export default function BlackProjectParametersPage() {
                 >
                   {/* Timeline dot */}
                   <div className="absolute left-0 top-0 -translate-x-1/2 w-2 h-2 rounded-full bg-stone-300" />
+
+                  {/* Parameter Name Title */}
+                  <h3 className="text-lg font-mono text-stone-700 mb-4 tracking-tight">
+                    {doc.paramName}
+                  </h3>
 
                   {/* Prose Content */}
                   <div className="

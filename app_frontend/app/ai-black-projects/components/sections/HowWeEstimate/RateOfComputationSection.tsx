@@ -52,9 +52,10 @@ interface BreakdownChartProps {
   yLabel?: string;
   onClick?: () => void;
   tooltip?: string;
+  yRange?: [number, number];
 }
 
-function BreakdownChart({ title, description, descriptionNode, data, color, yLabel, onClick, tooltip }: BreakdownChartProps) {
+function BreakdownChart({ title, description, descriptionNode, data, color, yLabel, onClick, tooltip, yRange }: BreakdownChartProps) {
   const isClickable = !!onClick;
 
   return (
@@ -73,6 +74,7 @@ function BreakdownChart({ title, description, descriptionNode, data, color, yLab
           yLabel={yLabel}
           showBand={true}
           bandAlpha={0.15}
+          yRange={yRange}
         />
       </div>
       <div className="breakdown-label">{title}</div>
@@ -240,6 +242,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             data={survivingFraction}
             color={COLOR_PALETTE.survival_rate}
             yLabel="Fraction"
+            yRange={[0, 1]}
           />
 
           <Operator>=</Operator>

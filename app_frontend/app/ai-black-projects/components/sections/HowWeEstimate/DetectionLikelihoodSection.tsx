@@ -85,6 +85,10 @@ interface PDFBreakdownChartProps {
   xLabel?: string;
 }
 
+// Constants for consistent likelihood ratio x-axis range across all LR charts
+const LR_X_RANGE: [number, number] = [1/5, 5];
+const LR_BOUNDARY_LABELS = { min: '≤1/5', max: '≥5' };
+
 function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'LR' }: PDFBreakdownChartProps) {
   return (
     <div className="breakdown-item">
@@ -97,6 +101,8 @@ function PDFBreakdownChart({ title, description, descriptionNode, samples, color
           logScale={true}
           numBins={10}
           showMedianLine={false}
+          xRange={LR_X_RANGE}
+          boundaryLabels={LR_BOUNDARY_LABELS}
         />
       </div>
       <div className="breakdown-label">{title}</div>

@@ -45,6 +45,10 @@ interface PDFChartProps {
   normalize?: 'probability' | 'density';
   /** Show a dashed vertical line at the median (default: true) */
   showMedianLine?: boolean;
+  /** Fixed x-axis range [min, max]. Data outside this range is clipped to boundary bins. */
+  xRange?: [number, number];
+  /** Custom labels for boundary bins when using xRange. E.g., { min: '≤1/5', max: '≥5' } */
+  boundaryLabels?: { min?: string; max?: string };
 }
 
 /**
@@ -61,6 +65,8 @@ export function PDFChart({
   isLoading = false,
   normalize = 'probability',
   showMedianLine = true,
+  xRange,
+  boundaryLabels,
 }: PDFChartProps) {
   // Default yLabel based on normalization
   const effectiveYLabel = yLabel ?? (normalize === 'density' ? 'Density' : 'Probability');
@@ -80,9 +86,37 @@ export function PDFChart({
   const binEdges: number[] = [];
   const binCenters: number[] = [];
   const binWidths: number[] = [];
+  const useFixedRange = xRange !== undefined;
 
-  if (logScale) {
-    // Log-scale binning
+  if (useFixedRange) {
+    // Fixed range binning - clips outliers to boundary bins
+    const [rangeMin, rangeMax] = xRange;
+
+    if (logScale) {
+      const logMin = Math.log10(rangeMin);
+      const logMax = Math.log10(rangeMax);
+
+      for (let i = 0; i <= numBins; i++) {
+        binEdges.push(Math.pow(10, logMin + i * (logMax - logMin) / numBins));
+      }
+
+      // For log scale, use geometric mean for bin centers
+      for (let i = 0; i < binEdges.length - 1; i++) {
+        binCenters.push(Math.sqrt(binEdges[i] * binEdges[i + 1]));
+        binWidths.push(binEdges[i + 1] - binEdges[i]);
+      }
+    } else {
+      for (let i = 0; i <= numBins; i++) {
+        binEdges.push(rangeMin + i * (rangeMax - rangeMin) / numBins);
+      }
+
+      for (let i = 0; i < binEdges.length - 1; i++) {
+        binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
+        binWidths.push(binEdges[i + 1] - binEdges[i]);
+      }
+    }
+  } else if (logScale) {
+    // Log-scale binning (original behavior)
     const minVal = Math.min(...validSamples);
     const maxVal = Math.max(...validSamples);
     const logMin = Math.log10(minVal);
@@ -131,13 +165,29 @@ export function PDFChart({
     }
   }
 
-  // Bin the data
+  // Bin the data - with clipping to boundary bins when using fixed range
   const binCounts = new Array(numBins).fill(0);
   validSamples.forEach(v => {
-    for (let i = 0; i < binEdges.length - 1; i++) {
-      if (v >= binEdges[i] && (i === binEdges.length - 2 ? v <= binEdges[i + 1] : v < binEdges[i + 1])) {
-        binCounts[i]++;
-        break;
+    if (useFixedRange) {
+      // Clip outliers to boundary bins
+      if (v <= binEdges[0]) {
+        binCounts[0]++;
+      } else if (v >= binEdges[binEdges.length - 1]) {
+        binCounts[numBins - 1]++;
+      } else {
+        for (let i = 0; i < binEdges.length - 1; i++) {
+          if (v >= binEdges[i] && v < binEdges[i + 1]) {
+            binCounts[i]++;
+            break;
+          }
+        }
+      }
+    } else {
+      for (let i = 0; i < binEdges.length - 1; i++) {
+        if (v >= binEdges[i] && (i === binEdges.length - 2 ? v <= binEdges[i + 1] : v < binEdges[i + 1])) {
+          binCounts[i]++;
+          break;
+        }
       }
     }
   });
@@ -185,6 +235,30 @@ export function PDFChart({
     } as Plotly.Data);
   }
 
+  // Build custom tick configuration for fixed range with boundary labels
+  const xaxisTickConfig: Partial<Plotly.LayoutAxis> = {};
+  if (useFixedRange && boundaryLabels) {
+    const [rangeMin, rangeMax] = xRange;
+    // Create tick values: first bin center, middle values (1 for LR), last bin center
+    const tickvals: number[] = [binCenters[0]];
+    const ticktext: string[] = [boundaryLabels.min || `≤${rangeMin}`];
+
+    // Add "1" tick in the middle for likelihood ratio charts (where 1 means no evidence)
+    if (logScale && rangeMin < 1 && rangeMax > 1) {
+      tickvals.push(1);
+      ticktext.push('1');
+    }
+
+    tickvals.push(binCenters[binCenters.length - 1]);
+    ticktext.push(boundaryLabels.max || `≥${rangeMax}`);
+
+    xaxisTickConfig.tickvals = tickvals;
+    xaxisTickConfig.ticktext = ticktext;
+    xaxisTickConfig.range = logScale
+      ? [Math.log10(rangeMin), Math.log10(rangeMax)]
+      : [rangeMin, rangeMax];
+  }
+
   const layout: Partial<Plotly.Layout> = {
     xaxis: {
       title: { text: xLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
@@ -192,7 +266,8 @@ export function PDFChart({
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
       gridcolor: 'rgba(128, 128, 128, 0.2)',
       // For log scale, show only order-of-magnitude ticks (no 2, 5 intermediate ticks)
-      ...(logScale ? { dtick: 1 } : {}),
+      ...(logScale && !useFixedRange ? { dtick: 1 } : {}),
+      ...xaxisTickConfig,
     },
     yaxis: {
       title: { text: effectiveYLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
