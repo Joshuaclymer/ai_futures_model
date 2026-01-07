@@ -41,11 +41,8 @@ software_r_and_d:
   # =========================================================================
   # PRODUCTION FUNCTION PARAMETERS (CES)
   # =========================================================================
-  # Coding labor elasticity
-  rho_coding_labor:
-    dist: choice
-    values: [-5, -2, -1]
-    p: [0.25, 0.5, 0.25]
+  # Coding labor elasticity - set to -2 to match reference model
+  rho_coding_labor: -2
 
   coding_labor_normalization: 1.0
 
@@ -56,44 +53,25 @@ software_r_and_d:
   experiment_compute_exponent: null
 
   # Experiment capacity anchor parameters
-  inf_compute_asymptote:
-    dist: shifted_lognormal
-    ci80: [25, 40000]
-    shift: 1.0
-    min: 1.0
+  # Set to fixed values to match reference model (new_version_of_takeoff_model)
+  inf_compute_asymptote: 1000
+  inf_labor_asymptote: 15
 
-  inf_labor_asymptote:
-    dist: shifted_lognormal
-    ci80: [1, 200]
-    shift: 1.0
-    min: 1.0
-
+  # Set to match reference model (new_version_of_takeoff_model)
   labor_anchor_exp_cap: 1.6
-  compute_anchor_exp_cap: null
+  compute_anchor_exp_cap: 0.35714285714285715
+  inv_compute_anchor_exp_cap: 2.8
 
-  inv_compute_anchor_exp_cap:
-    dist: shifted_lognormal
-    ci80: [0.8, 5.3]
-    shift: 1.0
-    min: 1.0
-    max: 10
-
-  # Parallel penalty
-  parallel_penalty:
-    dist: beta
-    alpha: 3
-    beta: 3
-    min: 0.0
-    max: 1.0
+  # Parallel penalty - set to 0.5 to match reference model
+  parallel_penalty: 0.5
 
   # =========================================================================
   # SOFTWARE PROGRESS PARAMETERS
   # =========================================================================
-  r_software: null  # Calibrated
+  r_software: null  # Calibrated based on software_progress_rate_at_reference_year
 
-  software_progress_rate_at_reference_year:
-    dist: lognormal
-    ci80: [0.4, 2.5]
+  # Set to 1.0 to match reference model (new_version_of_takeoff_model)
+  software_progress_rate_at_reference_year: 1.0
 
   # =========================================================================
   # AUTOMATION SCHEDULE PARAMETERS
@@ -103,18 +81,13 @@ software_r_and_d:
   automation_interp_type: "linear"
   automation_logistic_asymptote: 1.05
 
-  swe_multiplier_at_present_day:
-    dist: shifted_lognormal
-    ci80: [0.18, 2]
-    shift: 1.0
-    min: 1.0
+  # Set to 1.6 to match reference model (new_version_of_takeoff_model)
+  swe_multiplier_at_present_day: 1.6
 
   coding_labor_mode: "optimal_ces"
 
-  coding_automation_efficiency_slope:
-    dist: lognormal
-    ci80: [0.67, 6]
-    min: 0.1
+  # Set to 3.0 to match reference model
+  coding_automation_efficiency_slope: 3.0
 
   max_serial_coding_labor_multiplier:
     dist: lognormal
@@ -129,30 +102,21 @@ software_r_and_d:
   # =========================================================================
   # AI RESEARCH TASTE PARAMETERS
   # =========================================================================
-  ai_research_taste_at_coding_automation_anchor_sd:
-    dist: normal
-    ci80: [-2.5, 3.5]
-    clip_to_bounds: false
+  # Set to 0.5 to match reference model
+  ai_research_taste_at_coding_automation_anchor_sd: 0.5
 
-  ai_research_taste_slope:
-    dist: lognormal
-    ci80: [0.7, 6.9]
-    clip_to_bounds: false
+  # Set to 2.2 to match reference model
+  ai_research_taste_slope: 2.2
 
   taste_schedule_type: "SDs per progress-year"
 
-  median_to_top_taste_multiplier:
-    dist: shifted_lognormal
-    ci80: [0.7, 10.4]
-    shift: 1.0
-    clip_to_bounds: false
+  # Set to 3.7 to match reference model
+  median_to_top_taste_multiplier: 3.7
 
   top_percentile: 0.999
 
-  taste_limit:
-    dist: lognormal
-    ci80: [2, 32]
-    clip_to_bounds: false
+  # Set to 8.0 to match reference model
+  taste_limit: 8.0
 
   taste_limit_smoothing:
     dist: beta
@@ -269,6 +233,10 @@ compute:
     # PRC lithography scanner production
     prc_lithography_scanners_produced_in_first_year: 20.0
     prc_additional_lithography_scanners_produced_per_year: 16.0
+    # Uncertainty on total PRC scanner production: relative_sigma=0.30 -> ci80=[0.686, 1.457]
+    prc_scanner_production_multiplier:
+      dist: lognormal
+      ci80: [0.686, 1.457]
     # PRC localization probabilities (by process node and year)
     p_localization_28nm_2030: 0.25
     p_localization_14nm_2030: 0.10
@@ -286,6 +254,15 @@ compute:
     # Worker-to-capacity conversion parameters (for black projects)
     fab_wafers_per_month_per_operating_worker: 24.64
     fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
+    # Fab productivity multipliers - capture uncertainty in wafer production capacity
+    # Labor productivity: relative_sigma=0.62 -> ci80=[0.481, 2.077]
+    fab_labor_productivity_multiplier:
+      dist: lognormal
+      ci80: [0.481, 2.077]
+    # Scanner productivity: relative_sigma=0.20 -> ci80=[0.776, 1.289]
+    fab_scanner_productivity_multiplier:
+      dist: lognormal
+      ci80: [0.776, 1.289]
 
   compute_allocations:
     fraction_for_ai_r_and_d_inference: 0.29

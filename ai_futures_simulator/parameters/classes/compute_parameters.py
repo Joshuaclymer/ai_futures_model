@@ -46,6 +46,9 @@ class PRCComputeParameters:
     # PRC lithography scanner production
     prc_lithography_scanners_produced_in_first_year: float
     prc_additional_lithography_scanners_produced_per_year: float
+    # Uncertainty multiplier for total PRC scanner production (sampled from lognormal, median=1.0)
+    # Reference: prc_scanner_production_relative_sigma=0.30
+    prc_scanner_production_multiplier: float
 
     # PRC localization probability curves: List of (year, cumulative_probability) tuples
     p_localization_28nm_2030: float
@@ -65,6 +68,12 @@ class PRCComputeParameters:
     # Fab construction time uncertainty multiplier (sampled from lognormal, median=1.0)
     fab_construction_time_multiplier: float
 
+    # Fab productivity multipliers (sampled from lognormal, median=1.0)
+    # These capture uncertainty in wafer production capacity
+    # Reference: labor_productivity_relative_sigma=0.62, scanner_productivity_relative_sigma=0.20
+    fab_labor_productivity_multiplier: float
+    fab_scanner_productivity_multiplier: float
+
 @dataclass
 class SurvivalRateParameters:
     # Base hazard rate parameters (p50 values)
@@ -73,6 +82,16 @@ class SurvivalRateParameters:
     # Multiplier applied to both hazard rates (sampled from distribution in Monte Carlo mode)
     # Discrete model uses metalog with p25=0.1, p50=1.0, p75=6.0
     hazard_rate_multiplier: float
+
+    @property
+    def effective_initial_hazard_rate(self) -> float:
+        """Initial hazard rate with multiplier applied."""
+        return self.initial_annual_hazard_rate * self.hazard_rate_multiplier
+
+    @property
+    def effective_hazard_rate_increase(self) -> float:
+        """Hazard rate increase per year with multiplier applied."""
+        return self.annual_hazard_rate_increase_per_year * self.hazard_rate_multiplier
 
 @dataclass
 class ComputeParameters:

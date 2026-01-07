@@ -165,6 +165,7 @@ compute:
     # PRC lithography scanner production
     prc_lithography_scanners_produced_in_first_year: 20.0
     prc_additional_lithography_scanners_produced_per_year: 16.0
+    prc_scanner_production_multiplier: 1.0
     # PRC localization probabilities (by process node and year)
     p_localization_28nm_2030: 0.25
     p_localization_14nm_2030: 0.10
@@ -174,9 +175,14 @@ compute:
     wafers_per_month_per_lithography_scanner: 1000.0
     construction_time_for_5k_wafers_per_month: 1.4
     construction_time_for_100k_wafers_per_month: 2.41
+    # Fab construction time multiplier
+    fab_construction_time_multiplier: 1.0
     # Worker-to-capacity conversion parameters (for black projects)
     fab_wafers_per_month_per_operating_worker: 24.64
     fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
+    # Fab productivity multipliers
+    fab_labor_productivity_multiplier: 1.0
+    fab_scanner_productivity_multiplier: 1.0
 
 # =============================================================================
 # DATACENTER AND ENERGY PARAMETERS

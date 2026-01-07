@@ -134,6 +134,8 @@ class BlackProjectUpdater(WorldUpdater):
                     fab_number_of_lithography_scanners=project.fab_number_of_lithography_scanners,
                     wafers_per_month_per_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
                     wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
+                    labor_productivity_multiplier=prc_compute.fab_labor_productivity_multiplier,
+                    scanner_productivity_multiplier=prc_compute.fab_scanner_productivity_multiplier,
                 )
                 fab_construction_duration = calculate_fab_construction_duration(
                     fab_construction_labor=project.fab_construction_labor,
@@ -154,6 +156,8 @@ class BlackProjectUpdater(WorldUpdater):
                     fab_number_of_lithography_scanners=project.fab_number_of_lithography_scanners,
                     wafers_per_month_per_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
                     wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
+                    labor_productivity_multiplier=prc_compute.fab_labor_productivity_multiplier,
+                    scanner_productivity_multiplier=prc_compute.fab_scanner_productivity_multiplier,
                 )
 
                 # Use preparation_start_year (fab construction time) for architecture efficiency
@@ -256,6 +260,8 @@ class BlackProjectUpdater(WorldUpdater):
                 fab_number_of_lithography_scanners=project.fab_number_of_lithography_scanners,
                 wafers_per_month_per_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
                 wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
+                labor_productivity_multiplier=prc_compute.fab_labor_productivity_multiplier,
+                scanner_productivity_multiplier=prc_compute.fab_scanner_productivity_multiplier,
             ))
 
             # Use preparation_start_year (fab construction time) for architecture efficiency
@@ -411,12 +417,19 @@ class BlackProjectUpdater(WorldUpdater):
 
                 # Compute lr_reported_energy from datacenter energy consumption (dynamic)
                 # Covert energy = datacenter capacity (which consumes that amount of power)
+                # NOTE: Reference model re-samples US energy estimate at each timestep,
+                # causing cumulative_lr to fluctuate. This creates more varied detection times.
                 covert_energy_gw = total_capacity_gw
-                if covert_energy_gw > 1e-10 and hasattr(project, 'total_prc_energy_gw') and hasattr(project, 'us_estimate_energy'):
+                if covert_energy_gw > 1e-10 and hasattr(project, 'total_prc_energy_gw'):
+                    # Re-sample US estimate at each timestep (matches reference model behavior)
+                    us_estimate_energy_now = sample_us_estimate_with_error(
+                        project.total_prc_energy_gw,
+                        self.perception_params.intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity,
+                    )
                     lr_energy = compute_lr_from_reported_energy_consumption(
                         total_prc_energy_gw=project.total_prc_energy_gw,
                         covert_energy_gw=covert_energy_gw,
-                        us_estimate_energy=project.us_estimate_energy,
+                        us_estimate_energy=us_estimate_energy_now,
                         median_error=self.perception_params.intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity,
                     )
                 else:
@@ -652,11 +665,12 @@ def initialize_black_project(
 
         # Calculate total accumulated PRC scanners using linear production ramp-up
         # Total = first_year_production * (n+1) + additional_per_year * n * (n+1) / 2
-        # Uncertainty is already captured by the distributions on scanner production parameters
+        # Uncertainty is captured by prc_scanner_production_multiplier (lognormal, relative_sigma=0.30)
         n = years_since_localization
         first_year_prod = prc_compute.prc_lithography_scanners_produced_in_first_year
         additional_per_year = prc_compute.prc_additional_lithography_scanners_produced_per_year
-        total_prc_scanners = first_year_prod * (n + 1) + additional_per_year * n * (n + 1) / 2
+        base_total_scanners = first_year_prod * (n + 1) + additional_per_year * n * (n + 1) / 2
+        total_prc_scanners = base_total_scanners * prc_compute.prc_scanner_production_multiplier
 
         # Scanners devoted to fab = total * diversion proportion
         num_scanners = int(total_prc_scanners * props.fraction_of_lithography_scanners_to_divert_at_black_project_start)
@@ -673,6 +687,8 @@ def initialize_black_project(
         fab_number_of_lithography_scanners=float(num_scanners),
         wafers_per_month_per_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
         wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
+        labor_productivity_multiplier=prc_compute.fab_labor_productivity_multiplier,
+        scanner_productivity_multiplier=prc_compute.fab_scanner_productivity_multiplier,
     )
     fab_construction_duration = calculate_fab_construction_duration(
         fab_construction_labor=black_fab_construction_labor,

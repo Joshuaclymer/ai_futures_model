@@ -97,18 +97,25 @@ def calculate_fab_wafer_starts_per_month(
     fab_number_of_lithography_scanners: float,
     wafers_per_month_per_worker: float = 24.64,
     wafers_per_month_per_scanner: float = 1000.0,
+    labor_productivity_multiplier: float = 1.0,
+    scanner_productivity_multiplier: float = 1.0,
 ) -> float:
     """Calculate wafer starts per month based on labor and scanner constraints.
 
     Uses fixed-proportions production where output is limited by the binding constraint
-    (either labor or scanners). Uncertainty is captured by the distributions on
-    wafers_per_month_per_worker and wafers_per_month_per_scanner in the YAML config.
-    """
-    # Labor capacity
-    from_labor = fab_operating_labor * wafers_per_month_per_worker
+    (either labor or scanners). Uncertainty is captured by the productivity multipliers
+    which are sampled from log-normal distributions in Monte Carlo mode:
+    - labor_productivity_multiplier: relative_sigma=0.62 (matches reference model)
+    - scanner_productivity_multiplier: relative_sigma=0.20 (matches reference model)
 
-    # Scanner capacity
-    from_scanners = fab_number_of_lithography_scanners * wafers_per_month_per_scanner
+    This matches the reference model's estimate_wafer_starts_per_month() which samples
+    labor capacity and scanner capacity independently from log-normal distributions.
+    """
+    # Labor capacity with uncertainty multiplier
+    from_labor = fab_operating_labor * wafers_per_month_per_worker * labor_productivity_multiplier
+
+    # Scanner capacity with uncertainty multiplier
+    from_scanners = fab_number_of_lithography_scanners * wafers_per_month_per_scanner * scanner_productivity_multiplier
 
     # Return minimum of labor and scanner capacity (fixed-proportions production)
     result = min(from_labor, from_scanners)
