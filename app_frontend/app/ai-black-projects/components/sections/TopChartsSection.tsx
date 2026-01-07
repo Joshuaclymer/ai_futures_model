@@ -112,6 +112,7 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
             isLoading={isLoading}
             height={CHART_HEIGHT}
             creamBackground={true}
+            xMax={10}
             thresholdLabels={{
               '1': '"Detection" is a >1x update    ',
               '2': '"Detection" is a >2x update    ',
