@@ -1,0 +1,10 @@
+Company,Facility,Location,Cost (Billion USD),Start Year,Wafer Size (mm),Process Node (nm),Capacity (WSPM)
+SMIC-SMSC,SN1,China - Shanghai,10.0,2020,300,14,70000
+SMIC,B2A,China - Beijing,3.59,2014,300,28,41000
+GlobalFoundries,Fab 8,USA - New York - Malta,6.7,2012,300,12,60000
+TSMC,Fab 18 (P1-3),Taiwan - Tainan,17.0,2018,300,5,120000
+TSMC,Fab 15,Taiwan - Taichung,9.3,2011,300,20,100000
+TSMC,Fab 14 (P4),Taiwan - Tainan,3.75,2011,300,16,45500
+TSMC,Fab 12 (P4),Taiwan - Hsinchu,6.0,2009,300,20,40000
+TSMC,Fab 14 (P3),Taiwan - Tainan,3.1,2008,300,16,55000
+GlobalFoundries,Fab 1 Module 1,Germany - Saxony - Dresden,3.6,2005,300,22,35000

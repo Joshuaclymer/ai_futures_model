@@ -33,8 +33,8 @@ def main():
     parser.add_argument(
         "--start-year",
         type=int,
-        default=2030,
-        help="Start year for simulations (default: 2030)"
+        default=2027,
+        help="Start year for simulations (default: 2027)"
     )
     parser.add_argument(
         "--end-year",

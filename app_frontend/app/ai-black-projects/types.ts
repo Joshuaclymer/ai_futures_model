@@ -8,7 +8,6 @@ export type { BlackProjectData } from '@/types/blackProject';
 // Parameter types for the simulation
 export interface Parameters {
   // Key Parameters
-  numYearsToSimulate: number;
   numSimulations: number;
   agreementYear: number;
   blackProjectStartYear: number;
@@ -82,7 +81,6 @@ export interface Parameters {
 // Default parameters
 export const defaultParameters: Parameters = {
   // Key Parameters
-  numYearsToSimulate: 10,
   numSimulations: 100,
   agreementYear: 2027,
   blackProjectStartYear: 2029,

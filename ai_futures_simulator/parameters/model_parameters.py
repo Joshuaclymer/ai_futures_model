@@ -14,6 +14,7 @@ import yaml
 from parameters.sample_from_distribution import (
     sample_from_distribution,
     sample_from_distribution_with_quantile,
+    get_modal_value,
 )
 
 # Import parameter classes
@@ -293,3 +294,135 @@ class ModelParameters:
             rng = np.random.default_rng(self.seed)
 
         return [self.sample(rng) for _ in range(num_samples)]
+
+    def _get_modal_nested_dict(
+        self,
+        config: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Get modal values from a nested dict, handling distributions at any level."""
+        result = {}
+        for key, value in config.items():
+            if isinstance(value, dict):
+                # Check if this dict is a distribution spec
+                if "dist" in value:
+                    result[key] = get_modal_value(value, key)
+                else:
+                    # Recurse into nested dict
+                    result[key] = self._get_modal_nested_dict(value)
+            elif isinstance(value, list):
+                # Handle lists (e.g., localization curves) - pass through as-is
+                if value and isinstance(value[0], list):
+                    result[key] = [tuple(item) for item in value]
+                else:
+                    result[key] = value
+            else:
+                result[key] = value
+        return result
+
+    def sample_modal(self) -> SimulationParameters:
+        """
+        Create a SimulationParameters using the modal (most likely) values for all distributions.
+
+        This produces a single "most likely" trajectory rather than a random sample.
+        Useful for generating a baseline or representative simulation.
+
+        Returns:
+            SimulationParameters instance with modal values.
+        """
+        # Get modal values for settings
+        modal_settings = {}
+        for param_name, dist_spec in self.settings.items():
+            modal_settings[param_name] = get_modal_value(dist_spec, param_name)
+
+        # Get modal values for software_r_and_d parameters
+        modal_r_and_d = {}
+        for param_name, dist_spec in self.software_r_and_d.items():
+            modal_r_and_d[param_name] = get_modal_value(dist_spec, param_name)
+
+        # Get modal values for compute parameters (nested structure)
+        modal_compute = self._get_modal_nested_dict(self.compute)
+
+        # Get modal values for datacenter_and_energy parameters (nested structure)
+        modal_dc_energy = self._get_modal_nested_dict(self.datacenter_and_energy)
+
+        # Get modal values for policy parameters
+        modal_policy = self._get_modal_nested_dict(self.policy)
+
+        # Build parameter objects
+        settings = SimulationSettings(**modal_settings)
+        software_r_and_d = SoftwareRAndDParameters(**modal_r_and_d)
+
+        # Build nested compute parameters
+        compute = ComputeParameters(
+            exogenous_trends=ExogenousComputeTrends(**modal_compute.get("exogenous_trends", {})),
+            survival_rate_parameters=SurvivalRateParameters(**modal_compute.get("survival_rate_parameters", {})),
+            USComputeParameters=USComputeParameters(**modal_compute.get("us_compute", {})),
+            PRCComputeParameters=PRCComputeParameters(**modal_compute.get("prc_compute", {})),
+            compute_allocations=ComputeAllocations(**modal_compute.get("compute_allocations", {
+                "fraction_for_ai_r_and_d_inference": 0.29,
+                "fraction_for_ai_r_and_d_training": 0.25,
+                "fraction_for_external_deployment": 0.3,
+                "fraction_for_alignment_research": 0.01,
+                "fraction_for_frontier_training": 0.15,
+            })),
+        )
+
+        # Build nested datacenter and energy parameters
+        datacenter_and_energy = DataCenterAndEnergyParameters(
+            prc_energy_consumption=PRCDataCenterAndEnergyParameters(**modal_dc_energy.get("prc_energy_consumption", {})),
+        )
+
+        policy = PolicyParameters(**modal_policy)
+
+        # Build black project parameters if present
+        black_project = None
+        if self.black_project is not None:
+            modal_bp = self._get_modal_nested_dict(self.black_project)
+            black_project = BlackProjectParameters(
+                run_a_black_project=modal_bp.get("run_a_black_project", True),
+                black_project_start_year=modal_bp.get("black_project_start_year", 2030.0),
+                black_project_properties=BlackProjectProperties(**modal_bp.get("properties", {})),
+            )
+
+        # Build perceptions parameters if present
+        perceptions = None
+        if self.perceptions is not None:
+            modal_perceptions = self._get_modal_nested_dict(self.perceptions)
+            perceptions = PerceptionsParameters(
+                update_perceptions=modal_perceptions.get("update_perceptions", True),
+                black_project_perception_parameters=BlackProjectPerceptionsParameters(
+                    **modal_perceptions.get("black_project_perception_parameters", {})
+                ),
+            )
+
+        # Build AI researcher headcount parameters if present
+        ai_researcher_headcount = None
+        if self.ai_researcher_headcount is not None:
+            modal_researchers = self._get_modal_nested_dict(self.ai_researcher_headcount)
+            ai_researcher_headcount = AIResearcherHeadcountParameters(
+                us_researchers=USResearcherParameters(**modal_researchers.get("us_researchers", {})),
+                prc_researchers=PRCResearcherParameters(**modal_researchers.get("prc_researchers", {})),
+                initial_global_ai_researcher_headcount=modal_researchers.get(
+                    "initial_global_ai_researcher_headcount", 90000.0
+                ),
+                annual_growth_rate_of_ai_researcher_headcount=modal_researchers.get(
+                    "annual_growth_rate_of_ai_researcher_headcount", 1.12
+                ),
+                proportion_of_global_ai_researchers_in_us=modal_researchers.get(
+                    "proportion_of_global_ai_researchers_in_us", 0.55
+                ),
+                proportion_of_global_ai_researchers_in_prc=modal_researchers.get(
+                    "proportion_of_global_ai_researchers_in_prc", 0.44
+                ),
+            )
+
+        return SimulationParameters(
+            settings=settings,
+            software_r_and_d=software_r_and_d,
+            compute=compute,
+            datacenter_and_energy=datacenter_and_energy,
+            policy=policy,
+            ai_researcher_headcount=ai_researcher_headcount,
+            black_project=black_project,
+            perceptions=perceptions,
+        )

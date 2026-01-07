@@ -1,0 +1,442 @@
+# Monte Carlo sampling parameters for the AI Futures Simulator
+# Based on the ai_takeoff_model sampling configuration
+#
+# Each parameter can be:
+#   - A point estimate: r_software: 2.4
+#   - A distribution: r_software: {dist: uniform, min: 2.0, max: 3.0}
+#
+# Supported distributions:
+#   - fixed: {dist: fixed, value: 2.4}
+#   - uniform: {dist: uniform, min: 2.0, max: 3.0}
+#   - normal: {dist: normal, ci80: [low, high]} or {dist: normal, mean: 0.6, sd: 0.05}
+#   - lognormal: {dist: lognormal, ci80: [low, high]}
+#   - shifted_lognormal: {dist: shifted_lognormal, ci80: [low, high], shift: 1.0}
+#   - beta: {dist: beta, alpha: 2, beta: 3, min: 0, max: 1}
+#   - choice: {dist: choice, values: [-5, -2, -1], p: [0.25, 0.5, 0.25]}
+
+initial_progress: 0.0
+seed: 42
+
+# =============================================================================
+# SIMULATION SETTINGS
+# =============================================================================
+settings:
+  simulation_start_year: 2026
+  simulation_end_year: 2040.0
+  n_eval_points: 141  # Changed from 100 to get dt=0.1 years (14 years / 140 = 0.1)
+  # ODE solver settings (tuned for speed, <1% final error)
+  ode_rtol: 0.002     # Relative tolerance
+  ode_atol: 0.00005   # Absolute tolerance
+  ode_max_step: 1.0   # Max step size in years
+
+# =============================================================================
+# SOFTWARE R&D PARAMETERS
+# =============================================================================
+software_r_and_d:
+  # =========================================================================
+  # MODE FLAGS
+  # =========================================================================
+  update_software_progress: true
+
+  # =========================================================================
+  # PRODUCTION FUNCTION PARAMETERS (CES)
+  # =========================================================================
+  # Coding labor elasticity - set to -2 to match reference model
+  rho_coding_labor: -2
+
+  coding_labor_normalization: 1.0
+
+  # Experiment capacity CES (calibrated from anchor params)
+  direct_input_exp_cap_ces_params: false
+  rho_experiment_capacity: null
+  alpha_experiment_capacity: null
+  experiment_compute_exponent: null
+
+  # Experiment capacity anchor parameters
+  # Set to fixed values to match reference model (new_version_of_takeoff_model)
+  inf_compute_asymptote: 1000
+  inf_labor_asymptote: 15
+
+  # Set to match reference model (new_version_of_takeoff_model)
+  labor_anchor_exp_cap: 1.6
+  compute_anchor_exp_cap: 0.35714285714285715
+  inv_compute_anchor_exp_cap: 2.8
+
+  # Parallel penalty - set to 0.5 to match reference model
+  parallel_penalty: 0.5
+
+  # =========================================================================
+  # SOFTWARE PROGRESS PARAMETERS
+  # =========================================================================
+  r_software: null  # Calibrated based on software_progress_rate_at_reference_year
+
+  # Set to 1.0 to match reference model (new_version_of_takeoff_model)
+  software_progress_rate_at_reference_year: 1.0
+
+  # =========================================================================
+  # AUTOMATION SCHEDULE PARAMETERS
+  # =========================================================================
+  automation_fraction_at_coding_automation_anchor: 1.0
+  automation_anchors: null
+  automation_interp_type: "linear"
+  automation_logistic_asymptote: 1.05
+
+  # Set to 1.6 to match reference model (new_version_of_takeoff_model)
+  swe_multiplier_at_present_day: 1.6
+
+  coding_labor_mode: "optimal_ces"
+
+  # Set to 3.0 to match reference model
+  coding_automation_efficiency_slope: 3.0
+
+  max_serial_coding_labor_multiplier:
+    dist: lognormal
+    ci80: [10000, 1000000000000]
+    min: 1.0
+    modal: 100000000.0
+
+  optimal_ces_eta_init: 0.05
+  optimal_ces_grid_size: 4096
+  optimal_ces_frontier_tail_eps: 0.000001
+  optimal_ces_frontier_cap: 1000000000000.0
+
+  # =========================================================================
+  # AI RESEARCH TASTE PARAMETERS
+  # =========================================================================
+  # Set to 0.5 to match reference model
+  ai_research_taste_at_coding_automation_anchor_sd: 0.5
+
+  # Set to 2.2 to match reference model
+  ai_research_taste_slope: 2.2
+
+  taste_schedule_type: "SDs per progress-year"
+
+  # Set to 3.7 to match reference model
+  median_to_top_taste_multiplier: 3.7
+
+  top_percentile: 0.999
+
+  # Set to 8.0 to match reference model
+  taste_limit: 8.0
+
+  taste_limit_smoothing:
+    dist: beta
+    alpha: 2
+    beta: 2
+    clip_to_bounds: false
+    modal: 0.51
+
+  # =========================================================================
+  # HORIZON / MILESTONE PARAMETERS
+  # =========================================================================
+  progress_at_aa: null
+
+  # Superhuman coder time horizon (minutes)
+  # ci80: [0.1 work year, 225,000 work years]
+  ac_time_horizon_minutes:
+    dist: lognormal
+    ci80: [12456, 28000000000]
+    min: 960  # At least 16 hours (longest METR tasks)
+    modal: 12000000.0
+
+  # Pre-gap AC horizon (minutes)
+  # ci80: [0.1 work year, 10 work years]
+  pre_gap_ac_time_horizon:
+    dist: lognormal
+    ci80: [12456, 1245600]
+    min: 26  # At least GPT-5's horizon
+    modal: 124600.0
+
+  horizon_extrapolation_type: "decaying doubling time"
+
+  # Manual horizon fitting
+  present_day: 2025.6
+  present_horizon: 26.0
+
+  present_doubling_time:
+    dist: lognormal
+    ci80: [0.29, 0.717]
+    min: 0.0
+    modal: 0.458
+
+  doubling_difficulty_growth_factor:
+    dist: normal
+    ci80: [0.82, 1.02]
+    min: 0.6
+    max: 1.02
+    modal: 0.92
+
+  # Capability milestones
+  strat_ai_m2b: 2.0
+
+  ted_ai_m2b:
+    dist: lognormal
+    ci80: [1, 9]
+    min: 0
+    modal: 3.0
+
+  # =========================================================================
+  # GAP MODE PARAMETERS
+  # =========================================================================
+  include_gap:
+    dist: choice
+    values: ["no gap", "gap"]
+    p: [0.55, 0.45]
+    modal: "no gap"
+
+  gap_years:
+    dist: lognormal
+    ci80: [0.3, 7.5]
+    min: 0.0
+    modal: 1.5
+
+# =============================================================================
+# COMPUTE PARAMETERS
+# =============================================================================
+compute:
+  # Exogenous technology trends
+  exogenous_trends:
+    transistor_density_scaling_exponent: 1.49
+    state_of_the_art_architecture_efficiency_improvement_per_year: 1.23
+    # Energy efficiency parameters (Dennard scaling) - aligned with reference model
+    transistor_density_at_end_of_dennard_scaling_m_per_mm2: 1.98  # Reference: 1.98
+    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: -2.0  # Reference: -2.0
+    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: -0.91  # Reference: -0.91
+    state_of_the_art_energy_efficiency_improvement_per_year: 1.26
+
+  # Chip survival/attrition parameters
+  survival_rate_parameters:
+    initial_annual_hazard_rate: 0.01  # Per year (base p50 value)
+    annual_hazard_rate_increase_per_year: 0.0035  # Per year^2 (base p50 value)
+    # Multiplier applied to both hazard rates (matches reference model's metalog with p25=0.1, p50=1.0, p75=6.0)
+    hazard_rate_multiplier:
+      dist: metalog
+      p25: 0.1
+      p50: 1.0
+      p75: 6.0
+      modal: 1.0
+
+  # US compute parameters
+  us_compute:
+    us_frontier_developer_operating_compute_tpp_h100e_in_2025: 120325.0
+    us_frontier_developer_operating_compute_annual_growth_rate: 4.0  # ~4x per year
+    proportion_of_compute_in_largest_ai_sw_developer: 0.3
+    # Training compute slowdown (matches old model's behavior from new_simulator_default.csv)
+    slowdown_year: 2028.0
+    post_slowdown_operating_compute_growth_rate: 0.25  # OOMs/year (10^0.25 ≈ 1.78x/year)
+
+  # PRC compute parameters (with uncertainty for Monte Carlo)
+  prc_compute:
+    # Discrete model uses fixed 100k H100e in 2025
+    total_prc_compute_tpp_h100e_in_2025: 100000.0
+    # Growth rate: matches reference model's metalog with p10=1.3, p50=2.2, p90=3.0
+    annual_growth_rate_of_prc_compute_stock:
+      dist: metalog
+      p10: 1.3
+      p50: 2.2
+      p90: 3.0
+      modal: 2.2
+    proportion_of_compute_in_largest_ai_sw_developer: 0.5
+    prc_architecture_efficiency_relative_to_state_of_the_art: 1.0
+    # Domestic production capability
+    proportion_of_prc_chip_stock_produced_domestically_2026: 0.10
+    proportion_of_prc_chip_stock_produced_domestically_2030: 0.40
+    # PRC lithography scanner production
+    prc_lithography_scanners_produced_in_first_year: 20.0
+    prc_additional_lithography_scanners_produced_per_year: 16.0
+    # Uncertainty on total PRC scanner production: relative_sigma=0.30 -> ci80=[0.686, 1.457]
+    prc_scanner_production_multiplier:
+      dist: lognormal
+      ci80: [0.686, 1.457]
+      modal: 0.917
+    # PRC localization probabilities (by process node and year)
+    p_localization_28nm_2030: 0.25
+    p_localization_14nm_2030: 0.10
+    p_localization_7nm_2030: 0.06
+    # Fab production parameters
+    h100_sized_chips_per_wafer: 28.0
+    wafers_per_month_per_lithography_scanner: 1000.0
+    construction_time_for_5k_wafers_per_month: 1.4
+    construction_time_for_100k_wafers_per_month: 2.41
+    # Fab construction time multiplier - applies uncertainty to computed duration
+    # CI80 calculated from lognormal with relative_sigma=0.35: [0.64, 1.56]
+    fab_construction_time_multiplier:
+      dist: lognormal
+      ci80: [0.64, 1.56]
+      modal: 0.885
+    # Worker-to-capacity conversion parameters (for black projects)
+    fab_wafers_per_month_per_operating_worker: 24.64
+    fab_wafers_per_month_per_construction_worker_under_standard_timeline: 14.1
+    # Fab productivity multipliers - capture uncertainty in wafer production capacity
+    # Labor productivity: relative_sigma=0.62 -> ci80=[0.481, 2.077]
+    fab_labor_productivity_multiplier:
+      dist: lognormal
+      ci80: [0.481, 2.077]
+      modal: 0.722
+    # Scanner productivity: relative_sigma=0.20 -> ci80=[0.776, 1.289]
+    fab_scanner_productivity_multiplier:
+      dist: lognormal
+      ci80: [0.776, 1.289]
+      modal: 0.962
+
+  compute_allocations:
+    fraction_for_ai_r_and_d_inference: 0.29
+    fraction_for_ai_r_and_d_training: 0.25
+    fraction_for_external_deployment: 0.3
+    fraction_for_alignment_research: 0.01
+    fraction_for_frontier_training: 0.15
+
+# =============================================================================
+# DATACENTER AND ENERGY PARAMETERS
+# =============================================================================
+datacenter_and_energy:
+  prc_energy_consumption:
+    energy_efficiency_of_compute_stock_relative_to_state_of_the_art: 0.20
+    total_prc_energy_consumption_gw: 1100.0
+    # Datacenter worker-to-capacity conversion parameters (for black projects)
+    # Reference model: median=0.13, relative_sigma=0.40 (lognormal sampling)
+    data_center_mw_per_year_per_construction_worker:
+      dist: lognormal
+      ci80: [0.079, 0.213]  # Matches reference model's relative_sigma=0.40
+      modal: 0.112
+    # Reference model: median=1.0, relative_sigma=0.40 (lognormal sampling)
+    data_center_mw_per_operating_worker:
+      dist: lognormal
+      ci80: [0.61, 1.64]  # Matches reference model's relative_sigma=0.40
+      modal: 0.862
+    # H100 power consumption in watts (~700W typical for H100)
+    h100_power_watts: 700.0
+
+# =============================================================================
+# POLICY PARAMETERS
+# =============================================================================
+policy:
+  ai_slowdown_start_year: 2030.0
+
+# =============================================================================
+# BLACK PROJECT PARAMETERS
+# =============================================================================
+black_project:
+  run_a_black_project: true
+  black_project_start_year: 2029.0
+
+  # User-configurable project properties (with uncertainty for Monte Carlo)
+  properties:
+    # Labor allocation (total labor and fractions)
+    total_labor: 11300
+    fraction_of_labor_devoted_to_datacenter_construction: 0.885  # 10000/11300
+    fraction_of_labor_devoted_to_black_fab_construction: 0.022   # 250/11300
+    fraction_of_labor_devoted_to_black_fab_operation: 0.049      # 550/11300
+    fraction_of_labor_devoted_to_ai_research: 0.044              # 500/11300
+    # Diverted resources (with uncertainty)
+    # Initial stock is calculated at agreement_year (2030), matching reference model
+    fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05  # Reference: 5%
+    fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 0.01  # Reference: 1% diversion
+    fraction_of_lithography_scanners_to_divert_at_black_project_start: 0.10  # Fixed 10% to match reference model
+    max_fraction_of_total_national_energy_consumption: 0.05
+    # Datacenter construction timing
+    # Discrete model starts construction 1 year before black project start
+    years_before_black_project_start_to_begin_datacenter_construction: 1.0
+    # Fab configuration
+    # Fab is built if localization achieved for min process node by black_project_start_year
+    black_fab_min_process_node: 28.0  # Minimum required process node (nm)
+
+    # PRC localization years - separate distributions for each process node
+    # Aligned with reference model's PROBABILITY_OF_90P_PRC_LOCALIZATION_AT_NODE
+    # Reference uses quadratic CDF extrapolation: 28nm: 25% by 2031
+    # The fab uses the BEST available node that meets the minimum threshold
+
+    # 28nm localization: calibrated to match reference model's behavior
+    # Reference model has [(2025, 0.0), (2031, 0.25)] with polynomial extrapolation
+    # Fabs only get built when localization <= agreement_year (2030)
+    # Front-weighted to give more scanners when fab IS built
+    prc_localization_year_28nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]  # 9999 = never achieved
+      # Heavily front-weighted to ensure high scanner counts when fab IS built
+      # Total P(fab built) = P(≤2030) = 0.60, weighted toward earlier years
+      p: [0.25, 0.15, 0.10, 0.06, 0.04, 0.02, 0.38]  # 60% by 2030, heavily front-weighted
+      modal: 9999
+
+    # 14nm localization: 10% probability by 2031 (linear: ~1.67% per year 2026-2031)
+    prc_localization_year_14nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]  # 9999 = never achieved
+      p: [0.017, 0.017, 0.017, 0.017, 0.017, 0.017, 0.898]  # 10% by 2031, 90% never
+      modal: 9999
+
+    # 7nm localization: 6% probability by 2031 (linear: 1% per year 2026-2031)
+    prc_localization_year_7nm:
+      dist: choice
+      values: [2026, 2027, 2028, 2029, 2030, 2031, 9999]  # 9999 = never achieved
+      p: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.94]  # 6% by 2031, 94% never
+      modal: 9999
+
+# =============================================================================
+# PERCEPTIONS PARAMETERS
+#
+# Parameters for updating state perceptions about covert AI projects.
+# =============================================================================
+perceptions:
+  # Enable/disable perceptions updating
+  update_perceptions: true
+
+  # Black project detection parameters (with uncertainty for Monte Carlo)
+  black_project_perception_parameters:
+    # Prior odds that a covert project exists (odds = p / (1-p))
+    prior_odds_of_covert_project: 0.25  # Reference: 20% probability = 0.25 odds
+    # US intelligence estimation error (median absolute relative error)
+    intelligence_median_error_in_estimate_of_compute_stock: 0.07  # Reference: 7%
+    intelligence_median_error_in_estimate_of_fab_stock: 0.07  # Reference: 7%
+    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.05  # Reference: 5%
+    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.05  # Reference: 5%
+    # Worker detection model (Gamma distribution parameters)
+    # Detection time ~ Gamma(k, theta) where k = mean/sigma, theta = sigma
+    mean_detection_time_for_100_workers: 6.95  # Reference: 6.95 years
+    mean_detection_time_for_1000_workers: 3.42  # Reference: 3.42 years
+    variance_of_detection_time_given_num_workers: 3.88  # Scale parameter (theta) for Gamma distribution
+    # Likelihood ratio thresholds for detection
+    detection_threshold: 100.0
+    detection_thresholds: [1, 2, 4]
+
+# =============================================================================
+# CORRELATION MATRIX (optional)
+# =============================================================================
+# Creates correlations between related parameters using Spearman rank correlation
+correlation_matrix:
+  parameters:
+    - "present_doubling_time"
+    - "doubling_difficulty_growth_factor"
+    - "ai_research_taste_slope"
+    - "ai_research_taste_at_coding_automation_anchor_sd"
+    - "gap_years"
+    - "pre_gap_ac_time_horizon"
+    - "slowdown_year"
+    - "ac_time_horizon_minutes"
+    - "coding_automation_efficiency_slope"
+    - "inv_compute_anchor_exp_cap"
+    - "inf_compute_asymptote"
+  correlation_matrix:
+    # present_doubling_time
+    - [ 1.00,  0.60, -0.30,  0.00,  0.00,  0.00, -0.30,  0.00, -0.15,  0.00,  0.00]
+    # doubling_difficulty_growth_factor
+    - [ 0.60,  1.00, -0.30,  0.00,  0.30, -0.50,  0.00, -0.50, -0.10,  0.00,  0.00]
+    # ai_research_taste_slope
+    - [-0.30, -0.30,  1.00,  0.30,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00]
+    # ai_research_taste_at_coding_automation_anchor_sd
+    - [ 0.00,  0.00,  0.30,  1.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00]
+    # gap_years
+    - [ 0.00,  0.30,  0.00,  0.00,  1.00, -0.70, -0.30,  0.00,  0.00,  0.00,  0.00]
+    # pre_gap_ac_time_horizon
+    - [ 0.00, -0.50,  0.00,  0.00, -0.70,  1.00,  0.00,  0.00,  0.00,  0.00,  0.00]
+    # slowdown_year
+    - [-0.30,  0.00,  0.00,  0.00, -0.30,  0.00,  1.00, -0.30,  0.00,  0.00,  0.00]
+    # ac_time_horizon_minutes
+    - [ 0.00, -0.50,  0.00,  0.00,  0.00,  0.00, -0.30,  1.00,  0.00,  0.00,  0.00]
+    # coding_automation_efficiency_slope
+    - [-0.15, -0.10,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  1.00,  0.00,  0.00]
+    # inv_compute_anchor_exp_cap
+    - [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  1.00,  0.50]
+    # inf_compute_asymptote
+    - [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.50,  1.00]
+  correlation_type: "spearman"

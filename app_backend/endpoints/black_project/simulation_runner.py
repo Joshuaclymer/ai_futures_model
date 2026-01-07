@@ -34,8 +34,8 @@ def run_black_project_simulations(
     """
     start_time = time.perf_counter()
 
-    # Load model parameters from YAML - use shared monte carlo config
-    config_path = Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator" / "parameters" / "monte_carlo_parameters.yaml"
+    # Load model parameters from YAML - use shared default config
+    config_path = Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator" / "parameters" / "default_parameters.yaml"
     logger.info(f"[black-project] Loading config from: {config_path}")
 
     try:

@@ -92,15 +92,6 @@ function KeyParametersSection({ parameters, onChange }: SectionProps) {
   return (
     <div className="mb-2">
       <Slider
-        label="Years to simulate"
-        value={parameters.numYearsToSimulate}
-        onChange={(v) => onChange('numYearsToSimulate', v)}
-        min={1}
-        max={20}
-        step={0.5}
-        formatValue={(v) => `${v} years`}
-      />
-      <Slider
         label="Number of simulations"
         value={parameters.numSimulations}
         onChange={(v) => onChange('numSimulations', v)}

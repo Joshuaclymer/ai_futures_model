@@ -66,11 +66,11 @@ export interface SampleTrajectory {
   params: Record<string, number | string | boolean>;
 }
 
-// Load sampling config from monte_carlo_parameters.yaml
+// Load sampling config from default_parameters.yaml
 async function loadSamplingConfig(): Promise<SamplingConfig | null> {
   try {
-    // Use monte_carlo_parameters.yaml as the single source of truth
-    const configPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'monte_carlo_parameters.yaml');
+    // Use default_parameters.yaml as the single source of truth
+    const configPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'default_parameters.yaml');
     const fileContents = await fs.readFile(configPath, 'utf8');
     const rawConfig = yaml.load(fileContents) as Record<string, unknown>;
     // Flatten nested structure into the format expected by sampling utilities

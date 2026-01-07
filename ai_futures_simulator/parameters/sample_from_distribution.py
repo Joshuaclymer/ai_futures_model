@@ -253,3 +253,43 @@ def sample_from_distribution_with_quantile(
         return x
 
     raise ValueError(f"Unknown distribution kind: {kind} for parameter {param_name}")
+
+
+def get_modal_value(
+    dist_spec: Any,
+    param_name: Optional[str] = None
+) -> Any:
+    """
+    Get the modal (most likely) value from a distribution specification.
+
+    The modal value should be specified in the distribution spec with the 'modal' key.
+    If no modal key is present, falls back to:
+    - For fixed/point estimates: the value itself
+    - For distributions: raises an error (modal should be explicitly specified)
+
+    Args:
+        dist_spec: Distribution specification dict, or a plain value (point estimate)
+        param_name: Parameter name for error messages
+
+    Returns:
+        Modal value
+    """
+    # Handle point estimates: if dist_spec is not a dict, treat it as a fixed value
+    if not isinstance(dist_spec, dict):
+        return dist_spec
+
+    # Check for explicit modal value
+    if "modal" in dist_spec:
+        return dist_spec["modal"]
+
+    kind = dist_spec.get("dist", "fixed")
+
+    # For fixed distribution, return the value
+    if kind == "fixed":
+        return dist_spec.get("value")
+
+    # For other distributions without explicit modal, raise an error
+    raise ValueError(
+        f"No 'modal' key found for distribution parameter '{param_name}'. "
+        f"Please add a 'modal' key to the distribution specification."
+    )

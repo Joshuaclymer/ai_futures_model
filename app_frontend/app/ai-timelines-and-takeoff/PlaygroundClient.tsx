@@ -192,6 +192,7 @@ export default function PlaygroundClient({
   );
   const [parameters, setParameters] = useState<ParametersType>(resolvedInitialParameters);
   const [uiParameters, setUiParameters] = useState<ParametersType>(resolvedInitialParameters);
+  const uiParametersRef = useRef<ParametersType>(resolvedInitialParameters);
   const [milestones, setMilestones] = useState<MilestoneMap | null>(
     initialComputeData?.milestones && typeof initialComputeData.milestones === 'object'
       ? (initialComputeData.milestones as MilestoneMap)
@@ -284,14 +285,62 @@ export default function PlaygroundClient({
     return { min: 0, max: 1 };
   }, [samplingConfigBounds]);
 
+  // Keep uiParametersRef in sync with uiParameters state
+  useEffect(() => {
+    uiParametersRef.current = uiParameters;
+  }, [uiParameters]);
+
+  // Fetch compute data - defined before commitParameters since it depends on this
+  const fetchComputeData = useCallback(async (params: ParametersType) => {
+    if (currentRequestRef.current) {
+      currentRequestRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    currentRequestRef.current = controller;
+    setMainLoading(true);
+    setMainlineLoaded(false);
+
+    try {
+      const apiParameters = convertParametersToAPIFormat(params as unknown as ParameterRecord);
+      const response = await fetch(`${API_BASE_URL}/api/run-sw-progress-simulation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parameters: apiParameters,
+          time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+
+      if (data.success && data.time_series) {
+        console.log('[Mainline] Loaded - showing chart data now, MC samples will start next');
+        setChartData(processInitialData(data));
+        setMainlineLoaded(true);
+        if (data.milestones) {
+          setMilestones(data.milestones as MilestoneMap);
+        }
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return;
+      console.error('Fetch error:', e);
+    } finally {
+      setMainLoading(false);
+    }
+  }, []);
+
   // Commit UI parameters to actual parameters when dragging ends
+  // Uses ref instead of closure to always get the latest uiParameters value
   const commitParameters = useCallback((nextParameters?: ParametersType) => {
-    const newParams = nextParameters ?? uiParameters;
+    const newParams = nextParameters ?? uiParametersRef.current;
     setParameters(newParams);
     setIsDragging(false);
     fetchComputeData(newParams);
     setResampleTrigger(prev => prev + 1);
-  }, [uiParameters]);
+  }, [fetchComputeData]);
 
   // Load sampling config
   useEffect(() => {
@@ -305,7 +354,7 @@ export default function PlaygroundClient({
         }
         const data = await response.json();
         if (!isCancelled && data.success) {
-          // Flatten nested monte_carlo_parameters.yaml structure into flat SamplingConfig
+          // Flatten nested default_parameters.yaml structure into flat SamplingConfig
           const flatConfig = flattenMonteCarloConfig(data.config);
           initializeCorrelationSampling(flatConfig.correlation_matrix);
           setSamplingConfig(flatConfig);
@@ -338,48 +387,6 @@ export default function PlaygroundClient({
     const instantHorizon = Math.pow(10, uiParameters.ac_time_horizon_minutes);
     setScHorizonMinutes(instantHorizon);
   }, [uiParameters.ac_time_horizon_minutes]);
-
-  // Fetch compute data
-  const fetchComputeData = useCallback(async (params: ParametersType) => {
-    if (currentRequestRef.current) {
-      currentRequestRef.current.abort();
-    }
-    
-    const controller = new AbortController();
-    currentRequestRef.current = controller;
-    setMainLoading(true);
-    setMainlineLoaded(false);
-    
-    try {
-      const apiParameters = convertParametersToAPIFormat(params as unknown as ParameterRecord);
-      const response = await fetch(`${API_BASE_URL}/api/run-sw-progress-simulation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          parameters: apiParameters,
-          time_range: [SIMULATION_START_YEAR, SIMULATION_END_YEAR],
-        }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      
-      if (data.success && data.time_series) {
-        console.log('[Mainline] Loaded - showing chart data now, MC samples will start next');
-        setChartData(processInitialData(data));
-        setMainlineLoaded(true);
-        if (data.milestones) {
-          setMilestones(data.milestones as MilestoneMap);
-        }
-      }
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') return;
-      console.error('Fetch error:', e);
-    } finally {
-      setMainLoading(false);
-    }
-  }, []);
 
   // Fetch sample trajectory
   const fetchSampleTrajectory = useCallback(async (params: Record<string, number | string | boolean>, signal?: AbortSignal) => {

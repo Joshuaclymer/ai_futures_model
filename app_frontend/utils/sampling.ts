@@ -123,7 +123,7 @@ export interface SamplingConfig {
   num_rollouts?: number;
 }
 
-// Sections in monte_carlo_parameters.yaml that should NOT be flattened into parameters
+// Sections in default_parameters.yaml that should NOT be flattened into parameters
 const NON_PARAMETER_SECTIONS = new Set([
   'settings',
   'seed',
@@ -170,7 +170,7 @@ function extractDistributions(
 }
 
 /**
- * Flatten a nested monte_carlo_parameters.yaml config into the flat SamplingConfig format.
+ * Flatten a nested default_parameters.yaml config into the flat SamplingConfig format.
  * This handles the nested structure (software_r_and_d, compute.us_compute, etc.)
  * and extracts all distribution configs into a single flat `parameters` object.
  */

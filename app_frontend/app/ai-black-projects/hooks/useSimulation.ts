@@ -24,7 +24,6 @@ interface UseSimulationResult {
 // Map backend parameter names to frontend parameter names
 function mapBackendDefaults(backendDefaults: Record<string, unknown>): Partial<Parameters> {
   return {
-    numYearsToSimulate: backendDefaults.numYearsToSimulate as number,
     numSimulations: backendDefaults.numSimulations as number,
     agreementYear: backendDefaults.agreementYear as number,
     blackProjectStartYear: backendDefaults.blackProjectStartYear as number,
@@ -75,7 +74,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
       body: JSON.stringify({
         parameters: params,
         num_simulations: params.numSimulations || 100,
-        time_range: [params.agreementYear || 2027, (params.agreementYear || 2027) + (params.numYearsToSimulate || 10)],
+        time_range: [2027, 2037],
       }),
       signal,
     });

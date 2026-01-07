@@ -12,18 +12,18 @@ export const metadata = {
 
 // Category configuration mapping directory names to display info
 const categoryConfig: Record<string, { id: string; title: string; order: number }> = {
-  'perceptions_parameters': { id: 'detection', title: 'Detection Parameters', order: 1 },
-  'compute_parameters': { id: 'compute', title: 'Compute and Chips', order: 2 },
-  'data_center_and_energy_parameters': { id: 'datacenters', title: 'Datacenters and Energy', order: 3 },
+  'compute_parameters': { id: 'compute', title: 'Compute and Chips', order: 1 },
+  'data_center_and_energy_parameters': { id: 'datacenters', title: 'Datacenters and Energy', order: 2 },
+  'perceptions_parameters': { id: 'detection', title: 'Detection Parameters', order: 3 },
   'black_project_parameters': { id: 'black-project', title: 'Black Project Configuration', order: 4 },
 };
 
-// Load monte carlo parameters and extract CI values
+// Load default parameters and extract CI values
 function loadMonteCarloCI(): Record<string, string> {
   const ciMap: Record<string, string> = {};
 
   try {
-    const yamlPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'monte_carlo_parameters.yaml');
+    const yamlPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'default_parameters.yaml');
     const yamlContent = fs.readFileSync(yamlPath, 'utf-8');
     const config = yaml.load(yamlContent) as Record<string, unknown>;
 
@@ -90,9 +90,9 @@ function getParameterDocs(): Record<string, { title: string; docs: { filename: s
             content = content.replace(/\|\s*Range\s*\|/gi, '| CI |');
             content = content.replace(/\|\s*-+\s*\|(\s*-+\s*\|)(\s*-+\s*\|)(\s*-+\s*\|)/g, (match) => match);
 
-            // Get CI value for this parameter from yaml, or use N/A
+            // Get CI value for this parameter from yaml, or use em dash
             const paramName = paramDir.name;
-            const ciValue = ciMap[paramName] || 'N/A';
+            const ciValue = ciMap[paramName] || '—';
 
             // Replace the range column values in table rows with CI from yaml
             // Match table rows: | text | text | range_value | text |
@@ -104,6 +104,21 @@ function getParameterDocs(): Record<string, { title: string; docs: { filename: s
                   return match;
                 }
                 return `|${col1}|${col2}| ${ciValue} |${col4}|`;
+              }
+            );
+
+            // Replace .png image references with .html for interactive plots (only if HTML exists)
+            // Change: ![alt](/parameter_docs/path/file.png) to ![alt](/api/parameter_docs/path/file.html)
+            content = content.replace(
+              /!\[([^\]]*)\]\(\/parameter_docs\/([^)]+)\.png\)/g,
+              (match, alt, filePath) => {
+                // Check if HTML version exists
+                const htmlPath = path.join(docsPath, `${filePath}.html`);
+                if (fs.existsSync(htmlPath)) {
+                  return `![${alt}](/api/parameter_docs/${filePath}.html)`;
+                }
+                // Fall back to PNG via API route
+                return `![${alt}](/api/parameter_docs/${filePath}.png)`;
               }
             );
 
@@ -307,7 +322,28 @@ export default function BlackProjectParametersPage() {
                     [&_blockquote]:border-l-2 [&_blockquote]:border-stone-300
                     [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-stone-500
                   ">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{doc.content}</ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        img: ({ src, alt }) => {
+                          // Render .html files as iframes for interactive plots
+                          if (src?.endsWith('.html')) {
+                            return (
+                              <iframe
+                                src={src}
+                                title={alt || 'Interactive plot'}
+                                className="w-full border border-stone-200/60 rounded-lg my-6"
+                                style={{ height: '400px' }}
+                              />
+                            );
+                          }
+                          // Regular images
+                          return <img src={src} alt={alt} />;
+                        },
+                      }}
+                    >
+                      {doc.content}
+                    </ReactMarkdown>
                   </div>
                 </article>
               ))}

@@ -17,7 +17,7 @@ from .utils import is_fab_built
 
 def get_default_parameters() -> Dict[str, Any]:
     """Get default parameters from YAML for frontend initialization."""
-    config_path = Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator" / "parameters" / "monte_carlo_parameters.yaml"
+    config_path = Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator" / "parameters" / "default_parameters.yaml"
     model_params = ModelParameters.from_yaml(config_path)
 
     # Extract relevant parameters for frontend
@@ -34,7 +34,6 @@ def get_default_parameters() -> Dict[str, Any]:
 
     defaults = {
         # Simulation settings
-        "numYearsToSimulate": 10,
         "numSimulations": 100,
         "agreementYear": int(sim_params.policy.ai_slowdown_start_year) if sim_params.policy else 2030,
         "blackProjectStartYear": int(bp.black_project_start_year) if bp else 2029,

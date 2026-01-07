@@ -47,7 +47,7 @@ Source code: `/Users/joshuaclymer/github/ai_futures_simulator/ai_futures_simulat
 
 Key things to keep in mind:
 - The simulation outputs a sequence of "World" objects. Each object represents the world at an instantaneous point in time. World objects should not include time series. You can only get the time series by extracting data from a full trajectory after the simulation run finishes.
-- When parameters in the reference model are uncertain and are sampled, they should NOT be sampled inside of the world_updaters class in the new version. They should instead be defined as a distribution in monte_carlo_parameters.yaml.
+- When parameters in the reference model are uncertain and are sampled, they should NOT be sampled inside of the world_updaters class in the new version. They should instead be defined as a distribution in default_parameters.yaml.
 - Please update simulation state with derivatives whenever possible to preserve end-to-end differentiability.
 
 ## Reference Model API

@@ -17,8 +17,8 @@ def register_config_routes(app):
     def get_sampling_config():
         """Return parameter distribution config for Monte Carlo sampling."""
         try:
-            # Load the Monte Carlo config
-            mc_config_path = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "monte_carlo_parameters.yaml"
+            # Load the default config
+            mc_config_path = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "default_parameters.yaml"
 
             if mc_config_path.exists():
                 with open(mc_config_path, 'r') as f:

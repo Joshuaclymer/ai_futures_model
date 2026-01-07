@@ -42,7 +42,7 @@ def load_time_series_from_csv(csv_path):
 
 def run_current_model(start_year=2024, end_year=2040):
     """Run the ai_futures_simulator and extract compute curves."""
-    config_path = REPO_ROOT / "ai_futures_simulator" / "parameters" / "monte_carlo_parameters.yaml"
+    config_path = REPO_ROOT / "ai_futures_simulator" / "parameters" / "default_parameters.yaml"
     model_params = ModelParameters.from_yaml(config_path)
 
     # The model starts at 2026 (needs historical data to initialize)

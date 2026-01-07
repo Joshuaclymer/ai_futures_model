@@ -54,8 +54,17 @@ LINE_WIDTH_THIN = 1            # Thin lines for reference/grid
 MARKER_LINE_WIDTH = 0.5        # Border around markers
 
 # =============================================================================
-# FONT SIZES
+# FONT SETTINGS - Matching the parameter documentation page styling
 # =============================================================================
+# Font colors to match the page (stone color palette from Tailwind)
+FONT_COLOR = '#57534e'         # stone-600 - body text color
+FONT_COLOR_LIGHT = '#78716c'   # stone-500 - secondary text
+FONT_COLOR_DARK = '#44403c'    # stone-700 - headings
+
+# Font family matching the page (system fonts)
+FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+
+# Font sizes
 FONT_SIZE_BASE = 11            # Base font size
 FONT_SIZE_TITLE = 14           # Plot titles
 FONT_SIZE_AXIS_TITLE = 12      # Axis titles
@@ -141,11 +150,17 @@ def get_common_layout(title=None, wide=False):
     layout = {
         'width': WIDE_PLOT_WIDTH if wide else PLOT_WIDTH,
         'height': WIDE_PLOT_HEIGHT if wide else PLOT_HEIGHT,
+        'template': 'none',  # Disable default Plotly template to avoid style conflicts
         'plot_bgcolor': 'rgba(0,0,0,0)',
         'paper_bgcolor': 'rgba(0,0,0,0)',
-        'font': dict(size=FONT_SIZE_BASE),
+        'font': dict(size=FONT_SIZE_BASE, color=FONT_COLOR),
         'margin': MARGIN_WITH_TITLE if title else MARGIN,
         'hovermode': 'closest',
+        'hoverlabel': dict(
+            bgcolor='#fffff8',  # Cream background matching page
+            bordercolor='#fffff8',  # No visible border (same as background)
+            font=dict(size=FONT_SIZE_BASE, color=FONT_COLOR),
+        ),
     }
 
     if title:
@@ -246,7 +261,7 @@ def apply_common_layout(fig, title=None, wide=False,
 
 def save_plot(fig, filename, wide=False):
     """
-    Save a Plotly figure with consistent settings.
+    Save a Plotly figure with consistent settings (both PNG and HTML).
 
     Args:
         fig: Plotly figure object
@@ -258,6 +273,10 @@ def save_plot(fig, filename, wide=False):
 
     fig.write_image(filename, width=width, height=height, scale=EXPORT_SCALE)
     print(f"Saved: {filename}")
+
+    # Also save as HTML for better quality in web
+    html_filename = filename.replace('.png', '.html')
+    save_html(fig, html_filename)
 
 
 def save_html(fig, filename):
@@ -271,12 +290,35 @@ def save_html(fig, filename):
     # Make a copy of the figure to avoid modifying the original
     fig_html = fig
     fig_html.update_layout(width=None, height=None, autosize=True)
-    fig_html.write_html(
-        filename,
+
+    # Generate HTML content
+    html_content = fig_html.to_html(
         include_plotlyjs='cdn',
         full_html=True,
         config={'responsive': True},
         default_width='100%',
         default_height='100%'
     )
+
+    # Inject CSS to override Plotly's default hover label styling
+    # This ensures cream background and no border regardless of trace colors
+    hover_css = """
+    <style>
+    .hoverlayer .hovertext path {
+        fill: #fffff8 !important;
+        stroke: #fffff8 !important;
+    }
+    .hoverlayer .hovertext text {
+        fill: #57534e !important;
+    }
+    </style>
+    """
+
+    # Insert CSS before closing </head> tag
+    html_content = html_content.replace('</head>', hover_css + '</head>')
+
+    # Write the modified HTML
+    with open(filename, 'w') as f:
+        f.write(html_content)
+
     print(f"Saved: {filename}")

@@ -180,7 +180,6 @@ export interface BlackProjectData {
 export interface BlackProjectParameters {
   // Simulation settings
   agreementYear: number;
-  numYearsToSimulate: number;
   timeStepYears: number;
   numSimulations: number;
 

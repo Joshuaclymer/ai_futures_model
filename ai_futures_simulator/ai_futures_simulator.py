@@ -205,6 +205,31 @@ class AIFuturesSimulator(nn.Module):
             params=params,
         )
 
+    def run_modal_simulation(
+        self,
+        world_history: Dict[int, World] = None,
+        use_flat_mode: bool = True,
+    ) -> SimulationResult:
+        """
+        Run a single simulation using the modal (most likely) parameter values.
+
+        This produces a "most likely" trajectory rather than a random sample,
+        using the mode of each distribution rather than sampling from it.
+
+        Args:
+            world_history: Dictionary mapping years to World states. If None, creates default.
+            use_flat_mode: If True (default), use flat tensor optimization for ~5x speedup.
+
+        Returns:
+            SimulationResult containing the modal trajectory and metadata.
+        """
+        modal_params = self.model_parameters.sample_modal()
+        return self.run_simulation(
+            world_history=world_history,
+            params=modal_params,
+            use_flat_mode=use_flat_mode,
+        )
+
     def run_simulations(
         self,
         num_simulations: int = 1,
@@ -257,7 +282,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--params",
         type=str,
-        default="ai_futures_simulator/parameters/monte_carlo_parameters.yaml",
+        default="ai_futures_simulator/parameters/default_parameters.yaml",
         help="Path to YAML config file"
     )
     parser.add_argument(

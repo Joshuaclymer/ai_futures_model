@@ -6,7 +6,7 @@ This is a model of AI futures. The model is designed to incorporate many compone
 
 The core model is in `./ai_futures_simulator`. Run the following command to simulate a single trajectory with parameters sampled from the default monte carlo distribution:
 
-`python ai_futures_simulator/ai_futures_simulator.py --params ai_futures_simulator/parameters/monte_carlo_parameters.yaml --output simulation_output.json`
+`python ai_futures_simulator/ai_futures_simulator.py --params ai_futures_simulator/parameters/default_parameters.yaml --output simulation_output.json`
 
 This saves a file to `simulation_output.json` which contains a simulated world trajectory (which is a list of "World" objects) in json format.
 
@@ -40,7 +40,7 @@ You can also visualize the outputs of the model with the app in `app_frontend` a
 
 1. **Separate *modeling decisions* from *parameter values***. Modeling decisions are represented as code in the `/world_updaters` directory. Parameter values are stored in `/parameters` as yaml files.
 
-2. **Represent uncertainty in the monte_carlo.yaml configuration**. If you have uncertainty over parameters, represent this uncertainty with distributions over the parameters specified according to the format provided in `ai_futures_simulator/parameters/monte_carlo_parameters.yaml`
+2. **Represent uncertainty in the default_parameters.yaml configuration**. If you have uncertainty over parameters, represent this uncertainty with distributions over the parameters specified according to the format provided in `ai_futures_simulator/parameters/default_parameters.yaml`
 
 3. **Separate *model state* from *metrics***. *State* includes the minimal set of variables needed to determine how the world changes at a given time. *Metrics* are derived quantities computed from state. For example, since all AI R&D metrics (time horizon, speedup, etc) can be calculated from OOMs of effective compute and research stock, OOMs of effective compute and research stock are the only state variables. State and metrics live in the same dataclass, but state fields are marked with `metadata={'is_state': True}` so they can be identified programmatically.
 
@@ -321,7 +321,7 @@ from ai_futures_simulator import AIFuturesSimulator
 from parameters.simulation_parameters import ModelParameters
 
 # Load parameters from YAML
-model_params = ModelParameters.from_yaml("parameters/monte_carlo_parameters.yaml")
+model_params = ModelParameters.from_yaml("parameters/default_parameters.yaml")
 
 # Create simulator
 simulator = AIFuturesSimulator(model_params)

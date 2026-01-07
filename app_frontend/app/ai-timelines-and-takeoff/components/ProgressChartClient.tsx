@@ -1096,7 +1096,7 @@ export default function ProgressChart({
         }
         const data = await response.json();
         if (!isCancelled && data.success) {
-          // Flatten nested monte_carlo_parameters.yaml structure into flat SamplingConfig
+          // Flatten nested default_parameters.yaml structure into flat SamplingConfig
           const flatConfig = flattenMonteCarloConfig(data.config);
           // Initialize correlation sampling with the loaded config
           initializeCorrelationSampling(flatConfig.correlation_matrix);

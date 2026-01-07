@@ -138,6 +138,6 @@ with urllib.request.urlopen(req, timeout=120) as response:
 
 6. **World objects are instantaneous snapshots** - The simulation outputs a sequence of "World" objects. Each object represents the world at an instantaneous point in time. World objects should not include time series. You can only get the time series by extracting data from a full trajectory after the simulation run finishes.
 
-7. **Sample parameters in YAML, not in code** - When parameters in the reference model are uncertain and are sampled, they should NOT be sampled inside of the world_updaters class in the new version. They should instead be defined as a distribution in `monte_carlo_parameters.yaml`.
+7. **Sample parameters in YAML, not in code** - When parameters in the reference model are uncertain and are sampled, they should NOT be sampled inside of the world_updaters class in the new version. They should instead be defined as a distribution in `default_parameters.yaml`.
 
 8. **Use derivatives for differentiability** - Update simulation state with derivatives whenever possible to preserve end-to-end differentiability.
