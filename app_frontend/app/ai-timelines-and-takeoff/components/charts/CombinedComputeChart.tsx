@@ -320,18 +320,17 @@ export const CombinedComputeChart = memo<CombinedComputeChartProps>(({ chartData
           let lastLeftY: number | null = null;
           leftLabels.forEach((lbl, idx) => {
             const x = xScalePx(lbl.pt.x);
-            let y = yScalePx(lbl.pt.y);
-            // Clamp within chart area
-            y = clamp(y, 0, chartHeight);
-            // Basic anti-overlap
-            if (lastLeftY != null && Math.abs(y - lastLeftY) < 16) y += 16 * (idx + 1);
-            lastLeftY = y;
+            const originalY = yScalePx(lbl.pt.y); // Dot stays on the line
+            let labelY = clamp(originalY, 0, chartHeight);
+            // Basic anti-overlap for label text only
+            if (lastLeftY != null && Math.abs(labelY - lastLeftY) < 16) labelY += 16 * (idx + 1);
+            lastLeftY = labelY;
             const nearLeft = x < 12;
             const tx = nearLeft ? x + 6 : x - 6;
             const anchor = nearLeft ? 'start' : 'end';
             elements.push(
-              <circle key={`left-dot-${idx}`} cx={x} cy={y} r={3} fill={lbl.color} />,
-              <text key={`left-${idx}`} x={tx} y={y} textAnchor={anchor} alignmentBaseline="middle" fontSize={baseFontSize} fill={lbl.color}>
+              <circle key={`left-dot-${idx}`} cx={x} cy={originalY} r={3} fill={lbl.color} />,
+              <text key={`left-${idx}`} x={tx} y={labelY} textAnchor={anchor} alignmentBaseline="middle" fontSize={baseFontSize} fill={lbl.color}>
                 <tspan x={tx} dy={-4}>{lbl.label}</tspan>
                 <tspan x={tx} dy={16}>{lbl.value}</tspan>
               </text>

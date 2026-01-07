@@ -39,6 +39,7 @@ interface CCDFChartProps {
   height?: number;
   legendPosition?: 'top-right' | 'bottom-left';
   creamBackground?: boolean;  // Use cream colors for legend/tooltips (for charts on cream backgrounds)
+  xMax?: number;  // Maximum x-axis value
 }
 
 // Default colors for different thresholds - use global detection threshold colors
@@ -113,6 +114,7 @@ export function CCDFChart({
   height,
   legendPosition = 'top-right',
   creamBackground = false,
+  xMax,
 }: CCDFChartProps) {
   // Colors for legend and tooltips based on background
   const bgColor = creamBackground ? 'rgba(255,255,248,0.9)' : 'rgba(255,255,255,0.9)';
@@ -177,7 +179,9 @@ export function CCDFChart({
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
       ticksuffix: xAsPercent ? '%' : '',
       type: xLogScale ? 'log' : 'linear',
-      autorange: xReverse ? 'reversed' : true,
+      ...(xMax !== undefined
+        ? { range: xReverse ? [xMax, 0] : [0, xMax], autorange: false }
+        : { autorange: xReverse ? 'reversed' : true }),
     };
 
     if (xAsInverseFraction && !isEmpty) {

@@ -18,6 +18,7 @@ interface TimeSeriesChartProps {
   bandAlpha?: number;
   yLogScale?: boolean;
   additionalTraces?: Plotly.Data[];
+  yRange?: [number, number];
 }
 
 export function TimeSeriesChart({
@@ -34,6 +35,7 @@ export function TimeSeriesChart({
   bandAlpha = 0.2,
   yLogScale = false,
   additionalTraces = [],
+  yRange,
 }: TimeSeriesChartProps) {
   const isEmpty = !years || !median || years.length === 0;
 
@@ -81,6 +83,7 @@ export function TimeSeriesChart({
       title: { text: yLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
       type: yLogScale ? 'log' : 'linear',
+      ...(yRange ? { range: yRange } : {}),
     },
     showlegend: additionalTraces.length > 0,
     legend: {

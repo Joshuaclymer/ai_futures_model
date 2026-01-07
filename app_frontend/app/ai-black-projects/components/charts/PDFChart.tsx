@@ -171,11 +171,11 @@ export function PDFChart({
     },
   ];
 
-  // Add median line trace if enabled
+  // Add median line trace if enabled (shortened to leave room for label)
   if (showMedianLine && median > 0) {
     data.push({
       x: [median, median],
-      y: [0, 1],
+      y: [0, 0.85],
       type: 'scatter',
       mode: 'lines',
       line: { color: '#333', width: 2, dash: 'dash' },
@@ -210,19 +210,18 @@ export function PDFChart({
         zeroline: false,
       },
     } : {}),
-    // Annotation for median value on x-axis (aligned with tick labels)
+    // Annotation for median value at top of the vertical line
     annotations: showMedianLine && median > 0 ? [{
       x: logScale ? Math.log10(median) : median,
-      y: 0,
+      y: 0.88,
       xref: 'x',
       yref: 'paper',
       text: formatSINotation(median),
       showarrow: false,
       font: { size: CHART_FONT_SIZES.tickLabel, color: '#333' },
-      yanchor: 'top',
-      yshift: -1,
-      bgcolor: 'white',
-      borderpad: 0,
+      yanchor: 'bottom',
+      bgcolor: '#fffff8',
+      borderpad: 4,
     }] : [],
     margin: CHART_MARGINS.compact,
     bargap: 0.05,

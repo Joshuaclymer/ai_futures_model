@@ -522,9 +522,9 @@ class SoftwareRAndD(WorldUpdater):
             progress = self._tensor_to_float(dev.ai_software_progress.progress)
             research_stock = self._tensor_to_float(dev.ai_software_progress.research_stock)
 
-            # Compute automation fraction using year-based interpolation
-            # This ensures consistency with ProgressModel's values
-            automation_fraction = self._interpolate_automation_by_year(current_time)
+            # Compute automation fraction based on progress (not year)
+            # This matches how the reference model computes automation fraction
+            automation_fraction = compute_automation_fraction(progress, params)
             dev.ai_software_progress.automation_fraction = torch.tensor(automation_fraction)
 
             # Compute AI research taste

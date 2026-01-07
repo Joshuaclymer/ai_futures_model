@@ -126,7 +126,7 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
         {/* Chip Production CCDF */}
         <ChartContainer title="Covert AI chip production relative to no slowdown production*">
           <CCDFChart
-            data={data?.black_project_model?.chip_production_reduction_ccdf}
+            data={data?.black_project_model?.chip_production_reduction_ccdf_flat}
             color={COLOR_PALETTE.fab}
             xLabel="Covert chip production during agreement / chip production if there was no agreement"
             yLabel="P(ratio < x)"
@@ -147,9 +147,9 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
               'prc': '#5E6FB8',
             }}
             referenceLine={
-              getMinYFromCCDF(data?.black_project_model?.chip_production_reduction_ccdf, true) !== null
+              getMinYFromCCDF(data?.black_project_model?.chip_production_reduction_ccdf_flat, true) !== null
                 ? {
-                    y: getMinYFromCCDF(data?.black_project_model?.chip_production_reduction_ccdf, true)!,
+                    y: getMinYFromCCDF(data?.black_project_model?.chip_production_reduction_ccdf_flat, true)!,
                     label: 'No covert chip production',
                     color: '#888888',
                     dash: 'dot',
@@ -162,7 +162,7 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
         {/* AI R&D Reduction CCDF */}
         <ChartContainer title="Covert AI R&D computation relative to no slowdown computation*">
           <CCDFChart
-            data={data?.black_project_model?.ai_rd_reduction_ccdf}
+            data={data?.black_project_model?.ai_rd_reduction_ccdf_flat}
             color={COLOR_PALETTE.datacenters_and_energy}
             xLabel="Covert computation during agreement / computation if there was no agreement"
             yLabel="P(ratio < x)"
@@ -182,9 +182,9 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
               'prc': '#5E6FB8',
             }}
             referenceLine={
-              getMinYFromCCDF(data?.black_project_model?.ai_rd_reduction_ccdf, true) !== null
+              getMinYFromCCDF(data?.black_project_model?.ai_rd_reduction_ccdf_flat, true) !== null
                 ? {
-                    y: getMinYFromCCDF(data?.black_project_model?.ai_rd_reduction_ccdf, true)!,
+                    y: getMinYFromCCDF(data?.black_project_model?.ai_rd_reduction_ccdf_flat, true)!,
                     label: 'No covert computation',
                     color: '#888888',
                     dash: 'dot',
@@ -295,8 +295,9 @@ function useDashboardValues(data: SimulationData | null): DashboardValues {
     const h100eMedian = getMedian(model.individual_project_h100e_before_detection);
 
     // Get AI R&D reduction median from CCDF data (largest_company comparison)
-    const aiRdCcdf = model.ai_rd_reduction_ccdf as Record<string, CCDFPoint[]> | undefined;
-    const largestCompanyCcdf = aiRdCcdf?.largest_company;
+    // Use the flat version which has direct CCDFPoint[] arrays
+    const aiRdCcdfFlat = model.ai_rd_reduction_ccdf_flat as Record<string, CCDFPoint[]> | undefined;
+    const largestCompanyCcdf = aiRdCcdfFlat?.largest_company;
     const aiRdReductionMedian = getMedianFromCcdf(largestCompanyCcdf);
 
     return {

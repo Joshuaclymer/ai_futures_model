@@ -52,11 +52,11 @@ function calculateMedian(samples: number[]): number | null {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-// Create median line trace for histograms
+// Create median line trace for histograms (shortened to leave room for label)
 function createMedianLineTrace(median: number): Plotly.Data {
   return {
     x: [median, median],
-    y: [0, 1],
+    y: [0, 0.85],
     type: 'scatter',
     mode: 'lines',
     line: { color: '#333', width: 2, dash: 'dash' },
@@ -66,20 +66,19 @@ function createMedianLineTrace(median: number): Plotly.Data {
   } as Plotly.Data;
 }
 
-// Create median annotation for x-axis label (aligned with tick labels)
+// Create median annotation at top of the vertical line
 function createMedianAnnotation(median: number, useLogScale: boolean = false): Partial<Plotly.Annotations> {
   return {
     x: useLogScale ? Math.log10(median) : median,
-    y: 0,
+    y: 0.88,
     xref: 'x',
     yref: 'paper',
     text: formatSINotation(median),
     showarrow: false,
     font: { size: CHART_FONT_SIZES.tickLabel, color: '#333' },
-    yanchor: 'top',
-    yshift: -1,
+    yanchor: 'bottom',
     bgcolor: 'white',
-    borderpad: 0,
+    borderpad: 1,
   };
 }
 

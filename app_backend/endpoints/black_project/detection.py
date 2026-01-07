@@ -40,13 +40,16 @@ def compute_detection_times(all_data: List[Dict], years: List[float], agreement_
 
     Detection is defined as the first year >= agreement_year where cumulative_lr >= lr_threshold.
     """
+    # Large value to represent "never detected" - matches reference model
+    NEVER_DETECTED_VALUE = 1000
+
     detection_times = []
     for d in all_data:
         bp = d.get('black_project')
         sim_years = d.get('years', [])
 
         if not bp or not sim_years:
-            detection_times.append(10.0)  # Default to end of 10-year simulation
+            detection_times.append(NEVER_DETECTED_VALUE)
             continue
 
         cumulative_lr = bp.get('cumulative_lr', [])
@@ -63,9 +66,8 @@ def compute_detection_times(all_data: List[Dict], years: List[float], agreement_
             # Time from agreement year to detection
             time_before_detection = detection_year - agreement_year
         else:
-            # No detection within simulation - use time to end of simulation
-            end_year = max(sim_years) if sim_years else agreement_year + 10
-            time_before_detection = end_year - agreement_year
+            # No detection within simulation - use large value (matches reference model)
+            time_before_detection = NEVER_DETECTED_VALUE
 
         detection_times.append(max(0.0, time_before_detection))  # Ensure non-negative
 

@@ -47,9 +47,10 @@ interface BreakdownChartProps {
   data: { years: number[]; median: number[]; p25: number[]; p75: number[] };
   color: string;
   yLabel?: string;
+  yRange?: [number, number];
 }
 
-function BreakdownChart({ title, description, descriptionNode, data, color, yLabel }: BreakdownChartProps) {
+function BreakdownChart({ title, description, descriptionNode, data, color, yLabel, yRange }: BreakdownChartProps) {
   return (
     <div className="breakdown-item">
       <div className="breakdown-plot">
@@ -62,6 +63,7 @@ function BreakdownChart({ title, description, descriptionNode, data, color, yLab
           yLabel={yLabel}
           showBand={true}
           bandAlpha={0.15}
+          yRange={yRange}
         />
       </div>
       <div className="breakdown-label">{title}</div>
@@ -209,6 +211,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             data={energyEvidence}
             color={darken('datacenters_and_energy', 0.8)}
             yLabel="LR"
+            yRange={[0.5, 2]}
           />
           <Operator>=</Operator>
           <BreakdownChart

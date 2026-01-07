@@ -518,17 +518,17 @@ function WattsPerTppPlot({
           tickfont: { size: CHART_FONT_SIZES.tickLabel },
         },
         showlegend: false,
-        margin: { l: 60, r: 10, t: 10, b: 65, pad: 10 },
+        margin: { l: 60, r: 10, t: 30, b: 65, pad: 10 },
         shapes: [
-          // Vertical dashed line for "End of Dennard Scaling" - use data coordinates
+          // Vertical dashed line for "End of Dennard Scaling" - at the elbow where exponent changes
           {
             type: 'line',
             x0: dennardScalingEnd,
             x1: dennardScalingEnd,
-            y0: 0.1,
-            y1: 10000,
+            y0: 0,
+            y1: 1,
             xref: 'x',
-            yref: 'y',
+            yref: 'paper',
             line: {
               color: '#999999',
               width: 1,
@@ -539,13 +539,13 @@ function WattsPerTppPlot({
         annotations: [
           // Label for "End of Dennard Scaling" - positioned to the right of the line
           {
-            x: dennardScalingEnd * 1.3,
-            y: 1000,
+            x: Math.log10(dennardScalingEnd),
+            y: 0.92,
             xref: 'x',
-            yref: 'y',
+            yref: 'paper',
             xanchor: 'left',
             yanchor: 'bottom',
-            text: 'End of Dennard<br>Scaling',
+            text: ' End of Dennard<br> Scaling',
             showarrow: false,
             align: 'left',
             font: {

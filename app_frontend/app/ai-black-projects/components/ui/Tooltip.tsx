@@ -294,7 +294,7 @@ export function Tooltip({ content, visible, triggerRect, onMouseEnter, onMouseLe
   const tooltipRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [finalPosition, setFinalPosition] = useState<{ x: number; y: number; width: number; maxHeight: number | null }>({
-    x: 0, y: 0, width: 400, maxHeight: null
+    x: 0, y: 0, width: 500, maxHeight: null
   });
   const [measured, setMeasured] = useState(false);
 
@@ -305,7 +305,7 @@ export function Tooltip({ content, visible, triggerRect, onMouseEnter, onMouseLe
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const padding = 20;
-    const preferredWidth = 400;
+    const preferredWidth = 500;
 
     // Get the natural content height (content div has no constraints)
     const contentHeight = contentRef.current.scrollHeight + 30; // +30 for padding

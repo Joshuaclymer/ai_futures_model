@@ -151,17 +151,64 @@ def build_black_project_model_section(
             str(lr): compute_ccdf(compute_average_covert_compute(all_data, years, agreement_year, lr))
             for lr in LIKELIHOOD_RATIO_THRESHOLDS
         },
+        # Chip production reduction CCDFs - nested by threshold for reference model compatibility
         "chip_production_reduction_ccdf": {
-            "global": compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, 4)['chip_global']),
-            "prc": compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, 4)['chip_prc']),
+            "global": {
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, lr)['chip_global'])
+                for lr in LIKELIHOOD_RATIO_THRESHOLDS
+            },
+            "prc": {
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, lr)['chip_prc'])
+                for lr in LIKELIHOOD_RATIO_THRESHOLDS
+            },
+            "largest_company": {
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, lr)['chip_prc'])
+                for lr in LIKELIHOOD_RATIO_THRESHOLDS
+            },
         },
+        # AI R&D reduction CCDFs - nested by threshold for reference model compatibility
+        # Frontend chart shows largest_company vs prc (two entities) at default threshold 4
         "ai_rd_reduction_ccdf": {
-            "largest_company": compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, 4)['ai_largest']),
-            "prc": compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, 4)['ai_prc']),
+            "largest_company": {
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, lr)['ai_largest'])
+                for lr in LIKELIHOOD_RATIO_THRESHOLDS
+            },
+            "prc": {
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, agreement_year, dt, lr)['ai_prc'])
+                for lr in LIKELIHOOD_RATIO_THRESHOLDS
+            },
         },
+        # Flat versions for frontend charts (uses threshold 4)
+        # Frontend expects covert/counterfactual fractions, so invert the ratios (1/x)
+        "ai_rd_reduction_ccdf_flat": _compute_inverted_ccdf_flat(all_data, years, agreement_year, dt, ['ai_largest', 'ai_prc'], ['largest_company', 'prc']),
+        "chip_production_reduction_ccdf_flat": _compute_inverted_ccdf_flat(all_data, years, agreement_year, dt, ['chip_global', 'chip_prc'], ['global', 'prc']),
 
         "likelihood_ratios": LIKELIHOOD_RATIO_THRESHOLDS,
     }
+
+
+def _compute_inverted_ccdf_flat(
+    all_data: List[Dict],
+    years: List[float],
+    agreement_year: float,
+    dt: float,
+    ratio_keys: List[str],
+    output_keys: List[str],
+) -> Dict[str, Any]:
+    """
+    Compute CCDF with inverted ratios for frontend display.
+
+    The reference model uses counterfactual/covert ratios (large numbers).
+    Frontend expects covert/counterfactual fractions (small numbers like 0.001).
+    This function inverts the ratios (1/x) before computing the CCDF.
+    """
+    ratios = compute_reduction_ratios(all_data, years, agreement_year, dt, 4)
+    result = {}
+    for ratio_key, output_key in zip(ratio_keys, output_keys):
+        # Invert ratios: counterfactual/covert -> covert/counterfactual
+        inverted = [1.0 / r if r > 0 else 0.0 for r in ratios[ratio_key]]
+        result[output_key] = compute_ccdf(inverted)
+    return result
 
 
 def _get_fab_flow_percentiles(all_data: List[Dict], years: List[float]) -> Dict[str, Any]:

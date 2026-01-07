@@ -248,7 +248,9 @@ export interface SimulationData {
     time_to_detection_ccdf?: MultiThresholdCCDF;
     ai_rd_reduction?: { median: number };
     ai_rd_reduction_ccdf?: MultiThresholdCCDF;
+    ai_rd_reduction_ccdf_flat?: Record<string, CCDFPoint[]>;
     chip_production_reduction_ccdf?: MultiThresholdCCDF;
+    chip_production_reduction_ccdf_flat?: Record<string, CCDFPoint[]>;
     chips_produced?: { median: number };
     posterior_prob_project?: {
       median: number[];

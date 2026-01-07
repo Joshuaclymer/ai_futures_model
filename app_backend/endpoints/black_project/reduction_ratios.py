@@ -60,7 +60,6 @@ def compute_reduction_ratios(
         Dict with 'chip_global', 'chip_prc', 'chip_largest', 'ai_largest', 'ai_prc' keys
     """
     pre_slowdown_growth_rate = 2.2
-    SMALL_RATIO = 1e-10
 
     chip_global = []
     chip_prc = []
@@ -83,10 +82,13 @@ def compute_reduction_ratios(
         if detection_year > years[-1]:
             detection_year = years[-1]
 
-        # Compute covert project H100-years up to detection
+        # Compute covert project H100-years from agreement_year to detection_year
+        # (matching reference model which filters: agreement_year <= y <= current_year)
         op_compute = bp.get('operational_compute', [])
         bp_h100_years = 0.0
         for j, year in enumerate(years):
+            if year < agreement_year:
+                continue  # Skip years before agreement
             if year >= detection_year:
                 break
             if j < len(op_compute):
@@ -105,12 +107,16 @@ def compute_reduction_ratios(
         bp_chip_production = max(0.0, prod_at_detection - prod_at_agreement)
 
         # Get PRC compute at agreement year
+        # Apply fraction of PRC compute spent on AI R&D (from reference model)
+        # This represents the portion of PRC compute used for AI research, not total PRC compute
+        FRACTION_OF_PRC_COMPUTE_SPENT_ON_AI_RD = 0.5
         agreement_idx = 0
         for j, year in enumerate(years):
             if year >= agreement_year:
                 agreement_idx = j
                 break
-        prc_at_agreement = prc_stock[agreement_idx] if agreement_idx < len(prc_stock) else prc_stock[0]
+        total_prc_at_agreement = prc_stock[agreement_idx] if agreement_idx < len(prc_stock) else prc_stock[0]
+        prc_at_agreement = total_prc_at_agreement * FRACTION_OF_PRC_COMPUTE_SPENT_ON_AI_RD
         duration = max(0.0, detection_year - agreement_year)
 
         # Compute counterfactual chip production (no slowdown scenario)
@@ -124,35 +130,39 @@ def compute_reduction_ratios(
 
         # Compute counterfactual H100-years (integrated compute over time)
         # For PRC: integrate prc_at_agreement * growth_rate^t from 0 to duration
-        if pre_slowdown_growth_rate > 1.001:
+        pre_slowdown_growth_rate = 2.2
+        if pre_slowdown_growth_rate > 1.001 and duration > 0:
             growth_factor = (pre_slowdown_growth_rate ** duration - 1) / np.log(pre_slowdown_growth_rate)
         else:
             growth_factor = duration
         prc_h100_years = prc_at_agreement * growth_factor
 
         # For largest AI project: integrate compute stock over time from agreement to detection
-        # Using same growth formula: integral of S_0 * g^t dt = S_0 * (g^T - 1) / ln(g)
         largest_growth_rate = ANNUAL_GROWTH_RATE_OF_LARGEST_AI_PROJECT_COMPUTE_STOCK
-        if largest_growth_rate > 1.001:
+        if largest_growth_rate > 1.001 and duration > 0:
             largest_growth_factor = (largest_growth_rate ** duration - 1) / np.log(largest_growth_rate)
         else:
             largest_growth_factor = duration
         largest_h100_years = largest_stock_at_agreement * largest_growth_factor
 
-        # Compute ratios as covert / no-slowdown (values between 0 and 1)
+        # Compute ratios as counterfactual / covert (matching reference model format)
+        # Large values mean covert project got much less than counterfactual would have
+        # For frontend display, these are inverted to fractions in black_project_model.py
+        LARGE_RATIO = 1e12  # Used when covert compute is zero
+
         if bp_chip_production <= 0:
-            chip_global.append(SMALL_RATIO)
-            chip_prc.append(SMALL_RATIO)
+            chip_global.append(LARGE_RATIO)
+            chip_prc.append(LARGE_RATIO)
         else:
-            chip_global.append(bp_chip_production / global_production if global_production > 0 else SMALL_RATIO)
-            chip_prc.append(bp_chip_production / prc_production if prc_production > 0 else SMALL_RATIO)
+            chip_global.append(global_production / bp_chip_production if global_production > 0 else 0.0)
+            chip_prc.append(prc_production / bp_chip_production if prc_production > 0 else 0.0)
 
         if bp_h100_years <= 0:
-            ai_largest.append(SMALL_RATIO)
-            ai_prc.append(SMALL_RATIO)
+            ai_largest.append(LARGE_RATIO)
+            ai_prc.append(LARGE_RATIO)
         else:
-            ai_largest.append(bp_h100_years / largest_h100_years if largest_h100_years > 0 else SMALL_RATIO)
-            ai_prc.append(bp_h100_years / prc_h100_years if prc_h100_years > 0 else SMALL_RATIO)
+            ai_largest.append(largest_h100_years / bp_h100_years if largest_h100_years > 0 else 0.0)
+            ai_prc.append(prc_h100_years / bp_h100_years if prc_h100_years > 0 else 0.0)
 
     return {
         'chip_global': chip_global,
