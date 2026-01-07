@@ -3,6 +3,7 @@
 /**
  * Scrolls to a parameter input in the sidebar and highlights it.
  * Expands any collapsed parent <details> elements.
+ * Focuses the value display span to trigger edit mode.
  */
 export function scrollToParameter(paramId: string) {
   const input = document.getElementById(paramId);
@@ -18,9 +19,12 @@ export function scrollToParameter(paramId: string) {
     // Small delay to allow DOM to update after expanding
     setTimeout(() => {
       input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      input.focus();
-      if (input instanceof HTMLInputElement) {
-        input.select();
+      // Find the value display span and focus it to trigger edit mode
+      const valueSpan = document.querySelector(`[data-param-value="${paramId}"]`) as HTMLElement;
+      if (valueSpan) {
+        valueSpan.focus();
+      } else {
+        input.focus();
       }
     }, 50);
   }

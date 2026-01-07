@@ -117,12 +117,15 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
             const mapped = mapBackendDefaults(defaultsResult.defaults);
             yamlDefaults = { ...defaultParameters, ...mapped };
             setParameters(yamlDefaults);
-            setDefaultsLoaded(true);
             console.log('[useSimulation] YAML defaults loaded:', yamlDefaults);
+          } else {
+            console.warn('[useSimulation] Defaults response missing success or defaults, using hardcoded defaults');
           }
         } else {
           console.warn('[useSimulation] Failed to fetch YAML defaults, using hardcoded defaults');
         }
+        // Always mark defaults as loaded after the attempt, so parameter changes trigger simulations
+        setDefaultsLoaded(true);
 
         // Step 2: Run simulation with defaults
         if (USE_REAL_BACKEND) {
@@ -195,7 +198,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
     }, debounceTime);
 
     return () => clearTimeout(timeoutId);
-  }, [parameters, defaultsLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parameters, defaultsLoaded, runSimulation]);
 
   const updateParameter = useCallback(<K extends keyof Parameters>(key: K, value: Parameters[K]) => {
     setParameters(prev => ({ ...prev, [key]: value }));

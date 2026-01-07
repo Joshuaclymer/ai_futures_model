@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTooltip, Tooltip } from './Tooltip';
 
 interface SliderProps {
@@ -116,6 +116,23 @@ export function Slider({
   // Get tooltip handlers if we have documentation
   const tooltipHandlers = tooltipDoc ? createTooltipHandlers(tooltipDoc) : null;
 
+  // Calculate percentage for positioning value label below thumb
+  const safeMin = typeof min === 'number' && !isNaN(min) ? min : 0;
+  const safeMax = typeof max === 'number' && !isNaN(max) ? max : 100;
+  const safeValue = typeof value === 'number' && !isNaN(value) ? value : safeMin;
+  const percentage = ((safeValue - safeMin) / (safeMax - safeMin)) * 100;
+
+  // Calculate label positioning to prevent overflow (matching timelines page)
+  const getLabelStyle = (): React.CSSProperties => {
+    if (percentage <= 15) {
+      return { left: `${percentage}%`, transform: 'translateX(0)', whiteSpace: 'nowrap' };
+    } else if (percentage >= 85) {
+      return { left: `${percentage}%`, transform: 'translateX(-100%)', whiteSpace: 'nowrap' };
+    } else {
+      return { left: `${percentage}%`, transform: 'translateX(-50%)', whiteSpace: 'nowrap' };
+    }
+  };
+
   return (
     <div className="bp-slider-group">
       {tooltipDoc ? (
@@ -124,61 +141,73 @@ export function Slider({
           {...tooltipHandlers}
           style={{ cursor: 'help' }}
         >
-          {label}<sup style={{ color: '#5E6FB8', marginLeft: '2px', fontSize: '9px' }}>?</sup>
+          {label}
+          <sup style={{ color: '#5E6FB8', marginLeft: '2px', fontSize: '9px' }}>?</sup>
         </label>
       ) : (
         <label htmlFor={id}>{label}</label>
       )}
-      <input
-        type="range"
-        className="bp-slider"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-      />
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2px' }}>
-        {isEditing ? (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'relative' }}>
           <input
-            ref={inputRef}
+            type="range"
             id={id}
-            type="text"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleFinishEdit}
-            onKeyDown={handleKeyDown}
-            style={{
-              width: '80px',
-              padding: '3px 8px',
-              fontSize: '10px',
-              border: '1px solid #5E6FB8',
-              borderRadius: '3px',
-              textAlign: 'center',
-              outline: 'none',
-              boxShadow: '0 0 0 2px rgba(94, 111, 184, 0.2)',
-            }}
+            className="bp-slider"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => onChange(parseFloat(e.target.value))}
           />
-        ) : (
-          <input
-            id={id}
-            type="text"
-            value={displayValue}
-            readOnly
-            onFocus={handleFocus}
-            onClick={handleStartEdit}
+          {/* Value label positioned below thumb */}
+          <div
             style={{
-              width: '80px',
-              padding: '3px 8px',
-              fontSize: '10px',
-              border: 'none',
-              textAlign: 'center',
-              cursor: 'pointer',
-              backgroundColor: 'transparent',
+              position: 'absolute',
+              top: '100%',
+              marginTop: '2px',
+              fontSize: '9px',
+              color: 'rgba(0, 0, 0, 0.5)',
+              fontWeight: 500,
+              pointerEvents: isEditing ? 'auto' : 'none',
+              ...getLabelStyle(),
             }}
-            title="Click to edit"
-          />
-        )}
+          >
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                id={id}
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleFinishEdit}
+                onKeyDown={handleKeyDown}
+                style={{
+                  width: '50px',
+                  padding: '1px 3px',
+                  fontSize: '9px',
+                  border: '1px solid #333',
+                  borderRadius: '2px',
+                  outline: 'none',
+                  textAlign: 'center',
+                  pointerEvents: 'auto',
+                }}
+              />
+            ) : (
+              <span
+                data-param-value={id}
+                onClick={handleStartEdit}
+                onFocus={handleFocus}
+                tabIndex={0}
+                style={{ cursor: 'text', pointerEvents: 'auto' }}
+                title="Click to edit"
+              >
+                {displayValue}
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Spacer for the absolutely positioned value label */}
+        <div style={{ height: '14px' }} />
       </div>
       {tooltipDoc && (
         <Tooltip
