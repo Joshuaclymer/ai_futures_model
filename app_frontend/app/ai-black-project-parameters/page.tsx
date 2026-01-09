@@ -327,7 +327,7 @@ export default function BlackProjectParametersPage() {
                       components={{
                         img: ({ src, alt }) => {
                           // Render .html files as iframes for interactive plots
-                          if (src?.endsWith('.html')) {
+                          if (typeof src === 'string' && src.endsWith('.html')) {
                             return (
                               <iframe
                                 src={src}
