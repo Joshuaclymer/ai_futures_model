@@ -14,7 +14,6 @@ Module Structure:
 - visualization.py: Chart building functions
 - percentile_helpers.py: Statistical helper functions
 - reduction_ratios.py: Reduction ratio computations
-- global_compute.py: Global compute production data
 - utils.py: Utility functions
 - response_sections/: Modular response section builders
 """

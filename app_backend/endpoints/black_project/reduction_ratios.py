@@ -17,12 +17,13 @@ For AI R&D comparisons:
   (because some compute goes to external deployment)
 - Covert project (slowdown): 100% of compute is AI R&D
   (because external deployment is 0% during slowdown)
+
+Global chip production is computed as the sum of PRC + US chip production from the
+counterfactual simulation data (not from a hard-coded CSV).
 """
 
 import numpy as np
 from typing import Dict, List
-
-from .global_compute import get_global_compute_production_between_years
 
 
 def compute_reduction_ratios(
@@ -180,9 +181,6 @@ def compute_reduction_ratios(
         # Total global AI R&D H100-years = PRC + US
         total_global_ai_rd_h100_years_no_slowdown = total_prc_ai_rd_h100_years_no_slowdown + total_us_ai_rd_h100_years_no_slowdown
 
-        # Global chip production if no slowdown (from historical projection)
-        global_chip_production_no_slowdown = get_global_compute_production_between_years(agreement_year, detection_year)
-
         # Total PRC chip production if no slowdown (stock increase during period)
         # Divide by proportion to get total PRC, not just largest company
         prc_largest_stock_at_agreement = 0.0
@@ -195,6 +193,22 @@ def compute_reduction_ratios(
                     prc_largest_stock_at_detection = prc_largest_company_compute_stock[j]
         prc_largest_chip_production = prc_largest_stock_at_detection - prc_largest_stock_at_agreement
         total_prc_chip_production_no_slowdown = prc_largest_chip_production / prc_proportion_in_largest
+
+        # Total US chip production if no slowdown (stock increase during period)
+        # Divide by proportion to get total US, not just largest company
+        us_largest_stock_at_agreement = 0.0
+        us_largest_stock_at_detection = 0.0
+        for j, year in enumerate(years):
+            if j < len(us_largest_company_compute_stock):
+                if year <= agreement_year:
+                    us_largest_stock_at_agreement = us_largest_company_compute_stock[j]
+                if year <= detection_year:
+                    us_largest_stock_at_detection = us_largest_company_compute_stock[j]
+        us_largest_chip_production = us_largest_stock_at_detection - us_largest_stock_at_agreement
+        total_us_chip_production_no_slowdown = us_largest_chip_production / us_proportion_in_largest
+
+        # Global chip production = PRC + US chip production from counterfactual simulation
+        global_chip_production_no_slowdown = total_prc_chip_production_no_slowdown + total_us_chip_production_no_slowdown
 
         # =============================================================================
         # COMPUTE RATIOS: counterfactual_no_slowdown / covert_project
