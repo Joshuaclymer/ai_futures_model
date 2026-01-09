@@ -260,6 +260,75 @@ export interface SimulationData {
     individual_project_time_before_detection?: number[];
     individual_project_h100e_before_detection?: number[];
     ai_rd_reduction_median?: number;
+    // Additional time series data
+    black_fab_flow_all_sims?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    survival_rate?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    covert_chip_stock?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    datacenter_capacity?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    energy_usage?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    operating_chips?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    covert_computation?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    chip_evidence?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    sme_evidence?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    dc_evidence?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    energy_evidence?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    combined_evidence?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    direct_evidence?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    chip_evidence_samples?: number[];
+    sme_evidence_samples?: number[];
+    dc_evidence_samples?: number[];
   };
   black_fab?: {
     years: number[];
