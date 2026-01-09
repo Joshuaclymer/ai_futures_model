@@ -47,7 +47,7 @@ class NationComputeUpdater(WorldUpdater):
         if nation_id == NamedNations.PRC:
             return self.params.compute.PRCComputeParameters.annual_growth_rate_of_prc_compute_stock
         elif nation_id == NamedNations.USA:
-            return self.params.compute.USComputeParameters.us_frontier_developer_operating_compute_annual_growth_rate
+            return self.params.compute.USComputeParameters.total_us_compute_annual_growth_rate
         return 1.0  # No growth for unknown nations
 
     def _get_survival_params(self):

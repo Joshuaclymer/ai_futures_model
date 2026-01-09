@@ -233,27 +233,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             <Slider
                                 paramName="us_frontier_project_compute_growth_rate"
                                 label="US Frontier Project Compute Growth Rate"
-                                description="Annual growth rate of US frontier project compute before the slowdown year (OOMs/year)"
-                                step={0.01}
-                                fallbackMin={0.0}
-                                fallbackMax={2.0}
-                                decimalPlaces={2}
-                                customFormatValue={(v) => `${v.toFixed(2)} OOMs/year`}
-                            />
-                            <Slider
-                                paramName="slowdown_year"
-                                label="Compute Slowdown Year"
-                                description="Year at which training compute growth rate transitions to the post-slowdown rate"
-                                step={0.1}
-                                fallbackMin={2020.0}
-                                fallbackMax={2040.0}
-                                decimalPlaces={1}
-                                customFormatValue={(v) => `${v.toFixed(1)}`}
-                            />
-                            <Slider
-                                paramName="post_slowdown_operating_compute_growth_rate"
-                                label="Post-Slowdown Training Compute Growth Rate"
-                                description="Annual growth rate of training compute after the slowdown year (OOMs/year)"
+                                description="Annual growth rate of US frontier project compute (OOMs/year)"
                                 step={0.01}
                                 fallbackMin={0.0}
                                 fallbackMax={2.0}

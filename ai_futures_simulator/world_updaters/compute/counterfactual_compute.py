@@ -18,12 +18,11 @@ from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.classes import SimulationParameters
 
 
-# Fixed counterfactual growth rates (from reference model ExogenousTrends)
-# These are intentionally NOT sampled - they represent baseline counterfactual scenarios
-COUNTERFACTUAL_GROWTH_RATES = {
-    NamedNations.PRC_COUNTERFACTUAL_NO_SLOWDOWN: 2.2,  # PRC p50 growth rate
-    NamedNations.USA_COUNTERFACTUAL_NO_SLOWDOWN: 2.91,  # Largest AI project growth rate
-}
+# List of counterfactual nation IDs to update
+COUNTERFACTUAL_NATION_IDS = [
+    NamedNations.PRC_COUNTERFACTUAL_NO_SLOWDOWN,
+    NamedNations.USA_COUNTERFACTUAL_NO_SLOWDOWN,
+]
 
 
 class CounterfactualComputeUpdater(WorldUpdater):
@@ -35,7 +34,7 @@ class CounterfactualComputeUpdater(WorldUpdater):
 
     Where:
         C = compute stock
-        g = annual growth rate multiplier
+        g = annual growth rate multiplier (from parameters)
 
     This simpler model is appropriate for hypothetical counterfactual scenarios
     where we don't need to track chip aging/attrition.
@@ -46,8 +45,12 @@ class CounterfactualComputeUpdater(WorldUpdater):
         self.params = params
 
     def _get_growth_rate(self, nation_id: str) -> float:
-        """Get annual growth rate multiplier for a counterfactual nation."""
-        return COUNTERFACTUAL_GROWTH_RATES.get(nation_id, 1.0)
+        """Get annual growth rate multiplier for a counterfactual nation from parameters."""
+        if nation_id == NamedNations.PRC_COUNTERFACTUAL_NO_SLOWDOWN:
+            return self.params.compute.PRCComputeParameters.annual_growth_rate_of_prc_compute_stock
+        elif nation_id == NamedNations.USA_COUNTERFACTUAL_NO_SLOWDOWN:
+            return self.params.compute.USComputeParameters.total_us_compute_annual_growth_rate
+        return 1.0
 
     def contribute_state_derivatives(self, t: Tensor, world: World) -> StateDerivative:
         """
@@ -60,7 +63,7 @@ class CounterfactualComputeUpdater(WorldUpdater):
         """
         d_world = World.zeros(world)
 
-        for nation_id in COUNTERFACTUAL_GROWTH_RATES.keys():
+        for nation_id in COUNTERFACTUAL_NATION_IDS:
             nation = world.nations.get(nation_id)
             if nation is None:
                 continue
@@ -88,7 +91,7 @@ class CounterfactualComputeUpdater(WorldUpdater):
 
     def set_metric_attributes(self, t: Tensor, world: World) -> World:
         """Update derived metrics from state for counterfactual nations."""
-        for nation_id in COUNTERFACTUAL_GROWTH_RATES.keys():
+        for nation_id in COUNTERFACTUAL_NATION_IDS:
             nation = world.nations.get(nation_id)
             if nation is None:
                 continue

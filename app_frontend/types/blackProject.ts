@@ -35,7 +35,7 @@ export interface BlackProjectModel {
   average_covert_compute_ccdf: CCDFByThreshold;
   time_to_detection_ccdf: CCDFByThreshold;
   ai_rd_reduction_ccdf: {
-    largest_company: CCDFByThreshold;
+    global: CCDFByThreshold;
     prc: CCDFByThreshold;
   };
   chip_production_reduction_ccdf: CCDFByThreshold;

@@ -53,9 +53,10 @@ interface BreakdownChartProps {
   onClick?: () => void;
   tooltip?: string;
   yRange?: [number, number];
+  isLoading?: boolean;
 }
 
-function BreakdownChart({ title, description, descriptionNode, data, color, yLabel, onClick, tooltip, yRange }: BreakdownChartProps) {
+function BreakdownChart({ title, description, descriptionNode, data, color, yLabel, onClick, tooltip, yRange, isLoading }: BreakdownChartProps) {
   const isClickable = !!onClick;
 
   return (
@@ -75,6 +76,7 @@ function BreakdownChart({ title, description, descriptionNode, data, color, yLab
           showBand={true}
           bandAlpha={0.15}
           yRange={yRange}
+          isLoading={isLoading}
         />
       </div>
       <div className="breakdown-label">{title}</div>
@@ -105,9 +107,10 @@ interface PDFBreakdownChartProps {
   onClick?: () => void;
   tooltip?: string;
   showMedianLine?: boolean;
+  isLoading?: boolean;
 }
 
-function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'H100e', onClick, tooltip, showMedianLine = true }: PDFBreakdownChartProps) {
+function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'H100e', onClick, tooltip, showMedianLine = true, isLoading }: PDFBreakdownChartProps) {
   const isClickable = !!onClick;
 
   return (
@@ -125,6 +128,7 @@ function PDFBreakdownChart({ title, description, descriptionNode, samples, color
           logScale={true}
           numBins={15}
           showMedianLine={showMedianLine}
+          isLoading={isLoading}
         />
       </div>
       <div className="breakdown-label">{title}</div>
@@ -149,9 +153,10 @@ interface RateOfComputationSectionProps {
   agreementYear?: number;
   data?: RateOfComputationData | null;
   parameters?: Parameters;
+  isLoading?: boolean;
 }
 
-export function RateOfComputationSection({ agreementYear = 2030, data, parameters }: RateOfComputationSectionProps) {
+export function RateOfComputationSection({ agreementYear = 2030, data, parameters, isLoading }: RateOfComputationSectionProps) {
   // Use data from API, with fallback empty arrays if not available
   const initialStockSamples = data?.initial_chip_stock_samples || [];
   const acquiredHardware = data?.acquired_hardware || { years: [], median: [], p25: [], p75: [] };
@@ -206,6 +211,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             onClick={() => scrollToSection('initialStockSection')}
             tooltip="Click for more details"
             showMedianLine={false}
+            isLoading={isLoading}
           />
 
           <Operator>+</Operator>
@@ -224,6 +230,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             yLabel="H100e"
             onClick={() => scrollToSection('covertFabSection')}
             tooltip="Click for more details"
+            isLoading={isLoading}
           />
 
           <Bracket>]</Bracket>
@@ -243,6 +250,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             color={COLOR_PALETTE.survival_rate}
             yLabel="Fraction"
             yRange={[0, 1]}
+            isLoading={isLoading}
           />
 
           <Operator>=</Operator>
@@ -253,6 +261,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             data={covertChipStock}
             color={COLOR_PALETTE.chip_stock}
             yLabel="H100e"
+            isLoading={isLoading}
           />
         </div>
 
@@ -283,6 +292,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             yLabel="GW"
             onClick={() => scrollToSection('covertDataCentersSection')}
             tooltip="Click for more details"
+            isLoading={isLoading}
           />
 
           <div className="breakdown-limits-arrow">
@@ -313,6 +323,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             data={operatingChips}
             color={COLOR_PALETTE.datacenters_and_energy}
             yLabel="H100e"
+            isLoading={isLoading}
           />
 
           <Operator>=</Operator>
@@ -323,6 +334,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
             data={covertComputation}
             color={COLOR_PALETTE.datacenters_and_energy}
             yLabel="H100-years"
+            isLoading={isLoading}
           />
         </div>
       </div>

@@ -337,47 +337,49 @@ function Operator({ children, style }: { children: React.ReactNode; style?: Reac
 }
 
 // Is Operational Plot (proportion over time)
-function IsOperationalPlot({ data }: { data?: TimeSeriesData }) {
-  if (!data) return <LoadingIndicator />;
+function IsOperationalPlot({ data, isLoading }: { data?: TimeSeriesData; isLoading?: boolean }) {
+  if (!data && !isLoading) return <LoadingIndicator />;
   return (
     <TimeSeriesChart
-      years={data.years}
-      median={data.median}
-      p25={data.p25}
-      p75={data.p75}
+      years={data?.years}
+      median={data?.median}
+      p25={data?.p25}
+      p75={data?.p75}
       color={COLOR_PALETTE.fab}
       yLabel="Probability"
       showBand={false}
       fillToZero={true}
       fillAlpha={0.15}
       yRange={[0, 1]}
+      isLoading={isLoading}
     />
   );
 }
 
 // Wafer Starts PDF Plot - uses shared PDFChart component
-function WaferStartsPlot({ samples }: { samples?: number[] }) {
-  if (!samples || samples.length === 0) return <LoadingIndicator />;
+function WaferStartsPlot({ samples, isLoading }: { samples?: number[]; isLoading?: boolean }) {
+  if ((!samples || samples.length === 0) && !isLoading) return <LoadingIndicator />;
   return (
     <PDFChart
-      samples={samples}
+      samples={samples || []}
       color={COLOR_PALETTE.chip_stock}
       xLabel="Wafers/Month"
       logScale={false}
       numBins={20}
       normalize="density"
+      isLoading={isLoading}
     />
   );
 }
 
 // Transistor Density Bar Plot by Process Node - shows probability distribution
-function TransistorDensityPlot({ data }: { data?: { node: string; density: number; probability?: number }[] }) {
-  if (!data || data.length === 0) return <LoadingIndicator />;
+function TransistorDensityPlot({ data, isLoading }: { data?: { node: string; density: number; probability?: number }[]; isLoading?: boolean }) {
+  if ((!data || data.length === 0) && !isLoading) return <LoadingIndicator />;
 
   // If probability data is available, show probability distribution
-  const hasProbability = data.some(d => d.probability !== undefined && d.probability > 0);
+  const hasProbability = data?.some(d => d.probability !== undefined && d.probability > 0) || false;
 
-  const traces: Plotly.Data[] = [
+  const traces: Plotly.Data[] = data ? [
     {
       // X-axis: show density with node label (e.g., "0.06x (28nm)")
       x: data.map(d => hasProbability ? `${formatSigFigs(d.density)}x (${d.node})` : d.node),
@@ -389,7 +391,7 @@ function TransistorDensityPlot({ data }: { data?: { node: string; density: numbe
         ? '%{x}: %{y:.1%} probability<extra></extra>'
         : '%{x}: %{y:.2f}x H100<extra></extra>',
     },
-  ];
+  ] : [];
 
   return (
     <PlotlyChart
@@ -408,23 +410,25 @@ function TransistorDensityPlot({ data }: { data?: { node: string; density: numbe
         bargap: 0.3,
         margin: { l: 50, r: 10, t: 10, b: hasProbability ? 70 : 50 },
       }}
+      isLoading={isLoading}
     />
   );
 }
 
 // Compute per Month Plot
-function ComputePerMonthPlot({ data }: { data?: TimeSeriesData }) {
-  if (!data) return <LoadingIndicator />;
+function ComputePerMonthPlot({ data, isLoading }: { data?: TimeSeriesData; isLoading?: boolean }) {
+  if (!data && !isLoading) return <LoadingIndicator />;
   return (
     <TimeSeriesChart
-      years={data.years}
-      median={data.median}
-      p25={data.p25}
-      p75={data.p75}
+      years={data?.years}
+      median={data?.median}
+      p25={data?.p25}
+      p75={data?.p75}
       color={COLOR_PALETTE.fab}
       yLabel="H100e/Month"
       showBand={true}
       bandAlpha={0.15}
+      isLoading={isLoading}
     />
   );
 }
@@ -572,18 +576,19 @@ function WattsPerTppPlot({
 }
 
 // Energy per Month Plot
-function EnergyPerMonthPlot({ data }: { data?: TimeSeriesData }) {
-  if (!data) return <LoadingIndicator />;
+function EnergyPerMonthPlot({ data, isLoading }: { data?: TimeSeriesData; isLoading?: boolean }) {
+  if (!data && !isLoading) return <LoadingIndicator />;
   return (
     <TimeSeriesChart
-      years={data.years}
-      median={data.median}
-      p25={data.p25}
-      p75={data.p75}
+      years={data?.years}
+      median={data?.median}
+      p25={data?.p25}
+      p75={data?.p75}
       color={COLOR_PALETTE.datacenters_and_energy}
       yLabel="GW/Month"
       showBand={true}
       bandAlpha={0.15}
+      isLoading={isLoading}
     />
   );
 }
@@ -630,7 +635,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
             Covert compute produced before detection
           </div>
           <div style={{ flex: 1, minHeight: '250px' }}>
-            <ComputeCCDFChart ccdfData={ccdfData} />
+            <ComputeCCDFChart ccdfData={ccdfData} isLoading={isLoading} />
           </div>
         </div>
 
@@ -639,7 +644,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
             Simulation runs
           </div>
           <div style={{ flex: 1, minHeight: '250px' }}>
-            <SimulationRunsChart timeSeriesData={timeSeriesData} />
+            <SimulationRunsChart timeSeriesData={timeSeriesData} isLoading={isLoading} />
           </div>
         </div>
       </div>
@@ -663,7 +668,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
               <>Construction time depends on fab capacity (wafers/month) and available workers, based on <ParamLink paramId="param-construction-time-5k">5k wafer/month</ParamLink> and <ParamLink paramId="param-construction-time-100k">100k wafer/month</ParamLink> benchmarks.</>
             }
           >
-            <IsOperationalPlot data={isOperationalData} />
+            <IsOperationalPlot data={isOperationalData} isLoading={isLoading} />
           </BreakdownItem>
 
           <Operator>&times;</Operator>
@@ -676,7 +681,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
               <>Production capacity is the minimum of labor constraints (<ParamValue paramKey="fabWafersPerMonthPerOperatingWorker" parameters={parameters} /> wafers/month per operating worker) and SME constraints (scanners × <ParamValue paramKey="wafersPerMonthPerLithographyScanner" parameters={parameters} /> wafers/month).</>
             }
           >
-            <WaferStartsPlot samples={waferStartsSamples} />
+            <WaferStartsPlot samples={waferStartsSamples} isLoading={isLoading} />
           </BreakdownItem>
 
           <Operator>&times;</Operator>
@@ -698,7 +703,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
               <>Transistor density scales with process node improvement. Density increases <ParamValue paramKey="transistorDensityScalingExponent" parameters={parameters} /> for every halving of process node (e.g., 28nm → 14nm).</>
             }
           >
-            <TransistorDensityPlot data={transistorDensityData} />
+            <TransistorDensityPlot data={transistorDensityData} isLoading={isLoading} />
           </BreakdownItem>
 
           <Operator>&times;</Operator>
@@ -719,7 +724,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
             title="Compute produced per month (H100e / month)"
             description="Total monthly compute production in H100-equivalent units, combining production capacity, yield, transistor density, and architecture improvements."
           >
-            <ComputePerMonthPlot data={computePerMonthData} />
+            <ComputePerMonthPlot data={computePerMonthData} isLoading={isLoading} />
           </BreakdownItem>
         </div>
 
@@ -737,7 +742,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
               <>Same as compute production: density increases <ParamValue paramKey="transistorDensityScalingExponent" parameters={parameters} /> for every halving of process node.</>
             }
           >
-            <TransistorDensityPlot data={transistorDensityData} />
+            <TransistorDensityPlot data={transistorDensityData} isLoading={isLoading} />
           </BreakdownItem>
 
           <Operator style={{ flexDirection: 'column' }}>
@@ -777,7 +782,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
             title="Compute produced per month (H100e / month)"
             description="Same as the compute production result above, showing monthly H100-equivalent production."
           >
-            <ComputePerMonthPlot data={computePerMonthData} />
+            <ComputePerMonthPlot data={computePerMonthData} isLoading={isLoading} />
           </BreakdownItem>
 
           <Operator>=</Operator>
@@ -786,7 +791,7 @@ export function CovertFabSection({ data, isLoading, parameters, covertFabData }:
             title="Energy requirements per month (GW / month)"
             description="Total energy required to produce chips each month, combining compute output, efficiency scaling, and H100 power requirements."
           >
-            <EnergyPerMonthPlot data={energyPerMonthData} />
+            <EnergyPerMonthPlot data={energyPerMonthData} isLoading={isLoading} />
           </BreakdownItem>
         </div>
       </div>

@@ -130,13 +130,12 @@ def initialize_prc_counterfactual_no_slowdown(
     """
     Initialize the PRC counterfactual (no slowdown) nation for a given year.
 
-    This represents PRC's compute trajectory in a hypothetical scenario where there
-    is no slowdown agreement. Used for computing AI R&D reduction ratios.
+    This represents the largest PRC AI company's compute trajectory in a hypothetical
+    scenario where there is no slowdown agreement. Used for computing AI R&D reduction ratios.
 
-    The counterfactual uses fixed parameters from the reference model:
-    - Base compute: 1e5 H100e in 2025
-    - Growth rate: 2.2x per year (p50 value)
-    - AI R&D fraction: 0.5 (tracked separately in reduction_ratios)
+    Uses parameter values from SimulationParameters:
+    - total_prc_compute_tpp_h100e_in_2025 * proportion_of_compute_in_largest_ai_sw_developer
+    - annual_growth_rate_of_prc_compute_stock
 
     Args:
         params: SimulationParameters containing model configuration
@@ -145,14 +144,18 @@ def initialize_prc_counterfactual_no_slowdown(
     Returns:
         Initialized Nation representing PRC's no-slowdown counterfactual
     """
-    # Fixed counterfactual parameters (from reference model ExogenousTrends)
-    # These are intentionally NOT sampled - they represent the baseline counterfactual
-    COUNTERFACTUAL_BASE_COMPUTE_2025 = 1e5  # H100e
-    COUNTERFACTUAL_GROWTH_RATE = 2.2  # p50 annual growth rate
+    # Get parameters from config - represents largest PRC AI company's compute
+    prc_params = params.compute.PRCComputeParameters
+    total_prc_compute_2025 = prc_params.total_prc_compute_tpp_h100e_in_2025
+    proportion_largest = prc_params.proportion_of_compute_in_largest_ai_sw_developer
+    growth_rate = prc_params.annual_growth_rate_of_prc_compute_stock
+
+    # Largest PRC AI company = total PRC compute * proportion in largest company
+    base_compute_2025 = total_prc_compute_2025 * proportion_largest
 
     # Calculate counterfactual compute stock at the given year
     years_since_2025 = year - 2025
-    counterfactual_compute = COUNTERFACTUAL_BASE_COMPUTE_2025 * (COUNTERFACTUAL_GROWTH_RATE ** years_since_2025)
+    counterfactual_compute = base_compute_2025 * (growth_rate ** years_since_2025)
 
     # Create compute stock (using standard H100 watts since this is hypothetical)
     compute_stock = Compute(
@@ -192,9 +195,9 @@ def initialize_usa_counterfactual_no_slowdown(
     in a hypothetical scenario where there is no slowdown agreement.
     Used for computing AI R&D reduction ratios.
 
-    The counterfactual uses fixed parameters from the reference model (ExogenousTrends):
-    - Base compute: 1.2e5 H100e in 2025 (largest_ai_project_compute_stock_in_2025)
-    - Growth rate: 2.91x per year (annual_growth_rate_of_largest_ai_project_compute_stock)
+    Uses parameter values from SimulationParameters:
+    - total_us_compute_tpp_h100e_in_2025 * proportion_of_compute_in_largest_ai_sw_developer
+    - total_us_compute_annual_growth_rate
 
     Args:
         params: SimulationParameters containing model configuration
@@ -203,14 +206,18 @@ def initialize_usa_counterfactual_no_slowdown(
     Returns:
         Initialized Nation representing largest AI company's no-slowdown counterfactual
     """
-    # Fixed counterfactual parameters (from reference model ExogenousTrends)
-    # These represent the largest global AI project (e.g., OpenAI/Google)
-    COUNTERFACTUAL_BASE_COMPUTE_2025 = 1.2e5  # H100e
-    COUNTERFACTUAL_GROWTH_RATE = 2.91  # annual growth rate
+    # Get parameters from config - represents largest US AI company's compute
+    us_params = params.compute.USComputeParameters
+    total_us_compute_2025 = us_params.total_us_compute_tpp_h100e_in_2025
+    proportion_largest = us_params.proportion_of_compute_in_largest_ai_sw_developer
+    growth_rate = us_params.total_us_compute_annual_growth_rate
+
+    # Largest US AI company = total US compute * proportion in largest company
+    base_compute_2025 = total_us_compute_2025 * proportion_largest
 
     # Calculate counterfactual compute stock at the given year
     years_since_2025 = year - 2025
-    counterfactual_compute = COUNTERFACTUAL_BASE_COMPUTE_2025 * (COUNTERFACTUAL_GROWTH_RATE ** years_since_2025)
+    counterfactual_compute = base_compute_2025 * (growth_rate ** years_since_2025)
 
     # Create compute stock (using standard H100 watts since this is hypothetical)
     compute_stock = Compute(

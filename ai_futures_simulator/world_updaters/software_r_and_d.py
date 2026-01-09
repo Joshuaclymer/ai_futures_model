@@ -158,33 +158,17 @@ class SoftwareRAndD(WorldUpdater):
         if current_time > time_max:
             elapsed_time = current_time - time_max
 
-            # Get slowdown parameters from compute config
-            slowdown_year = 2028.0  # Default
-            pre_slowdown_rate = math.log10(4.0)  # ~0.602 OOMs/year (4x/year)
-            post_slowdown_rate = 0.25  # From parameters
+            # Get growth rate from compute config
+            growth_rate = math.log10(4.0)  # Default ~0.602 OOMs/year (4x/year)
 
             # Try to get from parameters
             if self.params.compute is not None:
                 us_params = getattr(self.params.compute, 'USComputeParameters', None)
                 if us_params is not None:
-                    slowdown_year = getattr(us_params, 'slowdown_year', slowdown_year)
-                    post_slowdown_rate = getattr(us_params, 'post_slowdown_operating_compute_growth_rate', post_slowdown_rate)
-                    annual_growth = getattr(us_params, 'us_frontier_developer_operating_compute_annual_growth_rate', 4.0)
-                    pre_slowdown_rate = math.log10(annual_growth)
+                    annual_growth = getattr(us_params, 'total_us_compute_annual_growth_rate', 4.0)
+                    growth_rate = math.log10(annual_growth)
 
-            # Compute growth factor with proper slowdown handling
-            if current_time < slowdown_year:
-                # Before slowdown: simple growth
-                growth_factor = 10 ** (pre_slowdown_rate * elapsed_time)
-            else:
-                # After slowdown: growth at pre_slowdown_rate until slowdown,
-                # then at post_slowdown_rate from slowdown to current_time
-                pre_slowdown_duration = max(0, slowdown_year - time_max)
-                post_slowdown_duration = current_time - max(slowdown_year, time_max)
-                growth_factor = (
-                    10 ** (pre_slowdown_rate * pre_slowdown_duration) *
-                    10 ** (post_slowdown_rate * post_slowdown_duration)
-                )
+            growth_factor = 10 ** (growth_rate * elapsed_time)
 
             inference_compute *= growth_factor
             experiment_compute *= growth_factor
@@ -279,8 +263,6 @@ class SoftwareRAndD(WorldUpdater):
         'ai_research_taste_at_coding_automation_anchor',
         # Our custom fields for time-varying training compute growth
         'us_frontier_project_compute_growth_rate',
-        'slowdown_year',
-        'post_slowdown_operating_compute_growth_rate',
         # Fields that are calibrated (will be set from _calibrated)
         'r_software',
         'rho_experiment_capacity',

@@ -75,9 +75,7 @@ PARAM_ALIASES = {
     'initial_hazard_rate': 'compute.survival_rate_parameters.initial_annual_hazard_rate',
     'hazard_rate_increase_per_year': 'compute.survival_rate_parameters.annual_hazard_rate_increase_per_year',
     # US compute (alias for backwards compatibility)
-    'us_frontier_project_compute_growth_rate': 'compute.USComputeParameters.us_frontier_developer_operating_compute_annual_growth_rate',
-    'slowdown_year': 'compute.USComputeParameters.us_frontier_developer_operating_compute_slowdown_year',
-    'post_slowdown_operating_compute_growth_rate': 'compute.USComputeParameters.us_frontier_developer_operating_compute_post_slowdown_growth_rate',
+    'us_frontier_project_compute_growth_rate': 'compute.USComputeParameters.total_us_compute_annual_growth_rate',
     # Software R&D parameters (most common frontend parameters)
     'present_doubling_time': 'software_r_and_d.present_doubling_time',
     'ac_time_horizon_minutes': 'software_r_and_d.ac_time_horizon_minutes',

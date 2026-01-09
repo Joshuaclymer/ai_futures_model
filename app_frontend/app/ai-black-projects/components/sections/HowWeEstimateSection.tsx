@@ -9,9 +9,10 @@ interface HowWeEstimateSectionProps {
   parameters: Parameters;
   rateOfComputationData?: RateOfComputationData | null;
   detectionLikelihoodData?: DetectionLikelihoodData | null;
+  isLoading?: boolean;
 }
 
-export function HowWeEstimateSection({ parameters, rateOfComputationData, detectionLikelihoodData }: HowWeEstimateSectionProps) {
+export function HowWeEstimateSection({ parameters, rateOfComputationData, detectionLikelihoodData, isLoading }: HowWeEstimateSectionProps) {
   const agreementYear = parameters.agreementYear;
 
   return (
@@ -27,10 +28,10 @@ export function HowWeEstimateSection({ parameters, rateOfComputationData, detect
         <IntroSection />
 
         {/* Rate of computation subsection */}
-        <RateOfComputationSection agreementYear={agreementYear} data={rateOfComputationData} parameters={parameters} />
+        <RateOfComputationSection agreementYear={agreementYear} data={rateOfComputationData} parameters={parameters} isLoading={isLoading} />
 
         {/* Detection likelihood subsection */}
-        <DetectionLikelihoodSection agreementYear={agreementYear} data={detectionLikelihoodData} parameters={parameters} />
+        <DetectionLikelihoodSection agreementYear={agreementYear} data={detectionLikelihoodData} parameters={parameters} isLoading={isLoading} />
       </section>
 
       {/* Closing note - outside the grey box */}

@@ -83,4 +83,5 @@ def run_black_project_simulations(
         'simulation_results': simulation_results,
         'agreement_year': agreement_year,
         'end_year': end_year,
+        'model_params': model_params,
     }

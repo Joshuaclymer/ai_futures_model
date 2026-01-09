@@ -80,8 +80,6 @@ export const PARAMETER_TO_SVG_NODES: Record<string, string[]> = {
 export const PARAMETER_RATIONALES: Record<string, string> = {
   // Input parameters
   us_frontier_project_compute_growth_rate: 'Recent compute scaling trends.',
-  slowdown_year: 'Investment and fab capacity constraints.',
-  post_slowdown_operating_compute_growth_rate: 'Investment and fab capacity constraints.',
 
   // Main sliders
   present_doubling_time: 'In between the doubling time of the past long-term trend and the potential recent speedup.',

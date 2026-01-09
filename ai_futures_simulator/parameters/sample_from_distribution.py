@@ -248,8 +248,12 @@ def sample_from_distribution_with_quantile(
         else:
             raise ValueError(f"metalog requires either (p10, p50, p90) or (p25, p50, p75)")
 
-        if dist_spec.get("clip_to_bounds", True) and "min" in dist_spec and "max" in dist_spec:
-            x = float(np.clip(x, float(dist_spec["min"]), float(dist_spec["max"])))
+        # Support one-sided or two-sided bounds
+        if dist_spec.get("clip_to_bounds", True):
+            if "min" in dist_spec:
+                x = max(x, float(dist_spec["min"]))
+            if "max" in dist_spec:
+                x = min(x, float(dist_spec["max"]))
         return x
 
     raise ValueError(f"Unknown distribution kind: {kind} for parameter {param_name}")

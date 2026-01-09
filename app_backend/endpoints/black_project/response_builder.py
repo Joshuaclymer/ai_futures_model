@@ -67,6 +67,7 @@ def extract_reference_format(
     """
     results = simulation_results.get('simulation_results', [])
     agreement_year = simulation_results.get('agreement_year', 2029)
+    model_params = simulation_results.get('model_params')
 
     if not results:
         return {"error": "No simulation results"}
@@ -125,7 +126,8 @@ def extract_reference_format(
             all_data, years, dt, agreement_year,
             energy_by_source, source_labels,
             detection_times, h100_years_before_detection,
-            h100e_before_detection, energy_before_detection
+            h100e_before_detection, energy_before_detection,
+            model_params=model_params,
         ),
 
         "black_datacenters": build_black_datacenters_section(
@@ -221,8 +223,8 @@ def _compute_energy_data(all_data: List[Dict], years: List[float]) -> tuple:
     fab_eff = 700.0 / all_data[0]['black_project']['fab_watts_per_h100e'] if all_data and all_data[0]['black_project'] and 'fab_watts_per_h100e' in all_data[0]['black_project'] else 0.07
 
     source_labels = [
-        f"Initial Dark Compute ({initial_eff:.2f}x energy eff.)",
-        f"Covert Fab Compute ({fab_eff:.2f}x energy eff.)",
+        f"Initial Dark Compute<br>({initial_eff:.2f}x energy eff.)",
+        f"Covert Fab Compute<br>({fab_eff:.2f}x energy eff.)",
     ]
 
     return energy_by_source, source_labels

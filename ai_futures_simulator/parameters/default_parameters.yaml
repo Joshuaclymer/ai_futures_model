@@ -218,25 +218,23 @@ compute:
 
   # US compute parameters
   us_compute:
-    us_frontier_developer_operating_compute_tpp_h100e_in_2025: 120325.0
-    us_frontier_developer_operating_compute_annual_growth_rate: 4.0  # ~4x per year
+    total_us_compute_tpp_h100e_in_2025: 400000  # Total US compute (frontier developer = this * proportion)
+    total_us_compute_annual_growth_rate: 3.4  # ~4x per year
     proportion_of_compute_in_largest_ai_sw_developer: 0.3
-    # Training compute slowdown (matches old model's behavior from new_simulator_default.csv)
-    slowdown_year: 2028.0
-    post_slowdown_operating_compute_growth_rate: 0.25  # OOMs/year (10^0.25 ≈ 1.78x/year)
 
   # PRC compute parameters (with uncertainty for Monte Carlo)
   prc_compute:
     # Discrete model uses fixed 100k H100e in 2025
-    total_prc_compute_tpp_h100e_in_2025: 100000.0
+    total_prc_compute_tpp_h100e_in_2025: 100000
     # Growth rate: matches reference model's metalog with p10=1.3, p50=2.2, p90=3.0
     annual_growth_rate_of_prc_compute_stock:
       dist: metalog
-      p10: 1.3
-      p50: 2.2
-      p90: 3.0
-      modal: 2.2
-    proportion_of_compute_in_largest_ai_sw_developer: 0.5
+      p10: 1.4
+      p50: 3.4
+      p90: 3.4
+      modal: 3.4
+      min: 1.0  # Growth rate must be >= 1 (no shrinking)
+    proportion_of_compute_in_largest_ai_sw_developer: 0.3
     prc_architecture_efficiency_relative_to_state_of_the_art: 1.0
     # Domestic production capability
     proportion_of_prc_chip_stock_produced_domestically_2026: 0.10
@@ -280,11 +278,11 @@ compute:
       modal: 0.962
 
   compute_allocations:
-    fraction_for_ai_r_and_d_inference: 0.29
-    fraction_for_ai_r_and_d_training: 0.25
-    fraction_for_external_deployment: 0.3
+    fraction_for_ai_r_and_d_inference: 0.33
+    fraction_for_ai_r_and_d_training: 0.33
+    fraction_for_external_deployment: 0.23
     fraction_for_alignment_research: 0.01
-    fraction_for_frontier_training: 0.15
+    fraction_for_frontier_training: 0.1
 
 # =============================================================================
 # DATACENTER AND ENERGY PARAMETERS
@@ -386,10 +384,10 @@ perceptions:
     # Prior odds that a covert project exists (odds = p / (1-p))
     prior_odds_of_covert_project: 0.25  # Reference: 20% probability = 0.25 odds
     # US intelligence estimation error (median absolute relative error)
-    intelligence_median_error_in_estimate_of_compute_stock: 0.07  # Reference: 7%
+    intelligence_median_error_in_estimate_of_compute_stock: 0.07
     intelligence_median_error_in_estimate_of_fab_stock: 0.07  # Reference: 7%
-    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.05  # Reference: 5%
-    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.05  # Reference: 5%
+    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.1  # Reference: 5%
+    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.03  # Reference: 5%
     # Worker detection model (Gamma distribution parameters)
     # Detection time ~ Gamma(k, theta) where k = mean/sigma, theta = sigma
     mean_detection_time_for_100_workers: 6.95  # Reference: 6.95 years
@@ -411,32 +409,29 @@ correlation_matrix:
     - "ai_research_taste_at_coding_automation_anchor_sd"
     - "gap_years"
     - "pre_gap_ac_time_horizon"
-    - "slowdown_year"
     - "ac_time_horizon_minutes"
     - "coding_automation_efficiency_slope"
     - "inv_compute_anchor_exp_cap"
     - "inf_compute_asymptote"
   correlation_matrix:
     # present_doubling_time
-    - [ 1.00,  0.60, -0.30,  0.00,  0.00,  0.00, -0.30,  0.00, -0.15,  0.00,  0.00]
+    - [ 1.00,  0.60, -0.30,  0.00,  0.00,  0.00,  0.00, -0.15,  0.00,  0.00]
     # doubling_difficulty_growth_factor
-    - [ 0.60,  1.00, -0.30,  0.00,  0.30, -0.50,  0.00, -0.50, -0.10,  0.00,  0.00]
+    - [ 0.60,  1.00, -0.30,  0.00,  0.30, -0.50, -0.50, -0.10,  0.00,  0.00]
     # ai_research_taste_slope
-    - [-0.30, -0.30,  1.00,  0.30,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00]
+    - [-0.30, -0.30,  1.00,  0.30,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00]
     # ai_research_taste_at_coding_automation_anchor_sd
-    - [ 0.00,  0.00,  0.30,  1.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00]
+    - [ 0.00,  0.00,  0.30,  1.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00]
     # gap_years
-    - [ 0.00,  0.30,  0.00,  0.00,  1.00, -0.70, -0.30,  0.00,  0.00,  0.00,  0.00]
+    - [ 0.00,  0.30,  0.00,  0.00,  1.00, -0.70,  0.00,  0.00,  0.00,  0.00]
     # pre_gap_ac_time_horizon
-    - [ 0.00, -0.50,  0.00,  0.00, -0.70,  1.00,  0.00,  0.00,  0.00,  0.00,  0.00]
-    # slowdown_year
-    - [-0.30,  0.00,  0.00,  0.00, -0.30,  0.00,  1.00, -0.30,  0.00,  0.00,  0.00]
+    - [ 0.00, -0.50,  0.00,  0.00, -0.70,  1.00,  0.00,  0.00,  0.00,  0.00]
     # ac_time_horizon_minutes
-    - [ 0.00, -0.50,  0.00,  0.00,  0.00,  0.00, -0.30,  1.00,  0.00,  0.00,  0.00]
+    - [ 0.00, -0.50,  0.00,  0.00,  0.00,  0.00,  1.00,  0.00,  0.00,  0.00]
     # coding_automation_efficiency_slope
-    - [-0.15, -0.10,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  1.00,  0.00,  0.00]
+    - [-0.15, -0.10,  0.00,  0.00,  0.00,  0.00,  0.00,  1.00,  0.00,  0.00]
     # inv_compute_anchor_exp_cap
-    - [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  1.00,  0.50]
+    - [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  1.00,  0.50]
     # inf_compute_asymptote
-    - [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.50,  1.00]
+    - [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.50,  1.00]
   correlation_type: "spearman"

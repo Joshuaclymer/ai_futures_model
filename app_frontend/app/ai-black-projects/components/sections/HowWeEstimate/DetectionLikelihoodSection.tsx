@@ -48,9 +48,10 @@ interface BreakdownChartProps {
   color: string;
   yLabel?: string;
   yRange?: [number, number];
+  isLoading?: boolean;
 }
 
-function BreakdownChart({ title, description, descriptionNode, data, color, yLabel, yRange }: BreakdownChartProps) {
+function BreakdownChart({ title, description, descriptionNode, data, color, yLabel, yRange, isLoading }: BreakdownChartProps) {
   return (
     <div className="breakdown-item">
       <div className="breakdown-plot">
@@ -64,6 +65,7 @@ function BreakdownChart({ title, description, descriptionNode, data, color, yLab
           showBand={true}
           bandAlpha={0.15}
           yRange={yRange}
+          isLoading={isLoading}
         />
       </div>
       <div className="breakdown-label">{title}</div>
@@ -83,13 +85,14 @@ interface PDFBreakdownChartProps {
   samples: number[];
   color: string;
   xLabel?: string;
+  isLoading?: boolean;
 }
 
 // Constants for consistent likelihood ratio x-axis range across all LR charts
 const LR_X_RANGE: [number, number] = [1/5, 5];
 const LR_BOUNDARY_LABELS = { min: '≤1/5', max: '≥5' };
 
-function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'LR' }: PDFBreakdownChartProps) {
+function PDFBreakdownChart({ title, description, descriptionNode, samples, color, xLabel = 'LR', isLoading }: PDFBreakdownChartProps) {
   return (
     <div className="breakdown-item">
       <div className="breakdown-plot">
@@ -103,6 +106,7 @@ function PDFBreakdownChart({ title, description, descriptionNode, samples, color
           showMedianLine={false}
           xRange={LR_X_RANGE}
           boundaryLabels={LR_BOUNDARY_LABELS}
+          isLoading={isLoading}
         />
       </div>
       <div className="breakdown-label">{title}</div>
@@ -124,9 +128,10 @@ interface DetectionLikelihoodSectionProps {
   agreementYear?: number;
   data?: DetectionLikelihoodData | null;
   parameters?: Parameters;
+  isLoading?: boolean;
 }
 
-export function DetectionLikelihoodSection({ agreementYear = 2030, data, parameters }: DetectionLikelihoodSectionProps) {
+export function DetectionLikelihoodSection({ agreementYear = 2030, data, parameters, isLoading }: DetectionLikelihoodSectionProps) {
   // Use data from API with empty fallbacks
   const chipEvidenceSamples = data?.chip_evidence_samples || [];
   const smeEvidenceSamples = data?.sme_evidence_samples || [];
@@ -175,6 +180,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             }
             samples={chipEvidenceSamples}
             color={COLOR_PALETTE.chip_stock}
+            isLoading={isLoading}
           />
           <Operator>&times;</Operator>
           <PDFBreakdownChart
@@ -187,6 +193,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             }
             samples={smeEvidenceSamples}
             color={COLOR_PALETTE.fab}
+            isLoading={isLoading}
           />
           <Operator>&times;</Operator>
           <PDFBreakdownChart
@@ -201,6 +208,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             }
             samples={dcEvidenceSamples}
             color={COLOR_PALETTE.datacenters_and_energy}
+            isLoading={isLoading}
           />
           <Operator>&times;</Operator>
           <BreakdownChart
@@ -216,6 +224,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             color={darken('datacenters_and_energy', 0.8)}
             yLabel="LR"
             yRange={[0.5, 2]}
+            isLoading={isLoading}
           />
           <Operator>=</Operator>
           <BreakdownChart
@@ -224,6 +233,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             data={combinedEvidence}
             color={COLOR_PALETTE.detection}
             yLabel="LR"
+            isLoading={isLoading}
           />
         </div>
 
@@ -256,6 +266,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             data={combinedEvidence}
             color={COLOR_PALETTE.detection}
             yLabel="LR"
+            isLoading={isLoading}
           />
           <Operator>&times;</Operator>
           <BreakdownChart
@@ -264,6 +275,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             data={directEvidence}
             color={COLOR_PALETTE.detection}
             yLabel="LR"
+            isLoading={isLoading}
           />
           <div className="breakdown-limits-arrow">
             <span className="breakdown-limits-label" style={{ fontSize: '10px' }}>Convert to<br/>probability</span>
@@ -275,6 +287,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
             data={posteriorProb}
             color={COLOR_PALETTE.detection}
             yLabel="P"
+            isLoading={isLoading}
           />
         </div>
 

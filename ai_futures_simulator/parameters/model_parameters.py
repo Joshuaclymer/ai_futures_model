@@ -69,7 +69,7 @@ class ModelParameters:
           survival_rate_parameters:
             initial_annual_hazard_rate: 0.05
           us_compute:
-            us_frontier_developer_operating_compute_tpp_h100e_in_2025: 120325.0
+            total_us_compute_tpp_h100e_in_2025: 401083.33
           prc_compute:
             total_prc_compute_tpp_h100e_in_2025: 100000.0
 

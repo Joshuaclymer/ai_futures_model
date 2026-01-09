@@ -95,8 +95,8 @@ def calculate_fab_construction_duration(
 def calculate_fab_wafer_starts_per_month(
     fab_operating_labor: float,
     fab_number_of_lithography_scanners: float,
-    wafers_per_month_per_worker: float = 24.64,
-    wafers_per_month_per_scanner: float = 1000.0,
+    wafers_per_month_per_worker: float,
+    wafers_per_month_per_scanner: float,
     labor_productivity_multiplier: float = 1.0,
     scanner_productivity_multiplier: float = 1.0,
 ) -> float:
@@ -125,20 +125,22 @@ def calculate_fab_wafer_starts_per_month(
 def calculate_fab_h100e_per_chip(
     fab_process_node_nm: float,
     year: float,
-    exogenous_trends: "ExogenousComputeTrends" = None,
+    exogenous_trends: "ExogenousComputeTrends",
     h100_reference_nm: float = 4.0,
-    transistor_density_scaling_exponent: float = None,
-    architecture_efficiency_improvement_per_year: float = None,
     h100_release_year: float = 2022.0,
 ) -> float:
-    """Calculate H100-equivalent per chip based on process node and architecture improvements."""
-    # Get params from exogenous_trends or use defaults
-    if exogenous_trends is not None:
-        transistor_density_scaling_exponent = exogenous_trends.transistor_density_scaling_exponent
-        architecture_efficiency_improvement_per_year = exogenous_trends.state_of_the_art_architecture_efficiency_improvement_per_year
-    else:
-        transistor_density_scaling_exponent = transistor_density_scaling_exponent or 1.49
-        architecture_efficiency_improvement_per_year = architecture_efficiency_improvement_per_year or 1.23
+    """Calculate H100-equivalent per chip based on process node and architecture improvements.
+
+    Args:
+        fab_process_node_nm: Process node in nanometers
+        year: Current simulation year
+        exogenous_trends: ExogenousComputeTrends containing transistor_density_scaling_exponent
+            and state_of_the_art_architecture_efficiency_improvement_per_year (required)
+        h100_reference_nm: H100 reference node (default 4nm)
+        h100_release_year: H100 release year (default 2022)
+    """
+    transistor_density_scaling_exponent = exogenous_trends.transistor_density_scaling_exponent
+    architecture_efficiency_improvement_per_year = exogenous_trends.state_of_the_art_architecture_efficiency_improvement_per_year
 
     # Density ratio relative to H100
     density_ratio = (h100_reference_nm / fab_process_node_nm) ** transistor_density_scaling_exponent
@@ -152,10 +154,9 @@ def calculate_fab_h100e_per_chip(
 
 def calculate_transistor_density_from_process_node(
     fab_process_node_nm: float,
-    exogenous_trends: "ExogenousComputeTrends" = None,
+    exogenous_trends: "ExogenousComputeTrends",
     h100_reference_nm: float = 4.0,
     h100_transistor_density_m_per_mm2: float = 98.28,
-    transistor_density_scaling_exponent: float = None,
 ) -> float:
     """
     Calculate transistor density from process node.
@@ -166,18 +167,14 @@ def calculate_transistor_density_from_process_node(
 
     Args:
         fab_process_node_nm: Process node in nanometers
-        exogenous_trends: Optional ExogenousComputeTrends for parameter values
+        exogenous_trends: ExogenousComputeTrends containing transistor_density_scaling_exponent (required)
         h100_reference_nm: H100 reference node (default 4nm)
         h100_transistor_density_m_per_mm2: H100 transistor density (default 98.28 M/mm²)
-        transistor_density_scaling_exponent: Scaling exponent (default 1.49)
 
     Returns:
         Transistor density in M/mm²
     """
-    if exogenous_trends is not None:
-        transistor_density_scaling_exponent = exogenous_trends.transistor_density_scaling_exponent
-    else:
-        transistor_density_scaling_exponent = transistor_density_scaling_exponent or 1.49
+    transistor_density_scaling_exponent = exogenous_trends.transistor_density_scaling_exponent
 
     node_ratio = fab_process_node_nm / h100_reference_nm
     return h100_transistor_density_m_per_mm2 * (node_ratio ** (-transistor_density_scaling_exponent))
@@ -185,12 +182,9 @@ def calculate_transistor_density_from_process_node(
 
 def calculate_watts_per_tpp_from_transistor_density(
     transistor_density_m_per_mm2: float,
-    exogenous_trends: "ExogenousComputeTrends" = None,
+    exogenous_trends: "ExogenousComputeTrends",
     h100_transistor_density_m_per_mm2: float = 98.28,
     h100_watts_per_tpp: float = 0.326493,
-    transistor_density_at_end_of_dennard: float = None,
-    watts_per_tpp_exponent_before_dennard: float = None,
-    watts_per_tpp_exponent_after_dennard: float = None,
 ) -> float:
     """
     Calculate watts per TPP from transistor density using Dennard scaling model.
@@ -206,25 +200,16 @@ def calculate_watts_per_tpp_from_transistor_density(
 
     Args:
         transistor_density_m_per_mm2: Transistor density in M/mm²
-        exogenous_trends: Optional ExogenousComputeTrends for parameter values
+        exogenous_trends: ExogenousComputeTrends containing Dennard scaling parameters (required)
         h100_transistor_density_m_per_mm2: H100 transistor density (default 98.28)
         h100_watts_per_tpp: H100 watts per TPP (default 0.326493)
-        transistor_density_at_end_of_dennard: Density at Dennard transition (default 1.98)
-        watts_per_tpp_exponent_before_dennard: Exponent before Dennard ended (default -2.0)
-        watts_per_tpp_exponent_after_dennard: Exponent after Dennard ended (default -0.91)
 
     Returns:
         Watts per TPP for the given transistor density
     """
-    if exogenous_trends is not None:
-        transistor_density_at_end_of_dennard = exogenous_trends.transistor_density_at_end_of_dennard_scaling_m_per_mm2
-        watts_per_tpp_exponent_before_dennard = exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended
-        watts_per_tpp_exponent_after_dennard = exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended
-    else:
-        # Default values match discrete model's BlackFabParameters
-        transistor_density_at_end_of_dennard = transistor_density_at_end_of_dennard or 1.98
-        watts_per_tpp_exponent_before_dennard = watts_per_tpp_exponent_before_dennard or -2.0
-        watts_per_tpp_exponent_after_dennard = watts_per_tpp_exponent_after_dennard or -0.91
+    transistor_density_at_end_of_dennard = exogenous_trends.transistor_density_at_end_of_dennard_scaling_m_per_mm2
+    watts_per_tpp_exponent_before_dennard = exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended
+    watts_per_tpp_exponent_after_dennard = exogenous_trends.watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended
 
     # Calculate watts_per_tpp at the Dennard transition point using post-Dennard relationship
     transition_density_ratio = transistor_density_at_end_of_dennard / h100_transistor_density_m_per_mm2
@@ -245,17 +230,12 @@ def calculate_watts_per_tpp_from_transistor_density(
 def calculate_fab_watts_per_chip(
     fab_process_node_nm: float,
     year: float,
-    exogenous_trends: "ExogenousComputeTrends" = None,
+    exogenous_trends: "ExogenousComputeTrends",
     h100_reference_nm: float = 4.0,
     h100_release_year: float = 2022.0,
     h100_transistor_density_m_per_mm2: float = 98.28,
     h100_watts_per_tpp: float = 0.326493,
     h100_tpp_per_chip: float = 2144.0,
-    transistor_density_scaling_exponent: float = None,
-    architecture_efficiency_improvement_per_year: float = None,
-    transistor_density_at_end_of_dennard: float = None,
-    watts_per_tpp_exponent_before_dennard: float = None,
-    watts_per_tpp_exponent_after_dennard: float = None,
 ) -> float:
     """
     Calculate watts per chip based on process node and year.
@@ -270,17 +250,12 @@ def calculate_fab_watts_per_chip(
     Args:
         fab_process_node_nm: Process node in nanometers (e.g., 28 for 28nm)
         year: Current simulation year (for architecture efficiency calculation)
-        exogenous_trends: Optional ExogenousComputeTrends for parameter values
+        exogenous_trends: ExogenousComputeTrends containing all scaling parameters (required)
         h100_reference_nm: H100 reference node (default 4nm)
         h100_release_year: H100 release year (default 2022)
         h100_transistor_density_m_per_mm2: H100 transistor density (default 98.28)
         h100_watts_per_tpp: H100 watts per TPP (default 0.326493)
         h100_tpp_per_chip: H100 TPP per chip (default 2144.0)
-        transistor_density_scaling_exponent: Scaling exponent (default 1.49)
-        architecture_efficiency_improvement_per_year: Yearly improvement (default 1.23)
-        transistor_density_at_end_of_dennard: Density at Dennard transition (default 10.0)
-        watts_per_tpp_exponent_before_dennard: Exponent before Dennard ended (default -1.0)
-        watts_per_tpp_exponent_after_dennard: Exponent after Dennard ended (default -0.33)
 
     Returns:
         Watts per chip for the given process node and year
@@ -291,8 +266,6 @@ def calculate_fab_watts_per_chip(
         year=year,
         exogenous_trends=exogenous_trends,
         h100_reference_nm=h100_reference_nm,
-        transistor_density_scaling_exponent=transistor_density_scaling_exponent,
-        architecture_efficiency_improvement_per_year=architecture_efficiency_improvement_per_year,
         h100_release_year=h100_release_year,
     )
 
@@ -305,7 +278,6 @@ def calculate_fab_watts_per_chip(
         exogenous_trends=exogenous_trends,
         h100_reference_nm=h100_reference_nm,
         h100_transistor_density_m_per_mm2=h100_transistor_density_m_per_mm2,
-        transistor_density_scaling_exponent=transistor_density_scaling_exponent,
     )
 
     # Step 4: Calculate watts per TPP
@@ -314,9 +286,6 @@ def calculate_fab_watts_per_chip(
         exogenous_trends=exogenous_trends,
         h100_transistor_density_m_per_mm2=h100_transistor_density_m_per_mm2,
         h100_watts_per_tpp=h100_watts_per_tpp,
-        transistor_density_at_end_of_dennard=transistor_density_at_end_of_dennard,
-        watts_per_tpp_exponent_before_dennard=watts_per_tpp_exponent_before_dennard,
-        watts_per_tpp_exponent_after_dennard=watts_per_tpp_exponent_after_dennard,
     )
 
     # Step 5: Calculate watts per chip

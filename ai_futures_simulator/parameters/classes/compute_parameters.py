@@ -18,12 +18,9 @@ class ExogenousComputeTrends:
 
 @dataclass
 class USComputeParameters:
-    us_frontier_developer_operating_compute_tpp_h100e_in_2025: float
-    us_frontier_developer_operating_compute_annual_growth_rate: float # annual multiplier
+    total_us_compute_tpp_h100e_in_2025: float
+    total_us_compute_annual_growth_rate: float # annual multiplier
     proportion_of_compute_in_largest_ai_sw_developer: float
-    # Training compute slowdown parameters (to match old model's behavior)
-    slowdown_year: float  # Year when training compute growth rate slows down
-    post_slowdown_operating_compute_growth_rate: float  # OOMs/year after slowdown
 
 @dataclass
 class ComputeAllocations:

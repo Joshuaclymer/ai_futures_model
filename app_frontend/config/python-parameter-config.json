@@ -66,9 +66,7 @@
     "blacksite_can_stack_training_compute": false,
     "blacksite_can_stack_software_progress": false,
     "blacksite_start_time": 2030.0,
-    "us_frontier_project_compute_growth_rate": 0.6,
-    "slowdown_year": 2028.0,
-    "post_slowdown_operating_compute_growth_rate": 0.25
+    "us_frontier_project_compute_growth_rate": 0.6
   },
   "parameter_bounds": {
     "rho_coding_labor": [
@@ -262,14 +260,6 @@
     "us_frontier_project_compute_growth_rate": [
       0.0,
       2.0
-    ],
-    "slowdown_year": [
-      2020.0,
-      2040.0
-    ],
-    "post_slowdown_operating_compute_growth_rate": [
-      0.0,
-      2.0
     ]
   },
   "taste_schedule_types": [
@@ -326,9 +316,7 @@
     "strat_ai_m2b": 2.0,
     "ted_ai_m2b": 3.0,
     "optimal_ces_eta_init": 0.05,
-    "us_frontier_project_compute_growth_rate": 0.6,
-    "slowdown_year": 2028.0,
-    "post_slowdown_operating_compute_growth_rate": 0.25
+    "us_frontier_project_compute_growth_rate": 0.6
   },
   "model_constants": {
     "training_compute_reference_year": 2025.13,

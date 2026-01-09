@@ -71,26 +71,18 @@ class AISoftwareDeveloperComputeUpdater(WorldUpdater):
         training_compute_growth_rate = log10(annual_growth_rate)
 
         For example, 4x/year growth = log10(4) ≈ 0.6 OOMs/year
-
-        After the slowdown_year, the rate is reduced to post_slowdown_operating_compute_growth_rate.
         """
         compute_params = self.params.compute
 
         annual_growth_rate = 1.0  # Default: no growth
-        slowdown_year = float('inf')  # Default: no slowdown
-        post_slowdown_rate = None
 
         if nation_id == NamedNations.USA:
-            # US uses us_frontier_developer_operating_compute_annual_growth_rate
+            # US uses total_us_compute_annual_growth_rate
             # Note: The attribute is USComputeParameters (capitalized), not us_compute
             if hasattr(compute_params, 'USComputeParameters') and compute_params.USComputeParameters:
                 us_params = compute_params.USComputeParameters
-                if hasattr(us_params, 'us_frontier_developer_operating_compute_annual_growth_rate'):
-                    annual_growth_rate = us_params.us_frontier_developer_operating_compute_annual_growth_rate
-                if hasattr(us_params, 'slowdown_year'):
-                    slowdown_year = us_params.slowdown_year
-                if hasattr(us_params, 'post_slowdown_operating_compute_growth_rate'):
-                    post_slowdown_rate = us_params.post_slowdown_operating_compute_growth_rate
+                if hasattr(us_params, 'total_us_compute_annual_growth_rate'):
+                    annual_growth_rate = us_params.total_us_compute_annual_growth_rate
         elif nation_id == NamedNations.PRC:
             # PRC uses annual_growth_rate_of_prc_compute_stock
             # Note: The attribute is PRCComputeParameters (capitalized), not prc_compute
@@ -98,10 +90,6 @@ class AISoftwareDeveloperComputeUpdater(WorldUpdater):
                 prc_params = compute_params.PRCComputeParameters
                 if hasattr(prc_params, 'annual_growth_rate_of_prc_compute_stock'):
                     annual_growth_rate = prc_params.annual_growth_rate_of_prc_compute_stock
-
-        # After slowdown year, use the post-slowdown rate directly
-        if current_time >= slowdown_year and post_slowdown_rate is not None:
-            return post_slowdown_rate
 
         # Convert to OOMs/year: log10(growth_rate)
         if annual_growth_rate > 0:

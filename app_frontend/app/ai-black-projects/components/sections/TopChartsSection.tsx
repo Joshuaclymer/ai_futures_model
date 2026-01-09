@@ -161,7 +161,7 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
         </ChartContainer>
 
         {/* AI R&D Reduction CCDF */}
-        <ChartContainer title="Covert AI R&D computation relative to no slowdown computation*">
+        <ChartContainer title="Covert AI research computation relative to no slowdown computation*">
           <CCDFChart
             data={data?.black_project_model?.ai_rd_reduction_ccdf_flat}
             color={COLOR_PALETTE.datacenters_and_energy}
@@ -175,11 +175,11 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
             height={CHART_HEIGHT}
             creamBackground={true}
             thresholdLabels={{
-              'largest_company': 'Relative to largest AI company (no slowdown)        ',
-              'prc': 'Relative to PRC (no slowdown)        ',
+              'global': 'Relative to total global research computation (no slowdown)        ',
+              'prc': 'Relative to total PRC research computation (no slowdown)        ',
             }}
             thresholdColors={{
-              'largest_company': '#7A9EC2',
+              'global': '#7A9EC2',
               'prc': '#5E6FB8',
             }}
             referenceLine={
@@ -211,7 +211,7 @@ function Dashboard({ values }: { values: DashboardValues }) {
       <DashboardItem value={values.medianTimeToDetection} label="Time to detection*" />
       <DashboardItem
         value={values.aiRdReduction}
-        label="Reduction in AI R&D computation of largest company*"
+        label="Reduction in total global AI R&D computation*"
       />
       <DashboardItem value={values.chipsProduced} label="H100 equivalents covertly produced*" isLast />
     </div>
@@ -295,11 +295,11 @@ function useDashboardValues(data: SimulationData | null): DashboardValues {
     const timeMedian = getMedian(model.individual_project_time_before_detection);
     const h100eMedian = getMedian(model.individual_project_h100e_before_detection);
 
-    // Get AI R&D reduction median from CCDF data (largest_company comparison)
+    // Get AI R&D reduction median from CCDF data (global comparison)
     // Use the flat version which has direct CCDFPoint[] arrays
     const aiRdCcdfFlat = model.ai_rd_reduction_ccdf_flat as Record<string, CCDFPoint[]> | undefined;
-    const largestCompanyCcdf = aiRdCcdfFlat?.largest_company;
-    const aiRdReductionMedian = getMedianFromCcdf(largestCompanyCcdf);
+    const globalCcdf = aiRdCcdfFlat?.global;
+    const aiRdReductionMedian = getMedianFromCcdf(globalCcdf);
 
     return {
       medianH100Years: h100YearsMedian !== null

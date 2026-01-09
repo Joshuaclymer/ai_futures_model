@@ -369,6 +369,7 @@ export function BlackProjectClient({
               parameters={parameters}
               rateOfComputationData={rateOfComputationData}
               detectionLikelihoodData={detectionLikelihoodData}
+              isLoading={isLoading}
             />
 
             <hr className="my-4 border-gray-200" />
