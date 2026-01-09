@@ -159,7 +159,7 @@ export const decodeBlackProjectParamsFromUrl = (searchParams: URLSearchParams): 
     if (value !== null) {
       const sanitized = sanitizeParameterValue(paramKey, value);
       if (sanitized !== undefined) {
-        (parameters as Record<string, unknown>)[paramKey] = sanitized;
+        (parameters as unknown as Record<string, unknown>)[paramKey] = sanitized;
       }
     }
   });
