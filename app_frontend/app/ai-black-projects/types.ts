@@ -335,6 +335,22 @@ export interface SimulationData {
       p25: number[];
       p75: number[];
     };
+    // Likelihood ratio time series
+    lr_reported_energy?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    lr_combined_reported_assets?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    lr_other_intel?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
     // Energy data
     black_project_energy?: number[][];
     energy_source_labels?: string[];
