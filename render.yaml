@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: ai-futures-frontend
+    runtime: node
+    rootDir: app_frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_BACKEND_URL
+        sync: false  # Set this in the Render dashboard
+    healthCheckPath: /
+    autoDeploy: true

@@ -306,8 +306,8 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
         <div className="section-description">
           <p>There are two ways to create covert data center capacity:</p>
           <ol style={{ margin: '10px 0 10px 20px' }}>
-            <li>Retrofit existing datacenters that were not built with concealment in mind.</li>
-            <li>Build datacenters that are designed to be stealthy.</li>
+            <li>1. Retrofit existing datacenters that were not built with concealment in mind.</li>
+            <li>2. Build datacenters that are designed to be stealthy.</li>
           </ol>
           <p style={{ marginBottom: '10px' }}>
             Retrofitting unconcealed datacenters isn&apos;t a good strategy, since the vast majority of

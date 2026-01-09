@@ -1,0 +1,47 @@
+{
+  "best_params": {
+    "total_labor": 49494.49029474473,
+    "fraction_of_labor_devoted_to_datacenter_construction": 0.37760518229183043,
+    "fraction_of_labor_devoted_to_black_fab_construction": 0.24404163753724636,
+    "fraction_of_labor_devoted_to_black_fab_operation": 0.14972070790656755,
+    "fraction_of_labor_devoted_to_ai_research": 0.2286324722643556,
+    "fraction_of_initial_compute_stock_to_divert_at_black_project_start": 0.46322188858951446,
+    "fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start": 0.168289510616952,
+    "fraction_of_lithography_scanners_to_divert_at_black_project_start": 0.21434550972093908,
+    "max_fraction_of_total_national_energy_consumption": 0.17727002161374966,
+    "years_before_black_project_start_to_begin_datacenter_construction": 2.3564358369908227
+  },
+  "best_median_compute": 24676642.0,
+  "total_evaluations": 90,
+  "elapsed_time_seconds": 35.74844026565552,
+  "optimization_history": [
+    {
+      "evaluation": 1,
+      "objective": 14629233.0
+    },
+    {
+      "evaluation": 5,
+      "objective": 15577253.0
+    },
+    {
+      "evaluation": 15,
+      "objective": 15927467.0
+    },
+    {
+      "evaluation": 29,
+      "objective": 19329598.0
+    },
+    {
+      "evaluation": 47,
+      "objective": 20704940.0
+    },
+    {
+      "evaluation": 61,
+      "objective": 21692170.0
+    },
+    {
+      "evaluation": 82,
+      "objective": 24676642.0
+    }
+  ]
+}
