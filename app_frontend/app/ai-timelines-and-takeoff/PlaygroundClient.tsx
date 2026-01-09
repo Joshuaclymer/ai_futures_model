@@ -41,7 +41,7 @@ interface PlaygroundClientProps {
   benchmarkData: BenchmarkPoint[];
   initialComputeData: ComputeApiResponse;
   initialParameters: ParametersType;
-  initialSampleTrajectories?: { trajectory: { year: number; horizonLength: number; effectiveCompute: number; automationFraction?: number; trainingCompute?: number; aiSwProgressMultRefPresentDay?: number }[]; params: Record<string, number | string | boolean> }[];
+  initialSampleTrajectories?: { trajectory: { year: number; horizonLength: number; effectiveCompute: number; automationFraction?: number; trainingCompute?: number; frontierTrainingCompute?: number; aiSwProgressMultRefPresentDay?: number }[]; params: Record<string, number | string | boolean> }[];
   initialSeed?: number;
   hideHeader?: boolean;
 }
