@@ -83,6 +83,7 @@ export function TimeSeriesChart({
     xaxis: {
       title: { text: xLabel, font: { size: CHART_FONT_SIZES.axisTitle } },
       tickfont: { size: CHART_FONT_SIZES.tickLabel },
+      autorange: true,
     },
     yaxis: {
       title: { text: yLabel, font: { size: CHART_FONT_SIZES.axisTitle } },

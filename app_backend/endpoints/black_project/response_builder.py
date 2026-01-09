@@ -95,7 +95,9 @@ def extract_reference_format(
     energy_by_source, source_labels = _compute_energy_data(all_data, years)
 
     # Detection metrics
-    detection_times = compute_detection_times(all_data, years, agreement_year)
+    # Use use_final_year_for_never_detected=True for dashboard individual values
+    # Reference model uses final_year for individual values, but 1000 for CCDFs
+    detection_times = compute_detection_times(all_data, years, agreement_year, use_final_year_for_never_detected=True)
     h100_years_before_detection = compute_h100_years_before_detection(all_data, years, agreement_year)
     h100e_before_detection = compute_h100e_before_detection(all_data, years, agreement_year)
 

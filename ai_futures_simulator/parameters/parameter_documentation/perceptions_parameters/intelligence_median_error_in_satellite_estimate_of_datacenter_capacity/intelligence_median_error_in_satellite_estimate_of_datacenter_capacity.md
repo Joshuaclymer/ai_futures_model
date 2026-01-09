@@ -1,44 +1,15 @@
-# Satellite Datacenter Detection
+# intelligence_median_error_in_satellite_estimate_of_datacenter_capacity
 
-## Purpose
+| Modal value | Description |
+|-------------|-------------|
+| 5% | Median percentage error in satellite-based estimates of PRC datacenter capacity |
 
-Models the probability that US intelligence detects a covert project by identifying discrepancies between China's declared datacenter capacity and satellite-based estimates.
+**How we chose this parameter**
 
-## Parameters
+This parameter captures how precisely US intelligence can estimate China's datacenter capacity using satellite imagery. If satellite-based estimates are highly accurate, then diverting existing datacenter capacity to a covert project becomes risky because the discrepancy would be observable from space.
 
-| Parameter | Default | Range | Description |
-|-----------|---------|-------|-------------|
-| Intelligence median error (satellite) | 1% | 0.1–10% | Median percentage error in satellite-based estimates of PRC datacenter capacity |
+Physical datacenter infrastructure is relatively easy to observe from satellites. Datacenters have large building footprints, distinctive cooling systems (cooling towers, chillers), and thermal signatures from continuous operation. Power infrastructure such as substations and transmission lines provides additional indicators. Datacenters also follow consistent location patterns, clustering near power sources, fiber optic lines, and water.
 
-## How Detection Works
+Modern satellite imagery has very high resolution, and thermal imaging can detect operating facilities even when visual inspection is inconclusive. For facilities that are not specifically built for concealment, we estimate satellite-based datacenter capacity estimates have approximately 5% median error.
 
-Detection probability depends on two factors:
-
-**1. Diversion fraction**
-
-The PRC may divert existing datacenter capacity (not built for concealment) to the covert project. Large diversions are conspicuous; small diversions might remain within estimation error.
-
-**2. Satellite estimation precision**
-
-If satellite-based estimates have wide error bars, small discrepancies are indistinguishable from noise. High-resolution satellite imagery and thermal signatures can improve precision, making even small diversions detectable.
-
-## Calibration
-
-**Historical context**: Intelligence estimates of weapons counts from 1960–2025 show median errors of approximately 15%.
-
-**Datacenters vs. weapons**: Physical datacenter infrastructure is relatively easy to observe from space:
-- Large building footprints
-- Distinctive cooling systems
-- Thermal signatures from 24/7 operation
-- Power infrastructure (substations, transmission lines)
-- Consistent location patterns (near power, fiber, water)
-
-We estimate satellite-based datacenter capacity estimates have approximately **1%** median error for facilities not specifically built for concealment.
-
-## Selection Reasoning
-
-The 1% estimate reflects that:
-- Datacenters have distinctive, hard-to-hide physical signatures
-- Modern satellite imagery has very high resolution
-- Thermal imaging can detect operating facilities even without visible construction
-- However, this only applies to existing/unconcealed facilities—purpose-built covert facilities would require different detection methods
+This parameter specifically applies to existing, unconcealed facilities. Purpose-built covert facilities that use camouflage, distributed designs, or underground construction would require different detection methods such as human intelligence or energy accounting.

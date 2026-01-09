@@ -174,6 +174,9 @@ def frontend_params_to_simulation_params(frontend_params: dict, time_range: list
     - Full dot-notation paths (e.g., 'software_r_and_d.rho_coding_labor')
     - Aliases defined in PARAM_ALIASES for backwards compatibility
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     # Load defaults from YAML
     default_model_params = ModelParameters.from_yaml(DEFAULT_CONFIG_PATH)
     default_sim_params = default_model_params.sample()
@@ -193,6 +196,7 @@ def frontend_params_to_simulation_params(frontend_params: dict, time_range: list
 
     # Normalize frontend params to full paths
     normalized_params = {}
+    unrecognized_params = []
     for key, value in frontend_params.items():
         # Skip settings params (handled above)
         if key in ('n_eval_points',):
@@ -200,6 +204,13 @@ def frontend_params_to_simulation_params(frontend_params: dict, time_range: list
         # Resolve alias to full path, or use key as-is if it's already a path
         full_path = PARAM_ALIASES.get(key, key)
         normalized_params[full_path] = value
+
+        # Warn if parameter is not in aliases and doesn't look like a full path
+        if key not in PARAM_ALIASES and '.' not in key:
+            unrecognized_params.append(key)
+
+    if unrecognized_params:
+        logger.warning(f"[frontend_params_to_simulation_params] Unrecognized parameters (not in PARAM_ALIASES): {unrecognized_params}")
 
     # Build each top-level parameter section with overrides
     software_r_and_d = _build_dataclass_with_overrides(

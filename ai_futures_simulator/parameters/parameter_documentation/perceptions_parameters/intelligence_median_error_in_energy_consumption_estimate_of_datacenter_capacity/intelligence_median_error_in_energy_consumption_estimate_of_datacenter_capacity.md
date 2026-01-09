@@ -1,43 +1,15 @@
-# Energy Accounting Detection
+# intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity
 
-## Purpose
+| Modal value | Description |
+|-------------|-------------|
+| 5% | Median percentage error in US estimates of PRC datacenter energy consumption |
 
-Models the probability that US intelligence detects covert datacenters by identifying discrepancies between China's total energy consumption and accounted-for energy usage.
+**How we chose this parameter**
 
-## Parameters
+This parameter captures how precisely US intelligence can estimate China's datacenter energy consumption. Covert datacenters consume significant energy, so if the US can accurately estimate total datacenter energy usage, large covert operations become harder to hide because the energy discrepancy would be detectable.
 
-| Parameter | Default | Range | Description |
-|-----------|---------|-------|-------------|
-| Intelligence median error (energy) | 7% | 1–50% | Median percentage error in US estimates of PRC datacenter energy consumption |
+To calibrate this parameter, we looked at historical intelligence estimates of the sizes of adversary weapons stockpiles, which show median errors of around 15%. Energy consumption differs from weapons counts in ways that may make it somewhat easier to estimate.
 
-## How Detection Works
+US intelligence can estimate energy consumption through multiple independent methods: satellite imagery of power plants, trade data for fuel imports, economic modeling, and grid infrastructure analysis. These redundant methods can cross-validate each other. However, China's grid is complex with many industrial facilities, and attributing energy to specific facilities (especially hidden ones) is challenging. Covert facilities might also use off-grid power sources such as local generation or solar to reduce their energy signatures.
 
-Detection probability depends on two factors:
-
-**1. Covert energy consumption**
-
-Covert datacenters consume significant energy. The larger the covert datacenter capacity, the larger the energy discrepancy that must be hidden or explained away.
-
-**2. Energy estimation precision**
-
-If US estimates of PRC energy consumption have wide error bars, covert datacenter energy usage might be indistinguishable from estimation noise. Precise energy tracking makes large covert operations more detectable.
-
-## Calibration
-
-**Historical context**: Intelligence estimates of weapons counts from 1960–2025 show median errors of approximately 15%.
-
-**Energy estimation methods**:
-- Satellite imagery of power plants
-- Trade data for fuel imports
-- Economic modeling
-- Grid infrastructure analysis
-
-We estimate US intelligence has approximately **7%** median error in estimating PRC datacenter energy consumption.
-
-## Selection Reasoning
-
-The 7% estimate reflects that:
-- Energy consumption can be observed through multiple independent methods
-- However, China's grid is complex with many industrial facilities
-- Attribution of energy to specific facilities (especially hidden ones) is challenging
-- Covert facilities might use off-grid power sources (local generation, solar) to reduce signatures
+We estimate US intelligence has approximately 5% median error in estimating PRC datacenter energy consumption—better than for weapons counts but not dramatically so, given the challenges of attribution in a complex industrial economy.

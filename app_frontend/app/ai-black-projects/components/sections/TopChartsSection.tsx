@@ -82,11 +82,11 @@ export function TopChartsSection({ data, isLoading, agreementYear }: TopChartsSe
         <Dashboard values={dashboardValues} />
 
         {/* Covert Compute CCDF */}
-        <ChartContainer title="Covert compute">
+        <ChartContainer title="Average covert compute operated before detection">
           <CCDFChart
-            data={data?.black_project_model?.h100_years_ccdf}
+            data={data?.black_project_model?.average_covert_compute_ccdf}
             color={COLOR_PALETTE.chip_stock}
-            xLabel="Covert computation (H100-years)"
+            xLabel="Average H100e operated by covert project before detection"
             yLabel="P(compute > x)"
             xLogScale={true}
             showArea={false}
@@ -213,7 +213,7 @@ function Dashboard({ values }: { values: DashboardValues }) {
         value={values.aiRdReduction}
         label="Reduction in AI R&D computation of largest company*"
       />
-      <DashboardItem value={values.chipsProduced} label="H100e covertly produced*" isLast />
+      <DashboardItem value={values.chipsProduced} label="H100 equivalents covertly produced*" isLast />
     </div>
   );
 }

@@ -11,14 +11,14 @@ from .config import (
     REFERENCE_API_URL,
     CACHE_DIR,
     DEFAULT_NUM_SIMULATIONS,
-    DEFAULT_START_YEAR,
+    DEFAULT_AGREEMENT_YEAR,
     DEFAULT_END_YEAR,
 )
 
 
 def fetch_reference_api(
     num_simulations: int = DEFAULT_NUM_SIMULATIONS,
-    start_year: int = DEFAULT_START_YEAR,
+    start_year: int = DEFAULT_AGREEMENT_YEAR,  # Reference API uses start_year naming
     end_year: int = DEFAULT_END_YEAR,
     timeout: int = 180,
     use_cache: bool = True,
@@ -29,7 +29,7 @@ def fetch_reference_api(
 
     Args:
         num_simulations: Number of Monte Carlo simulations to run
-        start_year: Simulation start year
+        start_year: Agreement year (reference API uses start_year naming)
         end_year: Simulation end year
         timeout: API request timeout in seconds
         use_cache: Whether to use cached responses

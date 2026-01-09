@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Parameters, SimulationData, defaultParameters } from '../types';
+import {
+  encodeBlackProjectParamsToUrl,
+  decodeBlackProjectParamsFromUrl,
+  hasBlackProjectParamsInUrl,
+} from '@/utils/blackProjectUrlState';
 
 // Flask backend URL
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5329';
@@ -57,6 +63,10 @@ function mapBackendDefaults(backendDefaults: Record<string, unknown>): Partial<P
 }
 
 export function useSimulation(initialData: SimulationData | null): UseSimulationResult {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [data, setData] = useState<SimulationData | null>(initialData);
   const [isLoading, setIsLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +75,8 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const initialLoadDone = useRef(false);
+  const isHydratingFromUrlRef = useRef(false);
+  const isUrlSyncReady = useRef(false);
 
   // Fetch from real backend
   const fetchFromRealBackend = async (params: Parameters, signal: AbortSignal) => {
@@ -74,7 +86,8 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
       body: JSON.stringify({
         parameters: params,
         num_simulations: params.numSimulations || 100,
-        time_range: [2027, 2037],
+        agreement_year: params.agreementYear || 2030,
+        end_year: 2037,
       }),
       signal,
     });
@@ -93,53 +106,59 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
     return result;
   };
 
-  // Load defaults from YAML and run initial simulation
+  // Load defaults from YAML, check URL params, and run initial simulation
   useEffect(() => {
     if (initialData || initialLoadDone.current) return;
     initialLoadDone.current = true;
 
     const loadDefaultsAndSimulation = async () => {
       const controller = new AbortController();
+      isHydratingFromUrlRef.current = true;
 
       try {
-        // Step 1: Fetch defaults from backend YAML
-        console.log('[useSimulation] Fetching defaults from YAML...');
-        const defaultsResponse = await fetch(`${BACKEND_URL}/api/black-project-defaults`, {
-          signal: controller.signal,
-        });
+        // Step 1: Check if URL has parameters
+        const hasUrlParams = hasBlackProjectParamsInUrl(searchParams);
+        let initialParams = defaultParameters;
 
-        let yamlDefaults = defaultParameters;
-
-        if (defaultsResponse.ok) {
-          const defaultsResult = await defaultsResponse.json();
-          if (defaultsResult.success && defaultsResult.defaults) {
-            const mapped = mapBackendDefaults(defaultsResult.defaults);
-            yamlDefaults = { ...defaultParameters, ...mapped };
-            setParameters(yamlDefaults);
-            console.log('[useSimulation] YAML defaults loaded:', yamlDefaults);
-          } else {
-            console.warn('[useSimulation] Defaults response missing success or defaults, using hardcoded defaults');
-          }
+        if (hasUrlParams) {
+          // Use URL parameters if present
+          console.log('[useSimulation] Loading parameters from URL...');
+          initialParams = decodeBlackProjectParamsFromUrl(searchParams);
+          setParameters(initialParams);
+          console.log('[useSimulation] URL parameters loaded:', initialParams);
         } else {
-          console.warn('[useSimulation] Failed to fetch YAML defaults, using hardcoded defaults');
+          // Step 2: Fetch defaults from backend YAML
+          console.log('[useSimulation] Fetching defaults from YAML...');
+          const defaultsResponse = await fetch(`${BACKEND_URL}/api/black-project-defaults`, {
+            signal: controller.signal,
+          });
+
+          if (defaultsResponse.ok) {
+            const defaultsResult = await defaultsResponse.json();
+            if (defaultsResult.success && defaultsResult.defaults) {
+              const mapped = mapBackendDefaults(defaultsResult.defaults);
+              initialParams = { ...defaultParameters, ...mapped };
+              setParameters(initialParams);
+              console.log('[useSimulation] YAML defaults loaded:', initialParams);
+            } else {
+              console.warn('[useSimulation] Defaults response missing success or defaults, using hardcoded defaults');
+            }
+          } else {
+            console.warn('[useSimulation] Failed to fetch YAML defaults, using hardcoded defaults');
+          }
         }
+
         // Always mark defaults as loaded after the attempt, so parameter changes trigger simulations
         setDefaultsLoaded(true);
+        isUrlSyncReady.current = true;
 
-        // Step 2: Run simulation with defaults
+        // Step 3: Run simulation with initial params
         if (USE_REAL_BACKEND) {
           console.log('[useSimulation] Running initial simulation...');
-          const result = await fetchFromRealBackend(yamlDefaults, controller.signal);
+          const result = await fetchFromRealBackend(initialParams, controller.signal);
           setData(result);
           setUsingRealBackend(true);
           console.log('[useSimulation] Initial simulation complete');
-          console.log('[useSimulation] Full backend response:', result);
-          console.log('[useSimulation] Available top-level keys:', Object.keys(result));
-          if (result._debug_raw_simulations) {
-            console.log('[useSimulation] === RAW SIMULATION ROLLOUTS ===');
-            console.log('[useSimulation] Central simulation:', result._debug_raw_simulations.central);
-            console.log('[useSimulation] MC results:', result._debug_raw_simulations.mc_results);
-          }
         }
 
       } catch (err) {
@@ -148,11 +167,31 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
         setError(err instanceof Error ? err.message : 'Failed to initialize');
       } finally {
         setIsLoading(false);
+        isHydratingFromUrlRef.current = false;
       }
     };
 
     loadDefaultsAndSimulation();
-  }, [initialData]);
+  }, [initialData, searchParams]);
+
+  // Sync parameters to URL when they change
+  useEffect(() => {
+    // Don't sync until initial hydration is complete
+    if (!isUrlSyncReady.current || isHydratingFromUrlRef.current) return;
+
+    const newParams = encodeBlackProjectParamsToUrl(parameters);
+    const newUrl = newParams.toString()
+      ? `${pathname}?${newParams.toString()}`
+      : pathname;
+
+    // Only update if URL actually changed
+    const currentUrl = window.location.pathname + window.location.search;
+    const targetUrl = newParams.toString() ? `${pathname}?${newParams.toString()}` : pathname;
+
+    if (currentUrl !== targetUrl) {
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [parameters, pathname, router]);
 
   const runSimulation = useCallback(async () => {
     // Cancel any previous request

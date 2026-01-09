@@ -259,7 +259,7 @@ export function RateOfComputationSection({ agreementYear = 2030, data, parameter
         {/* Datacenter subsection */}
         <SubsectionItem>
           <p className="text-[14px] text-[#666] leading-[1.6] max-w-[900px]">
-            The PRC can only operate these AI chips if there&apos;s enough{' '}
+            However, the PRC can only operate these AI chips if there&apos;s enough{' '}
             <strong>covert datacenter capacity</strong>, which grows linearly as more
             datacenters are constructed by a small and stealthy workforce.
           </p>

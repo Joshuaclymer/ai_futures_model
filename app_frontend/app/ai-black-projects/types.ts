@@ -82,7 +82,7 @@ export interface Parameters {
 export const defaultParameters: Parameters = {
   // Key Parameters
   numSimulations: 100,
-  agreementYear: 2027,
+  agreementYear: 2030,
   blackProjectStartYear: 2029,
   workersInCovertProject: 11300,
   meanDetectionTime100: 6.95,
@@ -242,6 +242,7 @@ export interface SimulationData {
       individual?: number[];
     };
     h100_years_ccdf?: MultiThresholdCCDF;
+    average_covert_compute_ccdf?: MultiThresholdCCDF;
     time_to_detection?: { median: number };
     time_to_detection_ccdf?: MultiThresholdCCDF;
     ai_rd_reduction?: { median: number };

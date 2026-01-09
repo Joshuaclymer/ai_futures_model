@@ -22,15 +22,23 @@ logger = logging.getLogger(__name__)
 def run_black_project_simulations(
     frontend_params: dict,
     num_simulations: int = 100,
-    time_range: list = None,
+    agreement_year: float = 2030.0,
+    end_year: float = 2037.0,
 ) -> Dict[str, Any]:
     """
     Run Monte Carlo simulations using the actual AIFuturesSimulator.
 
+    Args:
+        frontend_params: Parameters from frontend UI
+        num_simulations: Number of Monte Carlo simulations to run
+        agreement_year: Year when the AI slowdown agreement takes effect.
+            Detection times are measured from this year.
+        end_year: Year when simulation ends.
+
     Returns results dict with:
     - simulation_results: List of SimulationResult objects
-    - agreement_year: Start year
-    - end_year: End year
+    - agreement_year: When agreement takes effect
+    - end_year: When simulation ends
     """
     start_time = time.perf_counter()
 
@@ -49,9 +57,7 @@ def run_black_project_simulations(
     model_params.software_r_and_d['update_software_progress'] = False
     logger.info("[black-project] Set update_software_progress=False for black project simulations")
 
-    agreement_year = float(time_range[0]) if time_range else 2027.0
-    end_year = float(time_range[1]) if len(time_range) > 1 else 2037.0
-    logger.info(f"[black-project] Time range: {agreement_year} to {end_year}")
+    logger.info(f"[black-project] Agreement year: {agreement_year}, End year: {end_year}")
 
     # Override simulation_end_year from time_range (YAML default is 2040)
     # Keep simulation_start_year from YAML (needs historical data to initialize)

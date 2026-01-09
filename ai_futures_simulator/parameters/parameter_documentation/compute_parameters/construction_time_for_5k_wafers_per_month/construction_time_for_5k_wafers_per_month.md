@@ -4,7 +4,7 @@
 |-------------|-------------|
 | 1.4 years | Time required to construct a fab with 5,000 wafers per month capacity, from groundbreaking to first production |
 
-**How we chose this parameter.**
+**How we chose this parameter**
 
 Chip fabrication plants typically require 1 to 3 years from groundbreaking to first production, with larger fabs generally taking longer. We collected data on 16 fab construction projects spanning a range of capacities from 4,000 to 200,000 wafers per month. These include both completed projects and planned facilities with announced timelines.
 

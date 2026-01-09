@@ -1,46 +1,19 @@
-# Detection Time
+# mean_detection_time_for_100_workers
 
-## Purpose
+| Modal value | Description |
+|-------------|-------------|
+| 6.95 years | Expected time until detection for a covert project with 100 workers |
 
-Models how long a covert project can operate before being discovered through leaks, defections, or surveillance. Larger workforces increase the probability of detection.
+**How we chose this parameter**
 
-## Parameters
+This parameter models how long a covert project can operate before being discovered through leaks, defections, or surveillance. The key insight is that larger workforces increase the probability of detection, but the relationship is logarithmic rather than linear: adding workers to a small team significantly increases detection risk, while adding workers to an already-large program has less marginal effect.
 
-| Parameter | Default | Range | Description |
-|-----------|---------|-------|-------------|
-| Mean detection time (100 workers) | 6.95 years | 1–20 years | Expected time to detection for a 100-person project |
-| Mean detection time (1000 workers) | 3.42 years | 1–20 years | Expected time to detection for a 1000-person project |
-| Detection time variance | 3.88 | 0.1–10 | Controls the spread of the detection time distribution |
-
-## Model Specification
-
-Detection time follows a Gamma distribution with mean inversely proportional to the logarithm of workforce size:
-
-```
-μ(N) = A / log₁₀(N)^B
-```
-
-Where:
-- `μ(N)` is the mean detection time for N workers
-- `A` and `B` are fitted constants derived from historical data
-- Variance is proportional to the mean: `variance = σ² × μ`
-
-This produces a heavy-tailed distribution, capturing the reality that some projects remain hidden much longer than expected.
-
-## Calibration
-
-We estimated this relationship using data from 12 covert nuclear weapons programs over the past 50 years, tracking workforce size and time to external discovery.
+We estimated this relationship using data from 12 covert nuclear weapons programs over the past 50 years, tracking workforce size and time to external discovery. Detection time follows a Gamma distribution with mean inversely proportional to the logarithm of workforce size.
 
 ![Detection latency vs workers](/parameter_docs/perceptions_parameters/mean_detection_time_for_100_workers/detection_latency.png)
 
-Key observations from historical data:
-- Small teams (< 100 people) can maintain secrecy for 5–10+ years
-- Large programs (> 10,000 people) typically detected within 2–4 years
-- Variance is substantial—some large programs evaded detection for extended periods
+[Download data](/api/parameter_docs/perceptions_parameters/mean_detection_time_for_100_workers/nuclear_case_studies.csv)
 
-## Selection Reasoning
+The historical data shows that small teams (fewer than 100 people) can maintain secrecy for 5 to 10 or more years, while large programs (more than 10,000 people) are typically detected within 2 to 4 years. There is substantial variance in the data, with some large programs evading detection for extended periods. This variance is captured by modeling detection time with a heavy-tailed distribution.
 
-The logarithmic relationship captures two key dynamics:
-
-1. **Diminishing marginal risk**: Adding workers to a small team significantly increases detection risk; adding workers to an already-large program has less marginal effect
-2. **Heavy tails**: Real-world detection events show substantial variance, with some programs evading detection far longer than predicted by simple models
+![Bayesian fit](/parameter_docs/perceptions_parameters/mean_detection_time_for_100_workers/detection_latency_vs_workers_bayesian.png)

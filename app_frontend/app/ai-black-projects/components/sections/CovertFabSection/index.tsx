@@ -95,7 +95,7 @@ function CovertFabDashboard({ dashboard }: { dashboard?: DashboardData }) {
 }
 
 // CCDF Chart for compute produced before detection
-function ComputeCCDFChart({ ccdfData }: { ccdfData?: Record<number, CCDFPoint[]> }) {
+function ComputeCCDFChart({ ccdfData, isLoading }: { ccdfData?: Record<number, CCDFPoint[]>; isLoading?: boolean }) {
   const thresholds = [
     { value: 4, label: '"Detection" = >4x update        ', color: DETECTION_THRESHOLD_COLORS['4'] },
     { value: 2, label: '"Detection" = >2x update        ', color: DETECTION_THRESHOLD_COLORS['2'] },
@@ -141,13 +141,15 @@ function ComputeCCDFChart({ ccdfData }: { ccdfData?: Record<number, CCDFPoint[]>
         },
         margin: { l: 55, r: 10, t: 0, b: 60 },
       }}
+      isLoading={isLoading}
     />
   );
 }
 
 // Time series chart for simulation runs
-function SimulationRunsChart({ timeSeriesData }: { timeSeriesData?: CovertFabApiData['time_series_data'] }) {
-  if (!timeSeriesData) return <LoadingIndicator />;
+function SimulationRunsChart({ timeSeriesData, isLoading }: { timeSeriesData?: CovertFabApiData['time_series_data']; isLoading?: boolean }) {
+  if (!timeSeriesData && !isLoading) return <LoadingIndicator />;
+  if (!timeSeriesData) return <PlotlyChart data={[]} isLoading={isLoading} />;
   const traces: Plotly.Data[] = [
     // LR percentile band
     {
@@ -224,6 +226,7 @@ function SimulationRunsChart({ timeSeriesData }: { timeSeriesData?: CovertFabApi
         hovermode: 'closest',
         margin: { l: 55, r: 55, t: 0, b: 50 },
       }}
+      isLoading={isLoading}
     />
   );
 }
@@ -588,15 +591,6 @@ function EnergyPerMonthPlot({ data }: { data?: TimeSeriesData }) {
 export function CovertFabSection({ data, isLoading, parameters, covertFabData }: CovertFabSectionProps) {
   const agreementYear = parameters.agreementYear;
   const { tooltipState, showTooltip, hideTooltip, onTooltipMouseEnter, onTooltipMouseLeave } = useTooltip();
-
-  if (isLoading) {
-    return (
-      <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-800">Covert fab</h2>
-        <div className="h-48 bg-gray-100 animate-pulse rounded" />
-      </section>
-    );
-  }
 
   // Extract data from API response (no client-side fallbacks - data comes from API)
   const dashboard = covertFabData?.dashboard;

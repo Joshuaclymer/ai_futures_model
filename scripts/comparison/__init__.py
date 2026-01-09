@@ -12,7 +12,7 @@ from .config import (
     REFERENCE_API_URL,
     CACHE_DIR,
     DEFAULT_NUM_SIMULATIONS,
-    DEFAULT_START_YEAR,
+    DEFAULT_AGREEMENT_YEAR,
     DEFAULT_END_YEAR,
 )
 from .reference_api import fetch_reference_api
@@ -30,7 +30,7 @@ __all__ = [
     'REFERENCE_API_URL',
     'CACHE_DIR',
     'DEFAULT_NUM_SIMULATIONS',
-    'DEFAULT_START_YEAR',
+    'DEFAULT_AGREEMENT_YEAR',
     'DEFAULT_END_YEAR',
     # APIs
     'fetch_reference_api',

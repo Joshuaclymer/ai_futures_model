@@ -359,7 +359,7 @@
   flex-shrink: 0;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   pointer-events: auto;
-  contain: strict;
+  contain: layout paint;
 }
 
 .breakdown-label {

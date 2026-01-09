@@ -31,7 +31,13 @@ def get_detection_year(d: Dict, agreement_year: float, lr_threshold: float = 5.0
     return None
 
 
-def compute_detection_times(all_data: List[Dict], years: List[float], agreement_year: float, lr_threshold: float = 5.0) -> List[float]:
+def compute_detection_times(
+    all_data: List[Dict],
+    years: List[float],
+    agreement_year: float,
+    lr_threshold: float = 5.0,
+    use_final_year_for_never_detected: bool = False
+) -> List[float]:
     """
     Compute detection times based on when cumulative LR exceeds threshold.
 
@@ -39,8 +45,17 @@ def compute_detection_times(all_data: List[Dict], years: List[float], agreement_
     This matches the reference implementation which uses LR threshold = 5 for dashboard.
 
     Detection is defined as the first year >= agreement_year where cumulative_lr >= lr_threshold.
+
+    Args:
+        all_data: List of simulation data dicts
+        years: Time points
+        agreement_year: Year when agreement starts
+        lr_threshold: LR threshold for detection
+        use_final_year_for_never_detected: If True, use (final_year - agreement_year) for
+            never-detected cases (for dashboard individual values). If False, use 1000
+            (for CCDFs). Reference model uses different values for these two cases.
     """
-    # Large value to represent "never detected" - matches reference model
+    # Large value to represent "never detected" - used for CCDFs
     NEVER_DETECTED_VALUE = 1000
 
     detection_times = []
@@ -49,7 +64,10 @@ def compute_detection_times(all_data: List[Dict], years: List[float], agreement_
         sim_years = d.get('years', [])
 
         if not bp or not sim_years:
-            detection_times.append(NEVER_DETECTED_VALUE)
+            if use_final_year_for_never_detected and years:
+                detection_times.append(max(years) - agreement_year)
+            else:
+                detection_times.append(NEVER_DETECTED_VALUE)
             continue
 
         cumulative_lr = bp.get('cumulative_lr', [])
@@ -66,8 +84,13 @@ def compute_detection_times(all_data: List[Dict], years: List[float], agreement_
             # Time from agreement year to detection
             time_before_detection = detection_year - agreement_year
         else:
-            # No detection within simulation - use large value (matches reference model)
-            time_before_detection = NEVER_DETECTED_VALUE
+            # No detection within simulation
+            # Reference model uses final_year for dashboard values, 1000 for CCDFs
+            if use_final_year_for_never_detected:
+                final_year = max(sim_years) if sim_years else (max(years) if years else agreement_year + 7)
+                time_before_detection = final_year - agreement_year
+            else:
+                time_before_detection = NEVER_DETECTED_VALUE
 
         detection_times.append(max(0.0, time_before_detection))  # Ensure non-negative
 

@@ -81,7 +81,8 @@ def register_black_project_routes(app):
         {
             "parameters": {...},  // Optional frontend params
             "num_simulations": 100,  // Number of Monte Carlo simulations
-            "time_range": [2027, 2037]  // [agreement_year, end_year]
+            "agreement_year": 2030,  // Year when AI slowdown agreement takes effect
+            "end_year": 2037  // Year when simulation ends
         }
 
         Returns (matching reference API format):
@@ -101,7 +102,8 @@ def register_black_project_routes(app):
             data = request.json or {}
             frontend_params = data.get('parameters', {})
             total_simulations = data.get('num_simulations', 100)
-            time_range = data.get('time_range', [2027, 2037])
+            agreement_year = data.get('agreement_year', 2030)
+            end_year = data.get('end_year', 2037)
 
             # Check for cached response (only for default parameters)
             is_default = False
@@ -122,7 +124,8 @@ def register_black_project_routes(app):
             simulation_results = run_black_project_simulations(
                 frontend_params=frontend_params,
                 num_simulations=total_simulations,
-                time_range=time_range,
+                agreement_year=agreement_year,
+                end_year=end_year,
             )
 
             # Extract plot data

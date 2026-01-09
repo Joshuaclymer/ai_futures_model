@@ -159,9 +159,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
         {/* Resource accounting subsection */}
         <SubsectionItem>
           <p className="text-[14px] text-[#666] leading-[1.6] max-w-[900px]">
-            US intelligence accounts for resources used in AI projects (such as chips, SME, energy, etc).
-            If the amount of resources that the PRC reports differs from the amount that the US estimates
-            the PRC has, this provides evidence some of these resources were diverted to a covert effort.
+            First, the US identifies covert projects by **accounting for key resources**. US intelligence estimates the resources the PRC has (e.g. energy, chips, semiconductor equipment), then determines how much of these resources are being reported or used by legitimate operations. The larger the discrepancy, the more evidence of a covert operation.
           </p>
         </SubsectionItem>
 
@@ -283,7 +281,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
         {/* Historical data note */}
         <div className="mt-8">
           <p className="text-[14px] text-[#666] leading-[1.6] max-w-[900px]">
-            How do we predict the speed of intelligence gathering if much of the relevant information
+            How do we predict the effectiveness of intelligence gathering if much of the relevant information
             is classified? We rely on two main pieces of historical data: (1) how well intelligence
             agencies estimated the sizes of weapon stockpiles, and (2) how quickly intelligence
             agencies detected covert nuclear operations.

@@ -31,16 +31,16 @@ def main():
         help="Number of simulations to run (default: 1000)"
     )
     parser.add_argument(
-        "--start-year",
+        "--agreement-year",
         type=int,
-        default=2027,
-        help="Start year for simulations (default: 2027)"
+        default=2030,
+        help="Year when AI slowdown agreement takes effect (default: 2030)"
     )
     parser.add_argument(
         "--end-year",
         type=int,
         default=2037,
-        help="End year for simulations (default: 2037)"
+        help="Year when simulation ends (default: 2037)"
     )
     args = parser.parse_args()
 
@@ -48,7 +48,8 @@ def main():
 
     print(f"Regenerating black project cache...")
     print(f"  Simulations: {args.num_simulations}")
-    print(f"  Time range: {args.start_year} - {args.end_year}")
+    print(f"  Agreement year: {args.agreement_year}")
+    print(f"  End year: {args.end_year}")
     print()
 
     start_time = time.time()
@@ -57,7 +58,8 @@ def main():
     result = run_black_project_simulations(
         frontend_params={},
         num_simulations=args.num_simulations,
-        time_range=[args.start_year, args.end_year],
+        agreement_year=args.agreement_year,
+        end_year=args.end_year,
     )
 
     # Extract plot data

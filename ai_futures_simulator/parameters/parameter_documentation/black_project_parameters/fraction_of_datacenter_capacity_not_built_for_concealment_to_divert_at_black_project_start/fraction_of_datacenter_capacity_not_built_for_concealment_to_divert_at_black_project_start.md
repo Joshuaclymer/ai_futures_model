@@ -1,40 +1,13 @@
-# Covert Unconcealed Capacity
+# fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start
 
-## Purpose
+| Modal value | Description |
+|-------------|-------------|
+| 50% | Proportion of existing (unconcealed) datacenter capacity redirected to covert operations |
 
-Represents the datacenter capacity that can be diverted to a covert project from facilities that were not originally built for concealment.
+**How we chose this parameter**
 
-## Parameters
+When a covert project begins, it may not have time to construct purpose-built concealed facilities. Instead, it can repurpose existing datacenter infrastructure: commercial datacenters can be commandeered or have portions allocated to government use, government facilities may have spare capacity that can be redirected, and research institutions like universities and national labs have computing resources that could be reallocated.
 
-| Parameter | Default | Range | Description |
-|-----------|---------|-------|-------------|
-| Fraction of datacenter capacity to divert | 50% | 0–100% | Proportion of existing (unconcealed) datacenter capacity redirected to covert operations |
+These facilities were not designed for concealment, making them more vulnerable to satellite and energy-based detection methods. The trade-off is that they offer immediate availability, proven infrastructure, and existing operational expertise, while carrying higher detection risk.
 
-## How It Works
-
-When a covert project begins, it may not have time to construct purpose-built concealed facilities. Instead, it can repurpose existing datacenter infrastructure:
-
-- **Existing commercial datacenters**: Can be commandeered or have portions allocated to government use
-- **Government facilities**: May have spare capacity that can be redirected
-- **Research institutions**: University and national lab computing resources
-
-These facilities were not designed for concealment, making them more vulnerable to satellite and energy-based detection methods.
-
-## Trade-offs
-
-**Benefits of diverting existing capacity**:
-- Immediate availability (no construction time)
-- Proven infrastructure and power supply
-- Existing workforce and operational expertise
-
-**Risks of diverting existing capacity**:
-- Higher detection probability (visible to satellites)
-- Energy consumption patterns may be noticed
-- Workforce not vetted for covert operations
-
-## Selection Reasoning
-
-The 50% default reflects a moderate scenario where:
-- The covert project needs substantial compute quickly
-- But complete commandeering of all facilities would be too conspicuous
-- A balance is struck between capability and concealment
+The 50% default reflects a moderate scenario where the covert project needs substantial compute quickly, but complete commandeering of all facilities would be too conspicuous. A balance is struck between capability and concealment.

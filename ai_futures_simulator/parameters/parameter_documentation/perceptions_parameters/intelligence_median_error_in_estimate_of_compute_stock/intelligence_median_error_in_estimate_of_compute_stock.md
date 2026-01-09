@@ -1,41 +1,17 @@
-# Chip Stock Detection
+# intelligence_median_error_in_estimate_of_compute_stock
 
-## Purpose
+| Modal value | Description |
+|-------------|-------------|
+| 7% | Median percentage error in US estimates of PRC AI chip inventory |
 
-Models the probability that US intelligence detects a covert project by identifying discrepancies between China's reported AI chip stock and US estimates.
+**How we chose this parameter**
 
-## Parameters
+This parameter captures how precisely US intelligence can estimate China's inventory of AI chips. If the US has accurate estimates of how many AI chips China possesses, then diverting a significant fraction to a covert project becomes risky because the discrepancy between expected and observed inventory would raise red flags. Conversely, if US estimates have wide error bars, small diversions can hide within the noise.
 
-| Parameter | Default | Range | Description |
-|-----------|---------|-------|-------------|
-| Intelligence median error (chip stock) | 7% | 1–50% | Median percentage error in US estimates of PRC AI chip inventory |
+To calibrate this parameter, we looked at historical intelligence estimates of the sizes of adversary weapons stockpiles. Studies of these estimates from 1960–2025 show that US intelligence typically achieves median errors of around 15%. This provides a baseline, but AI chips differ from weapons systems in ways that may make them easier to track.
 
-## How Detection Works
+AI chips flow through a highly specialized supply chain that creates visibility. Manufacturing is concentrated at a small number of foundries (primarily TSMC and Samsung for advanced chips). US export controls have created tracking infrastructure for chip shipments to China. Commercial applications require some transparency, as chips are used by companies that report to investors and have some public disclosure.
 
-Detection probability depends on two factors:
+We estimate US intelligence error at approximately 7%—roughly half the historical weapons estimate error. However, China has developed domestic chip production and may use smuggling routes to acquire chips, which adds uncertainty to these estimates.
 
-**1. Diversion fraction**
-
-Larger diversions are easier to detect. Diverting 50% of AI chips would be conspicuous; diverting 5% might remain within estimation error.
-
-**2. Estimation precision**
-
-If US estimates have wide error bars (e.g., "800K–1.2M H100-equivalents"), small discrepancies are indistinguishable from noise. Precise estimates make even small diversions detectable.
-
-## Calibration
-
-**Historical context**: Intelligence estimates of weapons counts from 1960–2025 show median errors of approximately 15%.
-
-**AI chips vs. weapons**: AI chips flow through a highly specialized supply chain that may be easier to monitor than weapons programs:
-- Concentrated manufacturing (TSMC, Samsung)
-- Export controls create tracking infrastructure
-- Commercial applications require some transparency
-
-We estimate US intelligence error at approximately **7%**—roughly half the historical weapons estimate error.
-
-## Selection Reasoning
-
-The 7% estimate reflects that:
-- The semiconductor supply chain is more visible than weapons programs
-- Export controls have created monitoring infrastructure
-- However, China has domestic production and smuggling routes that add uncertainty
+[Download data](/api/parameter_docs/perceptions_parameters/intelligence_median_error_in_estimate_of_fab_stock/us_intelligence_estimates.csv)

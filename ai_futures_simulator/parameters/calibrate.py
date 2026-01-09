@@ -74,6 +74,17 @@ class CalibrationInputs:
     rho_coding_labor: float
     coding_labor_normalization: float
 
+    # Horizon trajectory parameters
+    present_doubling_time: Optional[float] = None
+    doubling_difficulty_growth_factor: Optional[float] = None
+    ac_time_horizon_minutes: Optional[float] = None
+    present_horizon: Optional[float] = None
+    horizon_extrapolation_type: Optional[str] = None
+
+    # Slope parameters (these get converted from per-progress-year to per-progress-unit)
+    ai_research_taste_slope: Optional[float] = None
+    coding_automation_efficiency_slope: Optional[float] = None
+
     # Simulation start year (affects r_software calibration)
     start_year: float = 2024.0
 
@@ -92,6 +103,15 @@ class CalibrationInputs:
             'rho_coding_labor': self.rho_coding_labor,
             'coding_labor_norm': self.coding_labor_normalization,
             'start_year': self.start_year,
+            # Horizon trajectory parameters
+            'present_doubling_time': self.present_doubling_time,
+            'doubling_difficulty_growth_factor': self.doubling_difficulty_growth_factor,
+            'ac_time_horizon_minutes': self.ac_time_horizon_minutes,
+            'present_horizon': self.present_horizon,
+            'horizon_extrapolation_type': self.horizon_extrapolation_type,
+            # Slope parameters
+            'ai_research_taste_slope': self.ai_research_taste_slope,
+            'coding_automation_efficiency_slope': self.coding_automation_efficiency_slope,
         }
         json_str = json.dumps(data, sort_keys=True)
         return hashlib.md5(json_str.encode()).hexdigest()
@@ -182,19 +202,41 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     # Create TakeoffParameters with anchor values
     # Use 100.0 as default for progress_at_aa if None (consistent with app's progress_model.py)
     progress_at_aa_value = inputs.progress_at_aa if inputs.progress_at_aa is not None else 100.0
-    params = TakeoffParameters(
-        software_progress_rate_at_reference_year=inputs.software_progress_rate_at_reference_year,
-        swe_multiplier_at_present_day=inputs.swe_multiplier_at_present_day,
-        present_day=inputs.present_day,
-        progress_at_aa=progress_at_aa_value,
-        inf_labor_asymptote=inputs.inf_labor_asymptote,
-        inf_compute_asymptote=inputs.inf_compute_asymptote,
-        labor_anchor_exp_cap=inputs.labor_anchor_exp_cap,
-        inv_compute_anchor_exp_cap=inputs.inv_compute_anchor_exp_cap,
-        parallel_penalty=inputs.parallel_penalty,
-        rho_coding_labor=inputs.rho_coding_labor,
-        coding_labor_normalization=inputs.coding_labor_normalization,
-    )
+
+    # Build kwargs for TakeoffParameters, including optional horizon params
+    takeoff_kwargs = {
+        'software_progress_rate_at_reference_year': inputs.software_progress_rate_at_reference_year,
+        'swe_multiplier_at_present_day': inputs.swe_multiplier_at_present_day,
+        'present_day': inputs.present_day,
+        'progress_at_aa': progress_at_aa_value,
+        'inf_labor_asymptote': inputs.inf_labor_asymptote,
+        'inf_compute_asymptote': inputs.inf_compute_asymptote,
+        'labor_anchor_exp_cap': inputs.labor_anchor_exp_cap,
+        'inv_compute_anchor_exp_cap': inputs.inv_compute_anchor_exp_cap,
+        'parallel_penalty': inputs.parallel_penalty,
+        'rho_coding_labor': inputs.rho_coding_labor,
+        'coding_labor_normalization': inputs.coding_labor_normalization,
+    }
+
+    # Add horizon trajectory parameters if provided
+    if inputs.present_doubling_time is not None:
+        takeoff_kwargs['present_doubling_time'] = inputs.present_doubling_time
+    if inputs.doubling_difficulty_growth_factor is not None:
+        takeoff_kwargs['doubling_difficulty_growth_factor'] = inputs.doubling_difficulty_growth_factor
+    if inputs.ac_time_horizon_minutes is not None:
+        takeoff_kwargs['ac_time_horizon_minutes'] = inputs.ac_time_horizon_minutes
+    if inputs.present_horizon is not None:
+        takeoff_kwargs['present_horizon'] = inputs.present_horizon
+    if inputs.horizon_extrapolation_type is not None:
+        takeoff_kwargs['horizon_extrapolation_type'] = inputs.horizon_extrapolation_type
+
+    # Add slope parameters if provided
+    if inputs.ai_research_taste_slope is not None:
+        takeoff_kwargs['ai_research_taste_slope'] = inputs.ai_research_taste_slope
+    if inputs.coding_automation_efficiency_slope is not None:
+        takeoff_kwargs['coding_automation_efficiency_slope'] = inputs.coding_automation_efficiency_slope
+
+    params = TakeoffParameters(**takeoff_kwargs)
 
     # Run the old model's calibration by computing a trajectory
     # IMPORTANT: Always start from 2012 (like the reference app) to ensure we have
@@ -328,6 +370,15 @@ def calibrate_from_params(software_r_and_d, start_year: float = 2024.0) -> Calib
         parallel_penalty=r.parallel_penalty,
         rho_coding_labor=r.rho_coding_labor,
         coding_labor_normalization=r.coding_labor_normalization,
+        # Horizon trajectory parameters
+        present_doubling_time=getattr(r, 'present_doubling_time', None),
+        doubling_difficulty_growth_factor=getattr(r, 'doubling_difficulty_growth_factor', None),
+        ac_time_horizon_minutes=getattr(r, 'ac_time_horizon_minutes', None),
+        present_horizon=getattr(r, 'present_horizon', None),
+        horizon_extrapolation_type=getattr(r, 'horizon_extrapolation_type', None),
+        # Slope parameters
+        ai_research_taste_slope=getattr(r, 'ai_research_taste_slope', None),
+        coding_automation_efficiency_slope=getattr(r, 'coding_automation_efficiency_slope', None),
         start_year=start_year,
     )
 
