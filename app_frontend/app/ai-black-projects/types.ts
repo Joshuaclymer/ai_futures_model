@@ -329,6 +329,12 @@ export interface SimulationData {
     chip_evidence_samples?: number[];
     sme_evidence_samples?: number[];
     dc_evidence_samples?: number[];
+    // Cumulative H100-years computation
+    h100_years?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
     // Energy data
     black_project_energy?: number[][];
     energy_source_labels?: string[];
