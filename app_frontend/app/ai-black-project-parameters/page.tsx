@@ -58,7 +58,7 @@ function getParameterDocs(): Record<string, { title: string; docs: { filename: s
   const docsPath = path.join(process.cwd(), '..', 'ai_futures_simulator', 'parameters', 'parameter_documentation');
   const ciMap = loadMonteCarloCI();
 
-  const categories: Record<string, { title: string; docs: { filename: string; content: string }[]; order: number }> = {};
+  const categories: Record<string, { title: string; docs: { filename: string; paramName: string; content: string }[]; order: number }> = {};
 
   // Scan each category directory
   try {
@@ -68,7 +68,7 @@ function getParameterDocs(): Record<string, { title: string; docs: { filename: s
     for (const categoryDir of categoryDirs) {
       const config = categoryConfig[categoryDir.name];
       const categoryPath = path.join(docsPath, categoryDir.name);
-      const docs: { filename: string; content: string }[] = [];
+      const docs: { filename: string; paramName: string; content: string }[] = [];
 
       // Scan each parameter subdirectory within the category
       const paramDirs = fs.readdirSync(categoryPath, { withFileTypes: true })
