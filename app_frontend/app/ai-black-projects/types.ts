@@ -357,6 +357,12 @@ export interface SimulationData {
       p25: number[];
       p75: number[];
     };
+    // Cumulative fab production flow
+    black_fab_flow?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
     // Energy data
     black_project_energy?: number[][];
     energy_source_labels?: string[];
@@ -377,6 +383,27 @@ export interface SimulationData {
     watts_per_tpp?: {
       median?: number[];
       individual?: number[][];
+    };
+    dashboard?: {
+      production?: string;
+      energy?: string;
+      probFabBuilt?: string;
+      yearsOperational?: string;
+      processNode?: string;
+    };
+    compute_ccdfs?: Record<string | number, CCDFPoint[]>;
+    lr_combined?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
+    chips_per_wafer?: {
+      median?: number[];
+    };
+    architecture_efficiency_at_agreement?: number;
+    watts_per_tpp_curve?: {
+      density_relative?: number[];
+      watts_per_tpp_relative?: number[];
     };
   };
   black_datacenters?: {
