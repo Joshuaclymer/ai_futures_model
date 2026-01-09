@@ -179,8 +179,8 @@ export interface RateOfComputationData {
   energy_usage: TimeSeriesData;
   operating_chips: TimeSeriesData;
   covert_computation: TimeSeriesData;
-  energy_stacked_data?: [number, number][];
-  energy_source_labels?: [string, string];
+  energy_stacked_data?: number[][];
+  energy_source_labels?: string[];
 }
 
 // Covert fab section data
@@ -330,8 +330,8 @@ export interface SimulationData {
     sme_evidence_samples?: number[];
     dc_evidence_samples?: number[];
     // Energy data
-    black_project_energy?: [number, number][];
-    energy_source_labels?: [string, string];
+    black_project_energy?: number[][];
+    energy_source_labels?: string[];
   };
   black_fab?: {
     years: number[];

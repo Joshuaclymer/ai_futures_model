@@ -74,7 +74,7 @@ function mapToRateOfComputationData(data: SimulationData | null): RateOfComputat
     },
     // Energy stacked data
     energy_stacked_data: blackDatacenters?.energy_by_source || bpm?.black_project_energy || [],
-    energy_source_labels: (blackDatacenters?.source_labels || bpm?.energy_source_labels || ['Initial Stock', 'Fab-Produced']) as [string, string],
+    energy_source_labels: blackDatacenters?.source_labels || bpm?.energy_source_labels || ['Initial Stock', 'Fab-Produced'],
     // Operating chips (in H100e, need to multiply by 1000 since black_datacenters uses K H100e)
     operating_chips: {
       years,
