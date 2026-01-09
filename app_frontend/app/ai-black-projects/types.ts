@@ -351,6 +351,12 @@ export interface SimulationData {
       p25: number[];
       p75: number[];
     };
+    // Monthly fab production flow
+    black_fab_monthly_flow_all_sims?: {
+      median: number[];
+      p25: number[];
+      p75: number[];
+    };
     // Energy data
     black_project_energy?: number[][];
     energy_source_labels?: string[];
@@ -360,6 +366,16 @@ export interface SimulationData {
     is_operational?: { proportion: number[] };
     wafer_starts?: {
       median: number[];
+      individual?: number[][];
+    };
+    individual_process_node?: string[];
+    process_node_by_sim?: string[];
+    transistor_density?: {
+      median?: number[];
+      individual?: number[][];
+    };
+    watts_per_tpp?: {
+      median?: number[];
       individual?: number[][];
     };
   };
