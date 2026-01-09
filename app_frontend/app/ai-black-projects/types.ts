@@ -329,6 +329,9 @@ export interface SimulationData {
     chip_evidence_samples?: number[];
     sme_evidence_samples?: number[];
     dc_evidence_samples?: number[];
+    // Energy data
+    black_project_energy?: [number, number][];
+    energy_source_labels?: [string, string];
   };
   black_fab?: {
     years: number[];
