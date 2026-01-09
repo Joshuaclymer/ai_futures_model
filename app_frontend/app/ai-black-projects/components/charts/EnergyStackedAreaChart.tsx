@@ -7,9 +7,9 @@ import { CHART_FONT_SIZES, CHART_MARGINS } from '../chartConfig';
 interface EnergyStackedAreaChartProps {
   years: number[];
   /** Energy data per year: array of [initialStockEnergy, fabProducedEnergy] */
-  energyData: [number, number][];
+  energyData: number[][];
   /** Labels for the two energy sources */
-  sourceLabels?: [string, string];
+  sourceLabels?: string[];
   /** Datacenter capacity (GW) per year */
   datacenterCapacity: number[];
   isLoading?: boolean;
