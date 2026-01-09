@@ -21,8 +21,8 @@ export interface RateOfComputationData {
   covert_chip_stock: TimeSeriesData;
   datacenter_capacity: TimeSeriesData;
   energy_usage: TimeSeriesData;
-  energy_stacked_data?: [number, number][];
-  energy_source_labels?: [string, string];
+  energy_stacked_data?: number[][];
+  energy_source_labels?: string[];
   operating_chips: TimeSeriesData;
   covert_computation: TimeSeriesData;
 }
