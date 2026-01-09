@@ -385,11 +385,11 @@ export interface SimulationData {
       individual?: number[][];
     };
     dashboard?: {
-      production?: string;
-      energy?: string;
-      probFabBuilt?: string;
-      yearsOperational?: string;
-      processNode?: string;
+      production: string;
+      energy: string;
+      probFabBuilt: string;
+      yearsOperational: string;
+      processNode: string;
     };
     compute_ccdfs?: Record<string | number, CCDFPoint[]>;
     lr_combined?: {
