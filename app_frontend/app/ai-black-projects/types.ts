@@ -372,6 +372,8 @@ export interface SimulationData {
   };
   initial_stock?: {
     lr_prc_accounting_samples?: number[];
+    lr_sme_inventory_samples?: number[];
+    lr_satellite_datacenter_samples?: number[];
     initial_prc_stock_samples?: number[];
     initial_compute_stock_samples?: number[];
     initial_energy_samples?: number[];
