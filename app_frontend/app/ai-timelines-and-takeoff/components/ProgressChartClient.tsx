@@ -530,6 +530,7 @@ interface InitialSampleTrajectory {
     effectiveCompute: number;
     automationFraction: number;
     trainingCompute?: number;
+    frontierTrainingCompute?: number;
     aiSwProgressMultRefPresentDay?: number;
   }>;
   params: Record<string, number | string | boolean>;
