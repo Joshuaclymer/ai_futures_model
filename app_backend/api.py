@@ -31,8 +31,13 @@ register_all_routes(app)
 
 
 if __name__ == '__main__':
+    import os
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=5329)
     args = parser.parse_args()
-    app.run(port=args.port, debug=True)
+    # Use PORT env var if set (for Render), otherwise use CLI arg or default
+    port = int(os.environ.get('PORT', args.port))
+    # Bind to 0.0.0.0 for production, enable debug only in development
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug)

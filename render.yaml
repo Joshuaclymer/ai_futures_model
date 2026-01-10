@@ -9,6 +9,16 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: NEXT_PUBLIC_BACKEND_URL
-        sync: false  # Set this in the Render dashboard
+        sync: false  # Set this in the Render dashboard after backend deploys
     healthCheckPath: /
+    autoDeploy: true
+
+  - type: web
+    name: ai-futures-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd app_backend && python api.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
     autoDeploy: true
