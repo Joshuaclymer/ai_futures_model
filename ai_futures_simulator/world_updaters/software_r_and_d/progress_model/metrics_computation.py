@@ -12,20 +12,16 @@ import logging
 import model_config as cfg
 from typing import Dict, List, Tuple, Any, Optional
 
-from .utils import _log_interp, should_reraise
+from .utils import should_reraise
 from .types import TimeSeriesData
 from .parameters import Parameters
 from .progress_rate import (
     compute_research_effort,
     compute_software_progress_rate,
-    compute_overall_progress_rate,
-    compute_automation_fraction,
     compute_ai_research_taste,
     compute_aggregate_research_taste,
-    progress_rate_at_time,
 )
 from .ces_functions import compute_coding_labor_deprecated
-from .automation_model import AutomationModel
 
 logger = logging.getLogger(__name__)
 

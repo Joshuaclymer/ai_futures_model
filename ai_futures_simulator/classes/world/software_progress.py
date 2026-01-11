@@ -5,7 +5,6 @@ These classes track the state and metrics related to AI software R&D progress.
 All values must be explicitly set during world initialization - no defaults.
 """
 
-import torch
 from torch import Tensor
 from dataclasses import dataclass, field
 from typing import Optional

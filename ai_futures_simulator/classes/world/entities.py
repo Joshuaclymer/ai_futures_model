@@ -5,12 +5,10 @@ Entities are legal entities which can have assets and be subject to policies.
 All values must be explicitly set during world initialization - no defaults.
 """
 
-import torch
-from torch import Tensor
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+from typing import List, Dict
 from classes.tensor_dataclass import TensorDataclass
-from classes.world.assets import Assets, Compute, Fabs, Datacenters
+from classes.world.assets import Compute, Fabs, Datacenters
 from classes.world.software_progress import AISoftwareProgress
 
 @dataclass

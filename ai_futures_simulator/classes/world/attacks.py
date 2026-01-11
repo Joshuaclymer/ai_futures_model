@@ -30,7 +30,6 @@ class SoftwareSecurityLevel(Enum):
 @dataclass
 class Attack:
     """Base class for attack actions."""
-    pass
 
 
 @dataclass

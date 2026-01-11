@@ -5,7 +5,6 @@ Updates researcher headcount for AI software developers based on their parent na
 The fraction of nation researchers available to the largest developer is determined by parameters.
 """
 
-import torch
 from torch import Tensor
 from typing import Optional
 

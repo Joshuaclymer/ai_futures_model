@@ -81,7 +81,6 @@ class TasteDistribution:
             taste_limit_smoothing: Smoothing parameter u (u > 0)
         """
         from scipy.stats import norm
-        from scipy.optimize import minimize
         import math
         logger.info("Initializing Taste Distribution")
 
@@ -478,7 +477,6 @@ class TasteDistribution:
         """
         import time
         from scipy.stats import norm
-        from scipy.integrate import quad
 
         _grid_start = time.perf_counter()
 

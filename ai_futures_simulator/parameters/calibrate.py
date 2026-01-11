@@ -12,8 +12,7 @@ when running multiple simulations with the same settings.
 import sys
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
-from functools import lru_cache
+from typing import Dict, Optional
 import hashlib
 import json
 import os

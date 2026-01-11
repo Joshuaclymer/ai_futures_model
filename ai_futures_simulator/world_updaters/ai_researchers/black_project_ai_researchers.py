@@ -6,9 +6,7 @@ Black projects have their own dedicated researcher allocation specified
 in the black project parameters.
 """
 
-import torch
 from torch import Tensor
-from typing import Optional
 
 from classes.world.world import World
 from classes.world.entities import AIBlackProject

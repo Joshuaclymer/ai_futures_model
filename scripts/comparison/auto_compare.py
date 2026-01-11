@@ -10,7 +10,7 @@ Automatically finds matching keys between API responses and computes:
 
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Tuple
 
 
 @dataclass

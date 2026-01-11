@@ -8,9 +8,9 @@ from path strings to tensor indices.
 import torch
 from torch import Tensor
 from dataclasses import fields, is_dataclass
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 
-from classes.tensor_dataclass import TensorDataclass, is_tensor_dataclass
+from classes.tensor_dataclass import is_tensor_dataclass
 
 
 def generate_state_schema(template_world: 'World') -> Dict[str, int]:
@@ -224,7 +224,6 @@ def extract_non_state_fields(world: 'World') -> Dict[str, Any]:
 
     Returns a dict that can be used with create_world_from_metadata().
     """
-    from classes.world.world import World
 
     # For now, return a shallow copy of structure-defining fields
     # The flat tensor will hold state values, metadata holds structure

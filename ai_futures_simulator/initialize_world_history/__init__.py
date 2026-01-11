@@ -13,6 +13,3 @@ Contains initializers for all world state components:
 """
 
 from initialize_world_history.initialize_world_history import initialize_world
-from initialize_world_history.initialize_nations import initialize_usa
-from initialize_world_history.initialize_ai_software_developers.initialize_ai_software_developers import initialize_us_frontier_lab
-from initialize_world_history.initialize_ai_software_progress import initialize_ai_software_progress

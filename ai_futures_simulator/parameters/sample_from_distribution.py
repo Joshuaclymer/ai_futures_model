@@ -14,7 +14,7 @@ Supports distributions matching the ai_takeoff_model sampling config format:
 
 import numpy as np
 import scipy.special
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 
 
 def _metalog_3term_semi_bounded_quantile(p: float, q_lo: float, q_mid: float, q_hi: float,

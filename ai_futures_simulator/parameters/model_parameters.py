@@ -13,7 +13,6 @@ import yaml
 
 from parameters.sample_from_distribution import (
     sample_from_distribution,
-    sample_from_distribution_with_quantile,
     get_modal_value,
 )
 

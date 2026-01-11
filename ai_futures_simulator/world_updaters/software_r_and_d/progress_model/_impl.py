@@ -10,10 +10,8 @@ progress_model package instead of this module directly.
 """
 
 import numpy as np
-from dataclasses import dataclass, field
-from typing import List, Tuple, Optional, Dict, Any, Union, NamedTuple
-from scipy import optimize, integrate, interpolate
-from collections import OrderedDict
+from typing import List, Tuple, Optional, Dict, Any
+from scipy import optimize
 import logging
 import time
 import model_config as cfg
@@ -22,29 +20,17 @@ import copy
 from datetime import datetime
 
 # Import utilities from the new modular structure
-from .utils import _coerce_float_scalar, _gauss_hermite_expectation, should_reraise
-from .types import TimeSeriesData, AnchorConstraint, InitialConditions
+from .utils import should_reraise
+from .types import TimeSeriesData, AnchorConstraint
 from .ces_functions import (
-    _ces_function,
     compute_coding_labor_deprecated,
-    compute_rho_from_asymptotes,
-    compute_experiment_compute_exponent_from_anchor,
-    compute_alpha_experiment_capacity_from_asymptotes,
     compute_exp_capacity_params_from_anchors,
 )
-from .taste_distribution import (
-    TasteDistribution,
-    get_or_create_taste_distribution,
-    _taste_distribution_cache,
-    _TASTE_CACHE_MAX_SIZE,
-    compute_ai_research_taste as _compute_ai_research_taste_core,
-)
-from .automation_model import AutomationModel, aut_frac_from_swe_multiplier, solve_lower_anchor_via_automation_model
+from .automation_model import AutomationModel, solve_lower_anchor_via_automation_model
 from .parameters import Parameters
 from .progress_rate import (
     compute_research_effort,
     compute_software_progress_rate,
-    compute_overall_progress_rate,
     compute_automation_fraction,
     compute_ai_research_taste,
     compute_aggregate_research_taste,
@@ -53,9 +39,7 @@ from .progress_rate import (
 from .utils import _log_interp
 from .integration import (
     _find_exponential_crossing_time,
-    calculate_initial_research_stock,
     compute_initial_conditions,
-    setup_model,
     integrate_progress,
     integrate_progress_human_only,
 )

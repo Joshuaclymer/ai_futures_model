@@ -52,8 +52,6 @@ from .ces_functions import (
 from .taste_distribution import (
     TasteDistribution,
     get_or_create_taste_distribution,
-    _taste_distribution_cache,
-    _TASTE_CACHE_MAX_SIZE,
 )
 
 # Re-export AutomationModel from dedicated module

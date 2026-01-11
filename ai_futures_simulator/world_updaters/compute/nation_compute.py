@@ -7,7 +7,6 @@ with chip attrition modeled via a linearly increasing hazard rate.
 See world_updaters/compute/chip_survival.py for the mathematical model.
 """
 
-import math
 import torch
 from torch import Tensor
 

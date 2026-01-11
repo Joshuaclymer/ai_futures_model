@@ -7,7 +7,6 @@ Contains base classes and data structures for the simulation framework:
 - SimulationResult: Results from a simulation run
 """
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 from dataclasses import dataclass
@@ -17,7 +16,7 @@ from classes.world.world import World
 from parameters.classes import SimulationParameters
 
 if TYPE_CHECKING:
-    from classes.flat_world import FlatWorld, FlatStateDerivative
+    from classes.flat_world import FlatStateDerivative
 
 
 @dataclass

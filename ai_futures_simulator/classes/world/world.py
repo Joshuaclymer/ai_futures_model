@@ -8,7 +8,7 @@ along with global state and metrics.
 import torch
 from torch import Tensor
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict
 
 from classes.tensor_dataclass import TensorDataclass
 from classes.world.entities import Coalition, Nation, AISoftwareDeveloper, AIBlackProject

@@ -14,7 +14,6 @@ Usage:
 
 import argparse
 import sys
-from pathlib import Path
 
 from .config import (
     DEFAULT_NUM_SIMULATIONS,

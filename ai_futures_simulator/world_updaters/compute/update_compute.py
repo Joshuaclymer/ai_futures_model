@@ -8,7 +8,6 @@ Updates in order:
 4. AI software developer compute (fraction of nation's functional compute)
 """
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 

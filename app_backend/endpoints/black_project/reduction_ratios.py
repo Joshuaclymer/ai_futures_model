@@ -22,7 +22,6 @@ Global chip production is computed as the sum of PRC + US chip production from t
 counterfactual simulation data (not from a hard-coded CSV).
 """
 
-import numpy as np
 from typing import Dict, List
 
 

@@ -6,7 +6,6 @@ The fraction of nation compute available to the largest developer is determined 
 """
 
 import math
-import torch
 from torch import Tensor
 from typing import Optional
 

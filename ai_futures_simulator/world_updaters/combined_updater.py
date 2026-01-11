@@ -5,14 +5,14 @@ Combined updater that orchestrates all world updaters.
 import torch
 import torch.nn as nn
 from torch import Tensor
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, TYPE_CHECKING
 
 from classes.world.world import World
 from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.classes import SimulationParameters
 
 if TYPE_CHECKING:
-    from classes.flat_world import FlatWorld, FlatStateDerivative
+    from classes.flat_world import FlatWorld
 
 
 class CombinedUpdater(WorldUpdater):

@@ -7,8 +7,8 @@ supporting nested dataclasses with is_state metadata.
 
 import torch
 from torch import Tensor
-from dataclasses import dataclass, fields, field
-from typing import TypeVar, Type, Any, get_type_hints, get_origin, get_args
+from dataclasses import dataclass, fields
+from typing import TypeVar, Type, Any
 
 T = TypeVar('T', bound='TensorDataclass')
 

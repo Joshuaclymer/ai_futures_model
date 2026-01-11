@@ -10,26 +10,23 @@ Detection is handled externally by the simulation, not in the entity.
 """
 
 import math
-import numpy as np
 import torch
 from torch import Tensor
-from typing import Optional, Dict, Tuple
+from typing import Dict, Tuple
 
 from classes.world.world import World
-from classes.world.entities import AIBlackProject, AISoftwareDeveloper, Nation, ComputeAllocation
+from classes.world.entities import AIBlackProject, Nation, ComputeAllocation
 from classes.world.assets import Compute, Fabs, Datacenters
 from classes.world.software_progress import AISoftwareProgress
 from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.classes import SimulationParameters
-from parameters.classes import BlackProjectParameters, BlackProjectProperties
-from parameters.classes import ComputeParameters, PRCComputeParameters, ExogenousComputeTrends, SurvivalRateParameters
-from parameters.classes import DataCenterAndEnergyParameters, PRCDataCenterAndEnergyParameters
+from parameters.classes import BlackProjectParameters
+from parameters.classes import ComputeParameters
+from parameters.classes import DataCenterAndEnergyParameters
 from parameters.classes import BlackProjectPerceptionsParameters
 from parameters.classes import PolicyParameters
 from world_updaters.compute.chip_survival import (
     calculate_survival_rate,
-    calculate_functional_compute,
-    calculate_hazard_rate,
     calculate_compute_derivative,
     calculate_average_age_derivative,
 )

@@ -12,11 +12,8 @@ in black_project_backend for consistency.
 import math
 import numpy as np
 from scipy import stats
-import torch
-from torch import Tensor
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
-from classes.world.assets import Compute, Fabs, Datacenters
 
 if TYPE_CHECKING:
     from classes.world.entities import AIBlackProject

@@ -6,7 +6,6 @@ This uses data from the internal CSV which is part of ai_futures_simulator.
 """
 
 import csv
-import math
 from pathlib import Path
 
 from classes.world.entities import AISoftwareDeveloper, ComputeAllocation

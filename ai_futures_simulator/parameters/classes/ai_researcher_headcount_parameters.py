@@ -5,7 +5,7 @@ Researchers are allocated to nations and then to AI software developers
 proportionally (similar to how compute is allocated).
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass

@@ -3,7 +3,6 @@ Generate lithography sales plot using Plotly with consistent styling.
 Compares DUV vs EUV scanner sales trajectories.
 """
 
-import numpy as np
 import plotly.graph_objects as go
 import sys
 sys.path.insert(0, '../..')

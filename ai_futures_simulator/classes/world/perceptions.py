@@ -3,7 +3,7 @@ Perception classes for entity beliefs about the world.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict
 from enum import Enum
 from classes.world.assets import ProcessNode
 from classes.world.entities import Nation

@@ -5,7 +5,6 @@ Contains small helper functions used across multiple modules.
 """
 
 import numpy as np
-from typing import Optional
 
 
 def to_float(value, default: float = 0.0) -> float:

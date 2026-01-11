@@ -15,7 +15,6 @@ from .detection import (
     compute_h100_years_before_detection,
     compute_h100e_before_detection,
     compute_fab_detection_data,
-    get_detection_year,
 )
 from .response_sections import (
     build_black_project_model_section,
