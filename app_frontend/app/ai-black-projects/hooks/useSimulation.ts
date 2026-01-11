@@ -90,6 +90,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
         end_year: 2037,
       }),
       signal,
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -131,6 +132,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
           console.log('[useSimulation] Fetching defaults from YAML...');
           const defaultsResponse = await fetch(`${BACKEND_URL}/api/black-project-defaults`, {
             signal: controller.signal,
+            cache: 'no-store',
           });
 
           if (defaultsResponse.ok) {

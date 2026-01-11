@@ -13,7 +13,7 @@ from scipy import optimize
 from collections import OrderedDict
 import logging
 
-import model_config as cfg
+from . import model_config as cfg
 from .utils import _coerce_float_scalar, _gauss_hermite_expectation
 
 logger = logging.getLogger(__name__)

@@ -143,7 +143,8 @@ def compute_fab_detection_data(all_data: List[Dict], years: List[float], agreeme
             fab_detection_year = sim_years[-1] if sim_years else agreement_year + 7
 
         # Calculate when fab became operational
-        construction_start = bp.get('fab_construction_start_year', agreement_year)
+        # Fab construction starts at preparation_start_year (black_project_start_year)
+        construction_start = bp.get('fab_construction_start_year', bp.get('preparation_start_year', agreement_year))
         construction_duration = bp.get('fab_construction_duration', 1.5)
         operational_start = construction_start + construction_duration
 
@@ -221,7 +222,8 @@ def extract_fab_ccdf_values_at_threshold(fab_built_sims: List[Dict], years: List
             fab_detection_year = sim_years[-1] if sim_years else agreement_year + 7
 
         # Calculate when fab became operational
-        construction_start = bp.get('fab_construction_start_year', agreement_year)
+        # Fab construction starts at preparation_start_year (black_project_start_year)
+        construction_start = bp.get('fab_construction_start_year', bp.get('preparation_start_year', agreement_year))
         construction_duration = bp.get('fab_construction_duration', 1.5)
         operational_start = construction_start + construction_duration
 

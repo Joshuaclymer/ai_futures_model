@@ -8,18 +8,20 @@ progress_rate_at_time function that serves as the RHS of the ODE system.
 """
 
 import numpy as np
-from typing import List
+from typing import List, TYPE_CHECKING
 import logging
 
-import model_config as cfg
-from .types import TimeSeriesData
-from .parameters import Parameters
+from . import model_config as cfg
+from .data_types import TimeSeriesData
 from .utils import should_reraise
-from .ces_functions import _ces_function,  compute_coding_labor_deprecated
+from .ces_functions import _ces_function, compute_coding_labor_deprecated
 from .taste_distribution import (
     TasteDistribution,
     compute_ai_research_taste as _compute_ai_research_taste_core,
 )
+
+if TYPE_CHECKING:
+    from .automation_model import AutomationModel
 
 logger = logging.getLogger(__name__)
 
@@ -210,38 +212,49 @@ def compute_overall_progress_rate(software_progress_rate: float, training_comput
     return software_progress_rate + training_compute_growth_rate
 
 
-def compute_automation_fraction(cumulative_progress: float, params: Parameters) -> float:
+def compute_automation_fraction(cumulative_progress: float, automation_model: "AutomationModel") -> float:
     """
     Interpolate automation fraction based on cumulative progress.
 
-    - If params.automation_interp_type == "exponential": perform log-space interpolation between two anchors.
-    - If params.automation_interp_type == "linear": perform linear interpolation between two anchors.
-
+    Uses the automation model's interpolation schedule (linear or logistic).
     Extrapolates beyond the anchors and clips the result to [0, 1].
 
     Args:
         cumulative_progress: Current cumulative progress.
-        params: Model parameters containing automation_anchors and automation_interp_type.
+        automation_model: AutomationModel instance for computing automation fraction.
 
     Returns:
         Automation fraction in [0, 1].
     """
-    automation_model = params.automation_model
     return automation_model.get_automation_fraction(cumulative_progress)
 
 
-def compute_ai_research_taste(cumulative_progress: float, params: Parameters) -> float:
+def compute_ai_research_taste(
+    cumulative_progress: float,
+    taste_distribution: TasteDistribution,
+    ai_research_taste_slope: float,
+    progress_at_aa: float,
+    ai_research_taste_at_coding_automation_anchor_sd: float,
+) -> float:
     """
     Compute AI research taste based on cumulative progress.
 
-    Thin wrapper around _compute_ai_research_taste_core that extracts params.
+    Args:
+        cumulative_progress: Current cumulative progress.
+        taste_distribution: TasteDistribution instance.
+        ai_research_taste_slope: Slope of AI research taste vs progress.
+        progress_at_aa: Progress at the coding automation anchor.
+        ai_research_taste_at_coding_automation_anchor_sd: SD of taste at anchor.
+
+    Returns:
+        AI research taste value.
     """
     return _compute_ai_research_taste_core(
         cumulative_progress=cumulative_progress,
-        taste_distribution=params.taste_distribution,
-        slope=params.ai_research_taste_slope,
-        anchor_progress=params.progress_at_aa,
-        anchor_sd=params.ai_research_taste_at_coding_automation_anchor_sd,
+        taste_distribution=taste_distribution,
+        slope=ai_research_taste_slope,
+        anchor_progress=progress_at_aa,
+        anchor_sd=ai_research_taste_at_coding_automation_anchor_sd,
         max_sd=cfg.AI_RESEARCH_TASTE_MAX_SD,
     )
 
@@ -293,7 +306,28 @@ def compute_aggregate_research_taste(ai_research_taste, taste_distribution: Tast
     return float(result[0]) if input_was_scalar else result
 
 
-def progress_rate_at_time(t: float, state: List[float], time_series_data: TimeSeriesData, params: Parameters) -> List[float]:
+def progress_rate_at_time(
+    t: float,
+    state: List[float],
+    time_series_data: TimeSeriesData,
+    # CES parameters
+    rho_coding_labor: float,
+    parallel_penalty: float,
+    coding_labor_normalization: float,
+    alpha_experiment_capacity: float,
+    rho_experiment_capacity: float,
+    experiment_compute_exponent: float,
+    r_software: float,
+    # Automation model
+    automation_model: "AutomationModel",
+    # Taste parameters
+    taste_distribution: TasteDistribution,
+    ai_research_taste_slope: float,
+    progress_at_aa: float,
+    ai_research_taste_at_coding_automation_anchor_sd: float,
+    # Mode flags
+    human_only: bool = False,
+) -> List[float]:
     """
     Compute instantaneous rates for both progress and research stock.
     This is the RHS of the coupled differential equation system.
@@ -302,7 +336,20 @@ def progress_rate_at_time(t: float, state: List[float], time_series_data: TimeSe
         t: Current time
         state: [cumulative_progress, research_stock]
         time_series_data: Input time series
-        params: Model parameters
+        rho_coding_labor: CES substitution parameter for coding labor
+        parallel_penalty: Parallel penalty exponent
+        coding_labor_normalization: Normalization constant for coding labor
+        alpha_experiment_capacity: Weight on experiment compute
+        rho_experiment_capacity: CES substitution parameter for experiment capacity
+        experiment_compute_exponent: Exponent on experiment compute
+        r_software: Software progress rate parameter
+        automation_model: AutomationModel instance
+        taste_distribution: TasteDistribution instance
+        ai_research_taste_slope: Slope of AI research taste
+        progress_at_aa: Progress at coding automation anchor
+        ai_research_taste_at_coding_automation_anchor_sd: SD of taste at anchor
+        human_only: If True, compute human-only trajectory (no automation)
+
     Returns:
         [dP/dt, dRS/dt] - rates for both state variables
     """
@@ -317,10 +364,6 @@ def progress_rate_at_time(t: float, state: List[float], time_series_data: TimeSe
 
     cumulative_progress, research_stock = state
 
-    model_progress = cumulative_progress
-
-    if params.is_blacksite:
-        model_progress = max(cumulative_progress, params.blacksite_initial_model_progress)
     if not np.isfinite(cumulative_progress):
         logger.warning(f"Invalid cumulative progress: {cumulative_progress}")
         cumulative_progress = 0.0
@@ -330,14 +373,11 @@ def progress_rate_at_time(t: float, state: List[float], time_series_data: TimeSe
 
     # Validate time is within reasonable bounds
     time_min, time_max = time_series_data.time.min(), time_series_data.time.max()
-    if t < time_min - cfg.TIME_EXTRAPOLATION_WINDOW or t > time_max + cfg.TIME_EXTRAPOLATION_WINDOW:  # Allow some extrapolation
+    if t < time_min - cfg.TIME_EXTRAPOLATION_WINDOW or t > time_max + cfg.TIME_EXTRAPOLATION_WINDOW:
         logger.warning(f"Time {t} far outside data range [{time_min}, {time_max}]")
 
     try:
-        # Interpolate time series data to time t with validation
-        # Use log-space interpolation for exponentially growing variables
-        # This prevents scalloping on log plots and handles exponential growth better
-        # NOTE: Logs are precomputed in TimeSeriesData.__post_init__ to avoid redundant computation
+        # Interpolate time series data to time t
         if time_series_data.can_use_log_L_HUMAN:
             L_HUMAN = np.exp(np.interp(t, time_series_data.time, time_series_data.log_L_HUMAN))
         else:
@@ -366,74 +406,59 @@ def progress_rate_at_time(t: float, state: List[float], time_series_data: TimeSe
         experiment_compute = max(0.0, experiment_compute)
         training_compute_growth_rate = max(0.0, training_compute_growth_rate)
 
-        if params.human_only:
-            automation_fraction = 0.0
+        if human_only:
             aggregate_research_taste = 1.0
-            coding_labor = compute_coding_labor_deprecated(None, inference_compute, L_HUMAN, params.rho_coding_labor, params.parallel_penalty, params.coding_labor_normalization, human_only=True)
+            coding_labor = compute_coding_labor_deprecated(
+                None, inference_compute, L_HUMAN,
+                rho_coding_labor, parallel_penalty, coding_labor_normalization,
+                human_only=True
+            )
         else:
             # Compute automation fraction from cumulative progress
-            automation_fraction = compute_automation_fraction(model_progress, params)
+            automation_fraction = compute_automation_fraction(cumulative_progress, automation_model)
             if not (0 <= automation_fraction <= 1):
                 logger.warning(f"Invalid automation fraction {automation_fraction} at progress {cumulative_progress}")
                 automation_fraction = np.clip(automation_fraction, 0.0, 1.0)
 
             # Compute AI research taste and aggregate research taste
-            ai_research_taste = compute_ai_research_taste(model_progress, params)
-            aggregate_research_taste = compute_aggregate_research_taste(ai_research_taste, params.taste_distribution)
+            ai_research_taste = compute_ai_research_taste(
+                cumulative_progress,
+                taste_distribution,
+                ai_research_taste_slope,
+                progress_at_aa,
+                ai_research_taste_at_coding_automation_anchor_sd,
+            )
+            aggregate_research_taste = compute_aggregate_research_taste(ai_research_taste, taste_distribution)
 
-            # Compute cognitive output with validation
-            if getattr(params, 'coding_labor_mode', 'simple_ces') == 'optimal_ces':
-                # Map model quantities to H, C, E (E is effective compute)
-                H = float(L_HUMAN)
-                C = float(inference_compute)
-                logE = float(np.log(cfg.BASE_FOR_SOFTWARE_LOM) * model_progress)
-                try:
-                    # Build or reuse AutomationModel for frontier (uses current anchors)
-                    automation_model = params.automation_model
-                    L_opt = automation_model.coding_labor_optimal_ces(H, C, logE, params)
-                    # Match units with compute_coding_labor_deprecated: apply parallel_penalty and normalization
-                    coding_labor = float((L_opt ** params.parallel_penalty) * params.coding_labor_normalization)
-                except Exception as e:
-                    if should_reraise(e):
-                        raise
-                    logger.warning(f"Falling back to simple CES due to optimal_ces error: {e}")
-                    coding_labor = compute_coding_labor_deprecated(automation_fraction, inference_compute, L_HUMAN, params.rho_coding_labor, params.parallel_penalty, params.coding_labor_normalization)
-            else:
-                coding_labor = compute_coding_labor_deprecated(
-                    automation_fraction, inference_compute, L_HUMAN, params.rho_coding_labor, params.parallel_penalty, params.coding_labor_normalization
-                )
+            # Compute coding labor
+            coding_labor = compute_coding_labor_deprecated(
+                automation_fraction, inference_compute, L_HUMAN,
+                rho_coding_labor, parallel_penalty, coding_labor_normalization
+            )
 
         if not np.isfinite(coding_labor) or coding_labor < 0:
             logger.warning(f"Invalid cognitive output: {coding_labor}")
             return [0.0, 0.0]
 
-        # Compute research stock rate (dRS/dt) with validation, now named research effort
+        # Compute research effort
         research_effort = compute_research_effort(
-            experiment_compute, coding_labor, params.alpha_experiment_capacity, params.rho_experiment_capacity, params.experiment_compute_exponent, aggregate_research_taste
+            experiment_compute, coding_labor,
+            alpha_experiment_capacity, rho_experiment_capacity, experiment_compute_exponent,
+            aggregate_research_taste
         )
 
         if not np.isfinite(research_effort) or research_effort < 0:
             logger.warning(f"Invalid research stock rate: {research_effort}")
             return [0.0, 0.0]
 
-        # Compute software progress rate using research stock formulation
+        # Compute software progress rate
         software_progress_rate = compute_software_progress_rate(
-                research_stock, research_effort,
-                params.r_software
-            )
-
+            research_stock, research_effort, r_software
+        )
 
         if not np.isfinite(software_progress_rate) or software_progress_rate < 0:
             logger.warning(f"Invalid software progress rate: {software_progress_rate}")
             return [0.0, 0.0]
-
-        #PLAN A OVERRIDES
-        if params.plan_a_mode:
-            if params.is_blacksite:
-                if params.sw_leaks_to_blacksite:
-                    software_progress_rate = max(software_progress_rate, np.interp(t, params.main_site.results['times'], params.main_site.results['software_progress_rates']))
-            elif t >= params.plan_a_start_time:
-                software_progress_rate = params.main_project_software_progress_rate
 
         # Compute overall progress rate (dP/dt)
         overall_rate = compute_overall_progress_rate(
@@ -451,14 +476,12 @@ def progress_rate_at_time(t: float, state: List[float], time_series_data: TimeSe
             overall_rate = cfg.MAX_NORMALIZED_PROGRESS_RATE
 
         logger.debug(f"t={t:.2f}, progress={cumulative_progress:.3f}, research_stock={research_stock:.3f}, "
-                    f"automation={automation_fraction:.3f}, dP/dt={overall_rate:.3f}, dRS/dt={research_effort:.3f}")
-
+                    f"dP/dt={overall_rate:.3f}, dRS/dt={research_effort:.3f}")
 
         return [overall_rate, research_effort]
 
     except Exception as e:
-        # Don't swallow timeout/interrupt exceptions - let them propagate
         if isinstance(e, (KeyboardInterrupt, SystemExit)) or 'TimeoutError' in type(e).__name__:
             raise
         logger.error(f"Error computing rates at t={t}, state={state}: {e}")
-        return [0.0, 0.0]  # Return zero rates on any error
+        return [0.0, 0.0]

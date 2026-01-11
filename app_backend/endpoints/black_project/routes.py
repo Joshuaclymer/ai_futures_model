@@ -20,8 +20,8 @@ from .defaults import get_default_parameters
 
 logger = logging.getLogger(__name__)
 
-# Cache configuration - set USE_CACHE=false in env to disable
-USE_CACHE = os.environ.get("USE_CACHE", "true").lower() == "true"
+# Cache configuration - set USE_CACHE=true in env to enable
+USE_CACHE = os.environ.get("USE_CACHE", "false").lower() == "true"
 CACHE_DIR = Path(__file__).parent.parent.parent / "cache"
 
 

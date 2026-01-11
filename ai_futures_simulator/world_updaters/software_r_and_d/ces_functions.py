@@ -9,7 +9,7 @@ progress model for combining inputs like human labor, AI labor, and compute.
 import numpy as np
 from scipy import optimize
 import logging
-import model_config as cfg
+from . import model_config as cfg
 from .utils import should_reraise
 
 logger = logging.getLogger(__name__)

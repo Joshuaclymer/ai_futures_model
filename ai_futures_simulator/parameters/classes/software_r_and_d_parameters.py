@@ -10,107 +10,87 @@ Contains parameters for:
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Union
+
+from parameters.classes.base_spec import BaseSpec
+from parameters.distribution_spec import ParamValue
 
 
 @dataclass
-class SoftwareRAndDParameters:
+class SoftwareRAndDParameters(BaseSpec):
     """
     All parameters for AI Software R&D / takeoff model.
 
     Parameters are organized into logical groups matching the model structure.
     """
 
-    # =========================================================================
-    # MODE FLAGS
-    # =========================================================================
-    update_software_progress: bool
-
-    # =========================================================================
-    # PRODUCTION FUNCTION PARAMETERS (CES)
-    # =========================================================================
+    # Mode flags
+    update_software_progress: ParamValue = None
 
     # Coding labor CES
-    rho_coding_labor: float  # Elasticity of substitution parameter
-    coding_labor_normalization: float  # Normalization constant
+    rho_coding_labor: ParamValue = None
+    coding_labor_normalization: ParamValue = None
 
     # Experiment capacity CES
-    direct_input_exp_cap_ces_params: bool  # If True, use direct CES params; else derive from asymptotes
-    rho_experiment_capacity: float  # Elasticity of substitution
-    alpha_experiment_capacity: float  # Labor share parameter
-    experiment_compute_exponent: float  # Exponent on compute in production
+    direct_input_exp_cap_ces_params: ParamValue = None
+    rho_experiment_capacity: ParamValue = None
+    alpha_experiment_capacity: ParamValue = None
+    experiment_compute_exponent: ParamValue = None
 
-    # Experiment capacity asymptotes (used when direct_input_exp_cap_ces_params=False)
-    inf_labor_asymptote: float  # Asymptote as labor -> infinity
-    inf_compute_asymptote: float  # Asymptote as compute -> infinity
-    labor_anchor_exp_cap: float  # Labor anchor point for calibration
-    compute_anchor_exp_cap: Optional[float]  # Compute anchor (if None, derived from inverse)
-    inv_compute_anchor_exp_cap: float  # Inverse of compute anchor (1/compute)
+    # Experiment capacity asymptotes
+    inf_labor_asymptote: ParamValue = None
+    inf_compute_asymptote: ParamValue = None
+    labor_anchor_exp_cap: ParamValue = None
+    compute_anchor_exp_cap: ParamValue = None
+    inv_compute_anchor_exp_cap: ParamValue = None
 
     # Parallel penalty
-    parallel_penalty: float  # Penalty for parallel research efforts
+    parallel_penalty: ParamValue = None
 
-    # =========================================================================
-    # SOFTWARE PROGRESS PARAMETERS
-    # =========================================================================
+    # Software progress parameters
+    r_software: ParamValue = None
+    software_progress_rate_at_reference_year: ParamValue = None
 
-    r_software: float  # Returns to software R&D (exponent in progress function)
-    software_progress_rate_at_reference_year: float  # Calibration point
-
-    # =========================================================================
-    # AUTOMATION SCHEDULE PARAMETERS
-    # =========================================================================
-
-    # Automation fraction dynamics
-    automation_fraction_at_coding_automation_anchor: float  # Automation at anchor progress
-    automation_anchors: Optional[Dict[float, float]]  # Progress -> automation fraction map
-    automation_interp_type: str  # Interpolation type: "linear", "logistic", etc.
-    automation_logistic_asymptote: float  # Max automation fraction (for logistic)
-    swe_multiplier_at_present_day: float  # SWE productivity multiplier at present
+    # Automation schedule parameters
+    automation_fraction_at_coding_automation_anchor: ParamValue = None
+    automation_anchors: ParamValue = None
+    automation_interp_type: ParamValue = None
+    automation_logistic_asymptote: ParamValue = None
+    swe_multiplier_at_present_day: ParamValue = None
 
     # Coding labor mode
-    coding_labor_mode: str  # "simple" or "optimal_ces"
-    coding_automation_efficiency_slope: float  # How quickly automation improves with progress
-    optimal_ces_eta_init: float  # Initial eta for optimal CES
-    optimal_ces_grid_size: int  # Grid size for optimal CES computation
-    optimal_ces_frontier_tail_eps: float  # Epsilon for frontier tail
-    optimal_ces_frontier_cap: float  # Cap on frontier
-    max_serial_coding_labor_multiplier: float  # Max multiplier on serial coding labor
+    coding_labor_mode: ParamValue = None
+    coding_automation_efficiency_slope: ParamValue = None
+    optimal_ces_eta_init: ParamValue = None
+    optimal_ces_grid_size: ParamValue = None
+    optimal_ces_frontier_tail_eps: ParamValue = None
+    optimal_ces_frontier_cap: ParamValue = None
+    max_serial_coding_labor_multiplier: ParamValue = None
 
-    # =========================================================================
-    # AI RESEARCH TASTE PARAMETERS
-    # =========================================================================
+    # AI research taste parameters
+    ai_research_taste_at_coding_automation_anchor_sd: ParamValue = None
+    ai_research_taste_slope: ParamValue = None
+    taste_schedule_type: ParamValue = None
+    median_to_top_taste_multiplier: ParamValue = None
+    top_percentile: ParamValue = None
+    taste_limit: ParamValue = None
+    taste_limit_smoothing: ParamValue = None
 
-    ai_research_taste_at_coding_automation_anchor_sd: float  # AI research taste at anchor (SD units)
-    ai_research_taste_slope: float  # Slope of taste schedule
-    taste_schedule_type: str  # "linear", "logistic", etc.
-    median_to_top_taste_multiplier: float  # Ratio of top to median taste
-    top_percentile: float  # Percentile considered "top"
-    taste_limit: float  # Upper limit on taste
-    taste_limit_smoothing: float  # Smoothing parameter for taste limit
-
-    # =========================================================================
-    # HORIZON / MILESTONE PARAMETERS
-    # =========================================================================
-
-    progress_at_aa: Optional[float]  # Progress at advanced automation milestone
-    ac_time_horizon_minutes: float  # Autonomy time horizon in minutes
-    pre_gap_ac_time_horizon: float  # Horizon before capability gap
-    horizon_extrapolation_type: str  # "linear", "exponential", etc.
+    # Horizon / milestone parameters
+    progress_at_aa: ParamValue = None
+    ac_time_horizon_minutes: ParamValue = None
+    pre_gap_ac_time_horizon: ParamValue = None
+    horizon_extrapolation_type: ParamValue = None
 
     # Manual horizon fitting parameters
-    present_day: float  # Reference year for calibration
-    present_horizon: float  # Horizon at present day
-    present_doubling_time: float  # Time for horizon to double
-    doubling_difficulty_growth_factor: float  # Growth factor for doubling difficulty
+    present_day: ParamValue = None
+    present_horizon: ParamValue = None
+    present_doubling_time: ParamValue = None
+    doubling_difficulty_growth_factor: ParamValue = None
 
-    # Milestone multipliers (years to reach milestone = base * multiplier)
-    strat_ai_m2b: float  # Strategic AI milestone multiplier
-    ted_ai_m2b: float  # Ted AI milestone multiplier
+    # Milestone multipliers
+    strat_ai_m2b: ParamValue = None
+    ted_ai_m2b: ParamValue = None
 
-    # =========================================================================
-    # GAP MODE PARAMETERS
-    # =========================================================================
-
-    include_gap: Union[str, bool]  # Whether to include capability gap
-    gap_years: float  # Duration of capability gap in years
+    # Gap mode parameters
+    include_gap: ParamValue = None
+    gap_years: ParamValue = None

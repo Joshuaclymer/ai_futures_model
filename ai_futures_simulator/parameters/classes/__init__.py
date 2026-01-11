@@ -2,8 +2,10 @@
 Parameter dataclass definitions.
 
 This module exports all parameter dataclasses used by the simulation.
+All classes can hold either concrete values or distribution specs.
 """
 
+from parameters.classes.base_spec import BaseSpec
 from parameters.classes.software_r_and_d_parameters import SoftwareRAndDParameters
 from parameters.classes.compute_parameters import (
     ComputeParameters,
@@ -42,6 +44,8 @@ from parameters.classes.simulation_parameters import (
 )
 
 __all__ = [
+    # Base
+    "BaseSpec",
     # Software R&D
     "SoftwareRAndDParameters",
     # Compute

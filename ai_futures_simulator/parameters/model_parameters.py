@@ -2,7 +2,10 @@
 Model parameters with factory/sampling methods for Monte Carlo simulations.
 
 ModelParameters defines distributions for Monte Carlo sampling loaded from YAML.
-Use ModelParameters.from_yaml() to load and .sample() to generate SimulationParameters.
+Use ModelParameters.from_yaml() to load and .sample() to generate sampled parameters.
+
+After sampling, parameters are calibrated (e.g., computing r_software, automation anchors)
+before being returned. This ensures world updaters receive fully-determined parameters.
 """
 
 import numpy as np
@@ -11,33 +14,8 @@ from typing import Optional, Dict, Any, Union, List
 from pathlib import Path
 import yaml
 
-from parameters.sample_from_distribution import (
-    sample_from_distribution,
-    get_modal_value,
-)
-
-# Import parameter classes
-from parameters.classes import (
-    SimulationSettings,
-    SimulationParameters,
-    SoftwareRAndDParameters,
-    ComputeParameters,
-    ExogenousComputeTrends,
-    SurvivalRateParameters,
-    USComputeParameters,
-    PRCComputeParameters,
-    ComputeAllocations,
-    PolicyParameters,
-    DataCenterAndEnergyParameters,
-    PRCDataCenterAndEnergyParameters,
-    BlackProjectParameters,
-    BlackProjectProperties,
-    PerceptionsParameters,
-    BlackProjectPerceptionsParameters,
-    AIResearcherHeadcountParameters,
-    USResearcherParameters,
-    PRCResearcherParameters,
-)
+from parameters.classes import SimulationParameters
+from parameters.calibrate import calibrate_from_params
 
 
 @dataclass
@@ -65,33 +43,11 @@ class ModelParameters:
         compute:
           exogenous_trends:
             transistor_density_scaling_exponent: 1.49
-          survival_rate_parameters:
-            initial_annual_hazard_rate: 0.05
-          us_compute:
-            total_us_compute_tpp_h100e_in_2025: 401083.33
-          prc_compute:
-            total_prc_compute_tpp_h100e_in_2025: 100000.0
-
-        policy:
-          ai_slowdown_start_year: 2030.0
-
-        black_project:
-          run_a_black_project: true
-          black_project_start_year: 2030.0
-          properties:
-            total_labor: 10000
-            ...
+          ...
     """
 
-    # Nested parameter specifications
-    settings: Dict[str, Any] = field(default_factory=dict)
-    software_r_and_d: Dict[str, Any] = field(default_factory=dict)
-    compute: Dict[str, Any] = field(default_factory=dict)
-    datacenter_and_energy: Dict[str, Any] = field(default_factory=dict)
-    policy: Dict[str, Any] = field(default_factory=dict)
-    ai_researcher_headcount: Optional[Dict[str, Any]] = None
-    black_project: Optional[Dict[str, Any]] = None
-    perceptions: Optional[Dict[str, Any]] = None
+    # All simulation parameters (nested structure)
+    params: SimulationParameters = field(default_factory=SimulationParameters)
 
     # Correlation matrix specification (optional)
     correlation_matrix: Optional[Dict[str, Any]] = None
@@ -116,50 +72,20 @@ class ModelParameters:
         with open(path, "r") as f:
             config = yaml.safe_load(f)
 
-        # All parameters must be specified in YAML - no fallbacks
         return cls(
-            settings=config["settings"],
-            software_r_and_d=config["software_r_and_d"],
-            compute=config["compute"],
-            datacenter_and_energy=config["datacenter_and_energy"],
-            policy=config["policy"],
-            ai_researcher_headcount=config.get("ai_researcher_headcount"),
-            black_project=config.get("black_project"),
-            perceptions=config.get("perceptions"),
+            params=SimulationParameters.from_dict(config),
             correlation_matrix=config.get("correlation_matrix"),
             seed=config["seed"],
             initial_progress=config["initial_progress"],
         )
 
-    def _sample_nested_dict(
-        self,
-        config: Dict[str, Any],
-        rng: np.random.Generator
-    ) -> Dict[str, Any]:
-        """Sample values from a nested dict, handling distributions at any level."""
-        result = {}
-        for key, value in config.items():
-            if isinstance(value, dict):
-                # Check if this dict is a distribution spec
-                if "dist" in value:
-                    result[key] = sample_from_distribution(value, rng, key)
-                else:
-                    # Recurse into nested dict
-                    result[key] = self._sample_nested_dict(value, rng)
-            elif isinstance(value, list):
-                # Handle lists (e.g., localization curves) - pass through as-is
-                # Convert to list of tuples if it's a list of lists (for localization)
-                if value and isinstance(value[0], list):
-                    result[key] = [tuple(item) for item in value]
-                else:
-                    result[key] = value
-            else:
-                result[key] = value
-        return result
-
     def sample(self, rng: Optional[np.random.Generator] = None) -> SimulationParameters:
         """
         Sample a set of simulation parameters from the distributions.
+
+        After sampling, runs calibration to compute derived parameters
+        (r_software, automation anchors, etc.) so world updaters receive
+        fully-determined parameters.
 
         Args:
             rng: NumPy random generator. If None, uses an internal generator
@@ -167,99 +93,24 @@ class ModelParameters:
                  with each call, ensuring different samples each time.
 
         Returns:
-            SimulationParameters instance with sampled values.
+            SimulationParameters instance with sampled and calibrated values.
         """
         if rng is None:
-            # Use internal random generator that advances with each call
-            # This ensures different samples when sample() is called repeatedly
             if self._rng is None:
                 self._rng = np.random.default_rng(self.seed)
             rng = self._rng
             self._sample_count += 1
 
-        # Sample settings
-        sampled_settings = {}
-        for param_name, dist_spec in self.settings.items():
-            sampled_settings[param_name] = sample_from_distribution(dist_spec, rng, param_name)
+        params = self.params.sample(rng)
 
-        # Sample software_r_and_d parameters
-        sampled_r_and_d = {}
-        for param_name, dist_spec in self.software_r_and_d.items():
-            sampled_r_and_d[param_name] = sample_from_distribution(dist_spec, rng, param_name)
-
-        # Sample compute parameters (nested structure)
-        sampled_compute = self._sample_nested_dict(self.compute, rng)
-
-        # Sample datacenter_and_energy parameters (nested structure)
-        sampled_dc_energy = self._sample_nested_dict(self.datacenter_and_energy, rng)
-
-        # Sample policy parameters
-        sampled_policy = self._sample_nested_dict(self.policy, rng)
-
-        # Build parameter objects
-        settings = SimulationSettings(**sampled_settings)
-        software_r_and_d = SoftwareRAndDParameters(**sampled_r_and_d)
-
-        # Build nested compute parameters - all values must be in YAML
-        compute = ComputeParameters(
-            exogenous_trends=ExogenousComputeTrends(**sampled_compute["exogenous_trends"]),
-            survival_rate_parameters=SurvivalRateParameters(**sampled_compute["survival_rate_parameters"]),
-            USComputeParameters=USComputeParameters(**sampled_compute["us_compute"]),
-            PRCComputeParameters=PRCComputeParameters(**sampled_compute["prc_compute"]),
-            compute_allocations=ComputeAllocations(**sampled_compute["compute_allocations"]),
-        )
-
-        # Build nested datacenter and energy parameters - all values must be in YAML
-        datacenter_and_energy = DataCenterAndEnergyParameters(
-            prc_energy_consumption=PRCDataCenterAndEnergyParameters(**sampled_dc_energy["prc_energy_consumption"]),
-        )
-
-        policy = PolicyParameters(**sampled_policy)
-
-        # Build black project parameters if present - all values must be in YAML
-        black_project = None
-        if self.black_project is not None:
-            sampled_bp = self._sample_nested_dict(self.black_project, rng)
-            black_project = BlackProjectParameters(
-                run_a_black_project=sampled_bp["run_a_black_project"],
-                black_project_start_year=sampled_bp["black_project_start_year"],
-                black_project_properties=BlackProjectProperties(**sampled_bp["properties"]),
+        # Run calibration to compute derived parameters
+        if params.software_r_and_d is not None:
+            start_year = float(params.settings.simulation_start_year) if params.settings else 2026.0
+            params.software_r_and_d_calibrated = calibrate_from_params(
+                params.software_r_and_d, start_year=start_year
             )
 
-        # Build perceptions parameters if present - all values must be in YAML
-        perceptions = None
-        if self.perceptions is not None:
-            sampled_perceptions = self._sample_nested_dict(self.perceptions, rng)
-            perceptions = PerceptionsParameters(
-                update_perceptions=sampled_perceptions["update_perceptions"],
-                black_project_perception_parameters=BlackProjectPerceptionsParameters(
-                    **sampled_perceptions["black_project_perception_parameters"]
-                ),
-            )
-
-        # Build AI researcher headcount parameters if present - all values must be in YAML
-        ai_researcher_headcount = None
-        if self.ai_researcher_headcount is not None:
-            sampled_researchers = self._sample_nested_dict(self.ai_researcher_headcount, rng)
-            ai_researcher_headcount = AIResearcherHeadcountParameters(
-                us_researchers=USResearcherParameters(**sampled_researchers["us_researchers"]),
-                prc_researchers=PRCResearcherParameters(**sampled_researchers["prc_researchers"]),
-                initial_global_ai_researcher_headcount=sampled_researchers["initial_global_ai_researcher_headcount"],
-                annual_growth_rate_of_ai_researcher_headcount=sampled_researchers["annual_growth_rate_of_ai_researcher_headcount"],
-                proportion_of_global_ai_researchers_in_us=sampled_researchers["proportion_of_global_ai_researchers_in_us"],
-                proportion_of_global_ai_researchers_in_prc=sampled_researchers["proportion_of_global_ai_researchers_in_prc"],
-            )
-
-        return SimulationParameters(
-            settings=settings,
-            software_r_and_d=software_r_and_d,
-            compute=compute,
-            datacenter_and_energy=datacenter_and_energy,
-            policy=policy,
-            ai_researcher_headcount=ai_researcher_headcount,
-            black_project=black_project,
-            perceptions=perceptions,
-        )
+        return params
 
     def sample_many(
         self,
@@ -281,120 +132,25 @@ class ModelParameters:
 
         return [self.sample(rng) for _ in range(num_samples)]
 
-    def _get_modal_nested_dict(
-        self,
-        config: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """Get modal values from a nested dict, handling distributions at any level."""
-        result = {}
-        for key, value in config.items():
-            if isinstance(value, dict):
-                # Check if this dict is a distribution spec
-                if "dist" in value:
-                    result[key] = get_modal_value(value, key)
-                else:
-                    # Recurse into nested dict
-                    result[key] = self._get_modal_nested_dict(value)
-            elif isinstance(value, list):
-                # Handle lists (e.g., localization curves) - pass through as-is
-                if value and isinstance(value[0], list):
-                    result[key] = [tuple(item) for item in value]
-                else:
-                    result[key] = value
-            else:
-                result[key] = value
-        return result
-
     def sample_modal(self) -> SimulationParameters:
         """
-        Create a SimulationParameters using the modal (most likely) values for all distributions.
+        Create parameters using the modal (most likely) values for all distributions.
 
         This produces a single "most likely" trajectory rather than a random sample.
         Useful for generating a baseline or representative simulation.
 
+        After getting modal values, runs calibration to compute derived parameters.
+
         Returns:
-            SimulationParameters instance with modal values.
+            SimulationParameters instance with modal and calibrated values.
         """
-        # Get modal values for settings
-        modal_settings = {}
-        for param_name, dist_spec in self.settings.items():
-            modal_settings[param_name] = get_modal_value(dist_spec, param_name)
+        params = self.params.get_modal()
 
-        # Get modal values for software_r_and_d parameters
-        modal_r_and_d = {}
-        for param_name, dist_spec in self.software_r_and_d.items():
-            modal_r_and_d[param_name] = get_modal_value(dist_spec, param_name)
-
-        # Get modal values for compute parameters (nested structure)
-        modal_compute = self._get_modal_nested_dict(self.compute)
-
-        # Get modal values for datacenter_and_energy parameters (nested structure)
-        modal_dc_energy = self._get_modal_nested_dict(self.datacenter_and_energy)
-
-        # Get modal values for policy parameters
-        modal_policy = self._get_modal_nested_dict(self.policy)
-
-        # Build parameter objects
-        settings = SimulationSettings(**modal_settings)
-        software_r_and_d = SoftwareRAndDParameters(**modal_r_and_d)
-
-        # Build nested compute parameters - all values must be in YAML
-        compute = ComputeParameters(
-            exogenous_trends=ExogenousComputeTrends(**modal_compute["exogenous_trends"]),
-            survival_rate_parameters=SurvivalRateParameters(**modal_compute["survival_rate_parameters"]),
-            USComputeParameters=USComputeParameters(**modal_compute["us_compute"]),
-            PRCComputeParameters=PRCComputeParameters(**modal_compute["prc_compute"]),
-            compute_allocations=ComputeAllocations(**modal_compute["compute_allocations"]),
-        )
-
-        # Build nested datacenter and energy parameters - all values must be in YAML
-        datacenter_and_energy = DataCenterAndEnergyParameters(
-            prc_energy_consumption=PRCDataCenterAndEnergyParameters(**modal_dc_energy["prc_energy_consumption"]),
-        )
-
-        policy = PolicyParameters(**modal_policy)
-
-        # Build black project parameters if present - all values must be in YAML
-        black_project = None
-        if self.black_project is not None:
-            modal_bp = self._get_modal_nested_dict(self.black_project)
-            black_project = BlackProjectParameters(
-                run_a_black_project=modal_bp["run_a_black_project"],
-                black_project_start_year=modal_bp["black_project_start_year"],
-                black_project_properties=BlackProjectProperties(**modal_bp["properties"]),
+        # Run calibration to compute derived parameters
+        if params.software_r_and_d is not None:
+            start_year = float(params.settings.simulation_start_year) if params.settings else 2026.0
+            params.software_r_and_d_calibrated = calibrate_from_params(
+                params.software_r_and_d, start_year=start_year
             )
 
-        # Build perceptions parameters if present - all values must be in YAML
-        perceptions = None
-        if self.perceptions is not None:
-            modal_perceptions = self._get_modal_nested_dict(self.perceptions)
-            perceptions = PerceptionsParameters(
-                update_perceptions=modal_perceptions["update_perceptions"],
-                black_project_perception_parameters=BlackProjectPerceptionsParameters(
-                    **modal_perceptions["black_project_perception_parameters"]
-                ),
-            )
-
-        # Build AI researcher headcount parameters if present - all values must be in YAML
-        ai_researcher_headcount = None
-        if self.ai_researcher_headcount is not None:
-            modal_researchers = self._get_modal_nested_dict(self.ai_researcher_headcount)
-            ai_researcher_headcount = AIResearcherHeadcountParameters(
-                us_researchers=USResearcherParameters(**modal_researchers["us_researchers"]),
-                prc_researchers=PRCResearcherParameters(**modal_researchers["prc_researchers"]),
-                initial_global_ai_researcher_headcount=modal_researchers["initial_global_ai_researcher_headcount"],
-                annual_growth_rate_of_ai_researcher_headcount=modal_researchers["annual_growth_rate_of_ai_researcher_headcount"],
-                proportion_of_global_ai_researchers_in_us=modal_researchers["proportion_of_global_ai_researchers_in_us"],
-                proportion_of_global_ai_researchers_in_prc=modal_researchers["proportion_of_global_ai_researchers_in_prc"],
-            )
-
-        return SimulationParameters(
-            settings=settings,
-            software_r_and_d=software_r_and_d,
-            compute=compute,
-            datacenter_and_energy=datacenter_and_energy,
-            policy=policy,
-            ai_researcher_headcount=ai_researcher_headcount,
-            black_project=black_project,
-            perceptions=perceptions,
-        )
+        return params

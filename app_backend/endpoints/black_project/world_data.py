@@ -196,8 +196,8 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
             bp_data['fab_transistor_density_relative_to_h100'] = to_float(final_bp.fab_transistor_density_relative_to_h100) if hasattr(final_bp, 'fab_transistor_density_relative_to_h100') else 0.0
             bp_data['fab_process_node_nm'] = to_float(final_bp.fab_process_node_nm) if hasattr(final_bp, 'fab_process_node_nm') else 28.0
             bp_data['fab_chips_per_wafer'] = to_float(final_bp.fab_chips_per_wafer) if hasattr(final_bp, 'fab_chips_per_wafer') else 28
-            # Fab construction timing
-            bp_data['fab_construction_start_year'] = to_float(final_bp.fab_construction_start_year) if hasattr(final_bp, 'fab_construction_start_year') else 2030.0
+            # Fab construction timing - fab construction starts at preparation_start_year (black_project_start_year)
+            bp_data['fab_construction_start_year'] = to_float(final_bp.preparation_start_year) if hasattr(final_bp, 'preparation_start_year') else 2029.0
             bp_data['fab_construction_duration'] = to_float(final_bp.fab_construction_duration) if hasattr(final_bp, 'fab_construction_duration') else 1.5
             # Extract watts_per_h100e for fab
             fab_watts = to_float(final_bp.fab_watts_per_chip) if hasattr(final_bp, 'fab_watts_per_chip') else 700.0

@@ -93,7 +93,8 @@ class AISoftwareDeveloper(Entity):
 class AIBlackProject(AISoftwareDeveloper):
     # State: All black project properties at any given point in time
     parent_nation: Nation = field(metadata={'is_state': True})
-    preparation_start_year : float = field(metadata={'is_state': True})
+    preparation_start_year: float = field(metadata={'is_state': True})  # black_project_start_year - when black project begins, fab/datacenter construction starts, detection risk begins
+    agreement_year: float = field(metadata={'is_state': True})  # ai_slowdown_start_year - stored for reference only, NOT used for construction/detection timing
 
     ## Fab
     fab_process_node_nm: float = field(metadata={'is_state': True})

@@ -2,52 +2,52 @@
   "generated_at": "2025-12-04T00:57:16.300366+00:00",
   "config_source": "/Users/elilifland/Documents/git/ai-futures-calculator/model_config.py",
   "raw_defaults": {
-    "rho_coding_labor": -2,
-    "direct_input_exp_cap_ces_params": false,
-    "r_software": 2.4,
-    "software_progress_rate_at_reference_year": 1,
-    "automation_fraction_at_coding_automation_anchor": 1,
-    "swe_multiplier_at_present_day": 1.6,
-    "automation_interp_type": "logistic",
-    "automation_logistic_asymptote": 1.1,
-    "coding_labor_normalization": 1,
-    "ai_research_taste_at_coding_automation_anchor_sd": 0.5,
-    "ai_research_taste_at_coding_automation_anchor_fallback": 1,
-    "ai_research_taste_slope": 2.2,
-    "taste_schedule_type": "SDs per progress-year",
-    "progress_at_aa": null,
-    "ac_time_horizon_minutes": 12000000.0,
-    "automation_anchors": null,
-    "present_day": 2025.6,
-    "present_horizon": 26,
-    "present_doubling_time": 0.458,
-    "doubling_difficulty_growth_factor": 0.92,
-    "horizon_extrapolation_type": "decaying doubling time",
-    "inf_labor_asymptote": 15.0,
-    "inf_compute_asymptote": 1000,
-    "labor_anchor_exp_cap": 1.6,
-    "compute_anchor_exp_cap": null,
-    "inv_compute_anchor_exp_cap": 2.8,
-    "rho_experiment_capacity": -0.155,
-    "alpha_experiment_capacity": 0.777,
-    "experiment_compute_exponent": 0.655,
-    "parallel_penalty": 0.5,
-    "include_gap": "no gap",
-    "gap_years": 1.5,
-    "pre_gap_ac_time_horizon": 124600.0,
-    "median_to_top_taste_multiplier": 3.7,
-    "top_percentile": 0.999,
-    "taste_limit": 8,
-    "taste_limit_smoothing": 0.51,
-    "strat_ai_m2b": 2.0,
-    "ted_ai_m2b": 3.0,
-    "coding_automation_efficiency_slope": 3.0,
-    "optimal_ces_eta_init": 0.05,
-    "coding_labor_mode": "optimal_ces",
-    "optimal_ces_grid_size": 4096,
-    "optimal_ces_frontier_tail_eps": 1e-06,
-    "optimal_ces_frontier_cap": 1000000000000.0,
-    "max_serial_coding_labor_multiplier": 100000000.0,
+    "software_r_and_d.rho_coding_labor": -2,
+    "software_r_and_d.direct_input_exp_cap_ces_params": false,
+    "software_r_and_d.r_software": 2.4,
+    "software_r_and_d.software_progress_rate_at_reference_year": 1,
+    "software_r_and_d.automation_fraction_at_coding_automation_anchor": 1,
+    "software_r_and_d.swe_multiplier_at_present_day": 1.6,
+    "software_r_and_d.automation_interp_type": "logistic",
+    "software_r_and_d.automation_logistic_asymptote": 1.1,
+    "software_r_and_d.coding_labor_normalization": 1,
+    "software_r_and_d.ai_research_taste_at_coding_automation_anchor_sd": 0.5,
+    "software_r_and_d.ai_research_taste_at_coding_automation_anchor_fallback": 1,
+    "software_r_and_d.ai_research_taste_slope": 2.2,
+    "software_r_and_d.taste_schedule_type": "SDs per progress-year",
+    "software_r_and_d.progress_at_aa": null,
+    "software_r_and_d.ac_time_horizon_minutes": 12000000.0,
+    "software_r_and_d.automation_anchors": null,
+    "software_r_and_d.present_day": 2025.6,
+    "software_r_and_d.present_horizon": 26,
+    "software_r_and_d.present_doubling_time": 0.458,
+    "software_r_and_d.doubling_difficulty_growth_factor": 0.92,
+    "software_r_and_d.horizon_extrapolation_type": "decaying doubling time",
+    "software_r_and_d.inf_labor_asymptote": 15.0,
+    "software_r_and_d.inf_compute_asymptote": 1000,
+    "software_r_and_d.labor_anchor_exp_cap": 1.6,
+    "software_r_and_d.compute_anchor_exp_cap": null,
+    "software_r_and_d.inv_compute_anchor_exp_cap": 2.8,
+    "software_r_and_d.rho_experiment_capacity": -0.155,
+    "software_r_and_d.alpha_experiment_capacity": 0.777,
+    "software_r_and_d.experiment_compute_exponent": 0.655,
+    "software_r_and_d.parallel_penalty": 0.5,
+    "software_r_and_d.include_gap": "no gap",
+    "software_r_and_d.gap_years": 1.5,
+    "software_r_and_d.pre_gap_ac_time_horizon": 124600.0,
+    "software_r_and_d.median_to_top_taste_multiplier": 3.7,
+    "software_r_and_d.top_percentile": 0.999,
+    "software_r_and_d.taste_limit": 8,
+    "software_r_and_d.taste_limit_smoothing": 0.51,
+    "software_r_and_d.strat_ai_m2b": 2.0,
+    "software_r_and_d.ted_ai_m2b": 3.0,
+    "software_r_and_d.coding_automation_efficiency_slope": 3.0,
+    "software_r_and_d.optimal_ces_eta_init": 0.05,
+    "software_r_and_d.coding_labor_mode": "optimal_ces",
+    "software_r_and_d.optimal_ces_grid_size": 4096,
+    "software_r_and_d.optimal_ces_frontier_tail_eps": 1e-06,
+    "software_r_and_d.optimal_ces_frontier_cap": 1000000000000.0,
+    "software_r_and_d.max_serial_coding_labor_multiplier": 100000000.0,
     "sos_mode": false,
     "plan_a_mode": false,
     "is_blacksite": false,
@@ -66,158 +66,158 @@
     "blacksite_can_stack_training_compute": false,
     "blacksite_can_stack_software_progress": false,
     "blacksite_start_time": 2030.0,
-    "us_frontier_project_compute_growth_rate": 0.6
+    "compute.USComputeParameters.total_us_compute_annual_growth_rate": 0.6
   },
   "parameter_bounds": {
-    "rho_coding_labor": [
+    "software_r_and_d.rho_coding_labor": [
       -10,
       -1e-06
     ],
-    "rho_experiment_capacity": [
+    "software_r_and_d.rho_experiment_capacity": [
       -1,
       1
     ],
-    "alpha_experiment_capacity": [
+    "software_r_and_d.alpha_experiment_capacity": [
       0.001,
       0.999
     ],
-    "r_software": [
+    "software_r_and_d.r_software": [
       0.1,
       10
     ],
-    "software_progress_rate_at_reference_year": [
+    "software_r_and_d.software_progress_rate_at_reference_year": [
       0.05,
       10
     ],
-    "automation_fraction_at_coding_automation_anchor": [
+    "software_r_and_d.automation_fraction_at_coding_automation_anchor": [
       0.1,
       1.0
     ],
-    "swe_multiplier_at_present_day": [
+    "software_r_and_d.swe_multiplier_at_present_day": [
       1.0,
       10.0
     ],
-    "automation_logistic_asymptote": [
+    "software_r_and_d.automation_logistic_asymptote": [
       1.0001,
       2.0
     ],
-    "coding_labor_normalization": [
+    "software_r_and_d.coding_labor_normalization": [
       1e-05,
       10
     ],
-    "experiment_compute_exponent": [
+    "software_r_and_d.experiment_compute_exponent": [
       0.001,
       10.0
     ],
-    "ai_research_taste_at_coding_automation_anchor_sd": [
+    "software_r_and_d.ai_research_taste_at_coding_automation_anchor_sd": [
       -10,
       10
     ],
-    "ai_research_taste_slope": [
+    "software_r_and_d.ai_research_taste_slope": [
       0.1,
       10.0
     ],
-    "progress_at_aa": [
+    "software_r_and_d.progress_at_aa": [
       1.0,
       500
     ],
-    "ac_time_horizon_minutes": [
+    "software_r_and_d.ac_time_horizon_minutes": [
       60,
       100000000000
     ],
-    "pre_gap_ac_time_horizon": [
+    "software_r_and_d.pre_gap_ac_time_horizon": [
       60,
       100000000000
     ],
-    "present_day": [
+    "software_r_and_d.present_day": [
       2020.0,
       2030.0
     ],
-    "present_horizon": [
+    "software_r_and_d.present_horizon": [
       0.001,
       10000
     ],
-    "present_doubling_time": [
+    "software_r_and_d.present_doubling_time": [
       0.01,
       2
     ],
-    "doubling_difficulty_growth_factor": [
+    "software_r_and_d.doubling_difficulty_growth_factor": [
       0.5,
       1.5
     ],
-    "inf_labor_asymptote": [
+    "software_r_and_d.inf_labor_asymptote": [
       1,
       100000
     ],
-    "inf_compute_asymptote": [
+    "software_r_and_d.inf_compute_asymptote": [
       1,
       10000000
     ],
-    "labor_anchor_exp_cap": [
+    "software_r_and_d.labor_anchor_exp_cap": [
       1,
       10
     ],
-    "compute_anchor_exp_cap": [
+    "software_r_and_d.compute_anchor_exp_cap": [
       1,
       10
     ],
-    "inv_compute_anchor_exp_cap": [
+    "software_r_and_d.inv_compute_anchor_exp_cap": [
       1,
       10
     ],
-    "parallel_penalty": [
+    "software_r_and_d.parallel_penalty": [
       0.0,
       1.0
     ],
-    "median_to_top_taste_multiplier": [
+    "software_r_and_d.median_to_top_taste_multiplier": [
       1.01,
       100.0
     ],
-    "top_percentile": [
+    "software_r_and_d.top_percentile": [
       0.5,
       0.99999
     ],
-    "taste_limit": [
+    "software_r_and_d.taste_limit": [
       0,
       100
     ],
-    "taste_limit_smoothing": [
+    "software_r_and_d.taste_limit_smoothing": [
       0.001,
       0.999
     ],
-    "strat_ai_m2b": [
+    "software_r_and_d.strat_ai_m2b": [
       0.01,
       100.0
     ],
-    "ted_ai_m2b": [
+    "software_r_and_d.ted_ai_m2b": [
       0.01,
       100.0
     ],
-    "coding_automation_efficiency_slope": [
+    "software_r_and_d.coding_automation_efficiency_slope": [
       0.01,
       10.0
     ],
-    "optimal_ces_eta_init": [
+    "software_r_and_d.optimal_ces_eta_init": [
       1e-12,
       1000000000000.0
     ],
-    "optimal_ces_grid_size": [
+    "software_r_and_d.optimal_ces_grid_size": [
       256,
       16384
     ],
-    "optimal_ces_frontier_tail_eps": [
+    "software_r_and_d.optimal_ces_frontier_tail_eps": [
       1e-20,
       0.1
     ],
-    "optimal_ces_frontier_cap": [
+    "software_r_and_d.optimal_ces_frontier_cap": [
       1.0,
       1e+30
     ],
-    "max_serial_coding_labor_multiplier": [
+    "software_r_and_d.max_serial_coding_labor_multiplier": [
       1.0,
       1e+30
     ],
-    "coding_labor_mode": [
+    "software_r_and_d.coding_labor_mode": [
       0,
       1
     ],
@@ -257,7 +257,7 @@
       2025.0,
       2040.0
     ],
-    "us_frontier_project_compute_growth_rate": [
+    "compute.USComputeParameters.total_us_compute_annual_growth_rate": [
       0.0,
       2.0
     ]
@@ -275,48 +275,48 @@
     "decaying doubling time"
   ],
   "ui_defaults": {
-    "present_doubling_time": 0.458,
-    "ac_time_horizon_minutes": 7.079181246047625,
-    "doubling_difficulty_growth_factor": 0.92,
-    "rho_coding_labor": -2.0,
-    "rho_experiment_capacity": -0.155,
-    "alpha_experiment_capacity": 0.777,
-    "direct_input_exp_cap_ces_params": false,
-    "r_software": 2.4,
-    "software_progress_rate_at_reference_year": 1.0,
-    "coding_labor_normalization": 1.0,
-    "experiment_compute_exponent": 0.655,
-    "coding_labor_exponent": 0.5,
-    "automation_fraction_at_coding_automation_anchor": 1.0,
-    "automation_interp_type": "logistic",
-    "automation_logistic_asymptote": 1.1,
-    "swe_multiplier_at_present_day": 1.6,
-    "automation_anchors": null,
-    "ai_research_taste_at_coding_automation_anchor_sd": 0.5,
-    "ai_research_taste_slope": 2.2,
-    "taste_schedule_type": "SDs per progress-year",
-    "progress_at_aa": 1.0,
-    "saturation_horizon_minutes": 124600.0,
-    "present_day": 2025.6,
-    "present_horizon": 26.0,
-    "horizon_extrapolation_type": "decaying doubling time",
-    "inf_labor_asymptote": 15.0,
-    "inf_compute_asymptote": 1000.0,
-    "labor_anchor_exp_cap": 1.6,
-    "compute_anchor_exp_cap": null,
-    "inv_compute_anchor_exp_cap": 2.8,
-    "benchmarks_and_gaps_mode": false,
-    "gap_years": 1.5,
-    "coding_automation_efficiency_slope": 3.0,
-    "max_serial_coding_labor_multiplier": 100000000.0,
-    "median_to_top_taste_multiplier": 3.7,
-    "top_percentile": 0.999,
-    "taste_limit": 8.0,
-    "taste_limit_smoothing": 0.51,
-    "strat_ai_m2b": 2.0,
-    "ted_ai_m2b": 3.0,
-    "optimal_ces_eta_init": 0.05,
-    "us_frontier_project_compute_growth_rate": 0.6
+    "software_r_and_d.present_doubling_time": 0.458,
+    "software_r_and_d.ac_time_horizon_minutes": 7.079181246047625,
+    "software_r_and_d.doubling_difficulty_growth_factor": 0.92,
+    "software_r_and_d.rho_coding_labor": -2.0,
+    "software_r_and_d.rho_experiment_capacity": -0.155,
+    "software_r_and_d.alpha_experiment_capacity": 0.777,
+    "software_r_and_d.direct_input_exp_cap_ces_params": false,
+    "software_r_and_d.r_software": 2.4,
+    "software_r_and_d.software_progress_rate_at_reference_year": 1.0,
+    "software_r_and_d.coding_labor_normalization": 1.0,
+    "software_r_and_d.experiment_compute_exponent": 0.655,
+    "software_r_and_d.coding_labor_exponent": 0.5,
+    "software_r_and_d.automation_fraction_at_coding_automation_anchor": 1.0,
+    "software_r_and_d.automation_interp_type": "logistic",
+    "software_r_and_d.automation_logistic_asymptote": 1.1,
+    "software_r_and_d.swe_multiplier_at_present_day": 1.6,
+    "software_r_and_d.automation_anchors": null,
+    "software_r_and_d.ai_research_taste_at_coding_automation_anchor_sd": 0.5,
+    "software_r_and_d.ai_research_taste_slope": 2.2,
+    "software_r_and_d.taste_schedule_type": "SDs per progress-year",
+    "software_r_and_d.progress_at_aa": 1.0,
+    "software_r_and_d.saturation_horizon_minutes": 124600.0,
+    "software_r_and_d.present_day": 2025.6,
+    "software_r_and_d.present_horizon": 26.0,
+    "software_r_and_d.horizon_extrapolation_type": "decaying doubling time",
+    "software_r_and_d.inf_labor_asymptote": 15.0,
+    "software_r_and_d.inf_compute_asymptote": 1000.0,
+    "software_r_and_d.labor_anchor_exp_cap": 1.6,
+    "software_r_and_d.compute_anchor_exp_cap": null,
+    "software_r_and_d.inv_compute_anchor_exp_cap": 2.8,
+    "software_r_and_d.benchmarks_and_gaps_mode": false,
+    "software_r_and_d.gap_years": 1.5,
+    "software_r_and_d.coding_automation_efficiency_slope": 3.0,
+    "software_r_and_d.max_serial_coding_labor_multiplier": 100000000.0,
+    "software_r_and_d.median_to_top_taste_multiplier": 3.7,
+    "software_r_and_d.top_percentile": 0.999,
+    "software_r_and_d.taste_limit": 8.0,
+    "software_r_and_d.taste_limit_smoothing": 0.51,
+    "software_r_and_d.strat_ai_m2b": 2.0,
+    "software_r_and_d.ted_ai_m2b": 3.0,
+    "software_r_and_d.optimal_ces_eta_init": 0.05,
+    "compute.USComputeParameters.total_us_compute_annual_growth_rate": 0.6
   },
   "model_constants": {
     "training_compute_reference_year": 2025.13,

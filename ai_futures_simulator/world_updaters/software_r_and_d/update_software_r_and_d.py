@@ -2,18 +2,11 @@
 Software R&D world updater.
 
 Updates AI software progress for all AI developers in the world.
-Uses the full AI takeoff model logic by importing from the progress_model package.
 """
 
-import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
-
-# Add progress_model package to path (progress_model is in software_r_and_d/)
-SOFTWARE_R_AND_D_DIR = Path(__file__).resolve().parent / "software_r_and_d"
-if str(SOFTWARE_R_AND_D_DIR) not in sys.path:
-    sys.path.insert(0, str(SOFTWARE_R_AND_D_DIR))
 
 import torch
 from torch import Tensor
@@ -22,24 +15,25 @@ from classes.world.world import World
 from classes.world.entities import AISoftwareDeveloper
 from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.classes import SimulationParameters
-from parameters.calibrate import calibrate_from_params, CalibratedParameters
+from parameters.calibrate import CalibratedParameters
 
-# Import key functions from the progress_model package
-from progress_model import (
-    compute_coding_labor_deprecated as compute_coding_labor,
+# Import from local modules (same directory)
+from .ces_functions import compute_coding_labor_deprecated as compute_coding_labor
+from .progress_rate import (
     compute_research_effort,
     compute_software_progress_rate,
     compute_automation_fraction,
     compute_ai_research_taste,
     compute_aggregate_research_taste,
-    Parameters as TakeoffParameters,
-    AutomationModel,
-    TimeSeriesData,
 )
-import model_config as cfg
+from .automation_model import AutomationModel
+from .taste_distribution import TasteDistribution
+from .data_types import TimeSeriesData
+from . import model_config as cfg
 
 # Load historical time series data for interpolation
-_HISTORICAL_CSV_PATH = Path(__file__).parent.parent / "parameters" / "historical_calibration_data.csv"
+# Path: world_updaters/software_r_and_d/update_software_r_and_d.py -> parameters/historical_calibration_data.csv
+_HISTORICAL_CSV_PATH = Path(__file__).parent.parent.parent / "parameters" / "historical_calibration_data.csv"
 _historical_time_series = None
 
 def _load_historical_time_series() -> TimeSeriesData:
@@ -73,7 +67,8 @@ class SoftwareRAndD(WorldUpdater):
     - inference_compute = ai_r_and_d_inference_compute_tpp_h100e
     - experiment_compute = ai_r_and_d_training_compute_tpp_h100e
 
-    Parameters are calibrated at initialization using parameters/calibrate.py.
+    Requires pre-calibrated parameters (software_r_and_d_calibrated) which are
+    computed by ModelParameters.sample() before simulation begins.
     """
 
     def __init__(self, params: SimulationParameters):
@@ -81,13 +76,29 @@ class SoftwareRAndD(WorldUpdater):
         self.params = params
         self.r_and_d = params.software_r_and_d
 
-        # Run calibration to get computed parameter values
-        # Pass start_year so r_software is calibrated correctly for the requested time range
-        start_year = float(params.settings.simulation_start_year)
-        self._calibrated = calibrate_from_params(self.r_and_d, start_year=start_year)
+        # Use pre-calibrated parameters from SimulationParameters
+        # Calibration is performed in ModelParameters.sample() before simulation
+        if params.software_r_and_d_calibrated is None:
+            raise ValueError(
+                "SoftwareRAndD requires calibrated parameters. "
+                "Ensure ModelParameters.sample() or sample_modal() was used to create params."
+            )
+        self._calibrated = params.software_r_and_d_calibrated
 
-        # Create a TakeoffParameters object with calibrated values
-        self._takeoff_params = self._create_takeoff_params()
+        # Create AutomationModel directly with individual params
+        self._automation_model = AutomationModel(
+            automation_interp_type=self.r_and_d.automation_interp_type,
+            automation_anchors=self._calibrated.automation_anchors,
+            automation_logistic_asymptote=self.r_and_d.automation_logistic_asymptote or 1.0,
+        )
+
+        # Create TasteDistribution directly with individual params
+        self._taste_distribution = TasteDistribution(
+            top_percentile=self.r_and_d.top_percentile or 0.99,
+            median_to_top_gap=self.r_and_d.median_to_top_taste_multiplier or 10.0,
+            taste_limit_m2b=self.r_and_d.taste_limit or 8.0,
+            taste_limit_smoothing=self.r_and_d.taste_limit_smoothing or 0.51,
+        )
 
     def _get_inputs_from_developer(self, dev: AISoftwareDeveloper, current_time: float = None) -> tuple:
         """
@@ -253,69 +264,10 @@ class SoftwareRAndD(WorldUpdater):
         base_multiplier = 1.0 + automation * 1000.0  # Linear interpolation as fallback
         return base_multiplier
 
-    # Fields that should NOT be passed to TakeoffParameters
-    _EXCLUDED_FIELDS = {
-        # Mode flags specific to our simulator
-        'update_software_progress',
-        # Fields computed internally by TakeoffParameters.__post_init__
-        'automation_model',
-        'taste_distribution',
-        'ai_research_taste_at_coding_automation_anchor',
-        # Our custom fields for time-varying training compute growth
-        'us_frontier_project_compute_growth_rate',
-        # Fields that are calibrated (will be set from _calibrated)
-        'r_software',
-        'rho_experiment_capacity',
-        'alpha_experiment_capacity',
-        'experiment_compute_exponent',
-        'automation_anchors',
-        # Slopes are converted during calibration (from "per progress-year" to "per progress-unit")
-        'ai_research_taste_slope',
-        'coding_automation_efficiency_slope',
-        # progress_at_aa is calculated from horizon trajectory during calibration
-        'progress_at_aa',
-    }
-
     @property
     def calibrated(self) -> CalibratedParameters:
         """Get the calibrated parameters."""
         return self._calibrated
-
-    def _create_takeoff_params(self) -> TakeoffParameters:
-        """Convert SoftwareRAndDParameters to the original TakeoffParameters format."""
-        from dataclasses import fields as dataclass_fields
-
-        r = self.r_and_d
-        cal = self._calibrated
-
-        # Map all fields except excluded ones
-        kwargs = {}
-        for f in dataclass_fields(r):
-            if f.name not in self._EXCLUDED_FIELDS:
-                value = getattr(r, f.name)
-                if value is not None:
-                    kwargs[f.name] = value
-
-        # Add calibrated values
-        kwargs['r_software'] = cal.r_software
-        kwargs['rho_experiment_capacity'] = cal.rho_experiment_capacity
-        kwargs['alpha_experiment_capacity'] = cal.alpha_experiment_capacity
-        kwargs['experiment_compute_exponent'] = cal.experiment_compute_exponent
-        # Use converted slopes (from "per progress-year" to "per progress-unit")
-        kwargs['ai_research_taste_slope'] = cal.ai_research_taste_slope
-        kwargs['coding_automation_efficiency_slope'] = cal.coding_automation_efficiency_slope
-        # Use calibrated progress_at_aa (calculated from horizon trajectory)
-        kwargs['progress_at_aa'] = cal.progress_at_aa
-
-        params = TakeoffParameters(**kwargs)
-
-        # Set up automation_anchors from calibration
-        params.automation_anchors = cal.automation_anchors.copy()
-
-        # Create the automation model
-        params.automation_model = AutomationModel(params)
-
-        return params
 
     def _tensor_to_float(self, x) -> float:
         """Convert tensor or float to float."""
@@ -339,8 +291,9 @@ class SoftwareRAndD(WorldUpdater):
         Returns:
             coding_labor value
         """
-        params = self._takeoff_params
-        coding_labor_mode = getattr(self.r_and_d, 'coding_labor_mode', 'simple_ces')
+        r = self.r_and_d
+        cal = self._calibrated
+        coding_labor_mode = getattr(r, 'coding_labor_mode', 'simple_ces')
 
         if coding_labor_mode == 'optimal_ces':
             # Map model quantities to H, C, E (E is effective compute)
@@ -348,34 +301,45 @@ class SoftwareRAndD(WorldUpdater):
             C = float(inference_compute)
             logE = float(np.log(cfg.BASE_FOR_SOFTWARE_LOM) * progress)
 
-            automation_model = params.automation_model
-            L_opt = automation_model.coding_labor_optimal_ces(H, C, logE, params)
+            # Create a simple namespace with params needed by coding_labor_optimal_ces
+            class OptimalCESParams:
+                pass
+            frontier_params = OptimalCESParams()
+            frontier_params.rho_coding_labor = r.rho_coding_labor
+            frontier_params.coding_automation_efficiency_slope = cal.coding_automation_efficiency_slope
+            frontier_params.optimal_ces_eta_init = r.optimal_ces_eta_init or 1.0
+            frontier_params.optimal_ces_grid_size = r.optimal_ces_grid_size or 512
+            frontier_params.optimal_ces_frontier_tail_eps = r.optimal_ces_frontier_tail_eps
+            frontier_params.optimal_ces_frontier_cap = r.optimal_ces_frontier_cap
+            frontier_params.max_serial_coding_labor_multiplier = r.max_serial_coding_labor_multiplier
+
+            L_opt = self._automation_model.coding_labor_optimal_ces(H, C, logE, frontier_params)
 
             if L_opt is None:
                 # Fall back to simple_ces if optimal_ces fails
-                automation_fraction = compute_automation_fraction(progress, params)
+                automation_fraction = compute_automation_fraction(progress, self._automation_model)
                 return compute_coding_labor(
                     automation_fraction,
                     inference_compute,
                     human_labor,
-                    params.rho_coding_labor,
-                    params.parallel_penalty,
-                    params.coding_labor_normalization
+                    r.rho_coding_labor,
+                    r.parallel_penalty,
+                    r.coding_labor_normalization
                 )
 
             # Match units with compute_coding_labor: apply parallel_penalty and normalization
-            coding_labor = float((L_opt ** params.parallel_penalty) * params.coding_labor_normalization)
+            coding_labor = float((L_opt ** r.parallel_penalty) * r.coding_labor_normalization)
             return coding_labor
         else:
             # simple_ces mode (default)
-            automation_fraction = compute_automation_fraction(progress, params)
+            automation_fraction = compute_automation_fraction(progress, self._automation_model)
             return compute_coding_labor(
                 automation_fraction,
                 inference_compute,
                 human_labor,
-                params.rho_coding_labor,
-                params.parallel_penalty,
-                params.coding_labor_normalization
+                r.rho_coding_labor,
+                r.parallel_penalty,
+                r.coding_labor_normalization
             )
 
     def _compute_rates(
@@ -393,12 +357,19 @@ class SoftwareRAndD(WorldUpdater):
         Returns:
             (d(progress)/dt, d(research_stock)/dt, software_progress_rate)
         """
-        params = self._takeoff_params
+        r = self.r_and_d
+        cal = self._calibrated
 
         # Compute AI research taste
-        ai_research_taste = compute_ai_research_taste(progress, params)
+        ai_research_taste = compute_ai_research_taste(
+            progress,
+            self._taste_distribution,
+            cal.ai_research_taste_slope,
+            cal.progress_at_aa,
+            r.ai_research_taste_at_coding_automation_anchor_sd,
+        )
         aggregate_research_taste = compute_aggregate_research_taste(
-            ai_research_taste, params.taste_distribution
+            ai_research_taste, self._taste_distribution
         )
 
         # Compute coding labor (handles optimal_ces vs simple_ces mode)
@@ -408,15 +379,15 @@ class SoftwareRAndD(WorldUpdater):
         research_effort = compute_research_effort(
             experiment_compute,
             coding_labor,
-            params.alpha_experiment_capacity,
-            params.rho_experiment_capacity,
-            params.experiment_compute_exponent,
+            cal.alpha_experiment_capacity,
+            cal.rho_experiment_capacity,
+            cal.experiment_compute_exponent,
             aggregate_research_taste
         )
 
         # Compute software progress rate
         software_progress_rate = compute_software_progress_rate(
-            research_stock, research_effort, params.r_software
+            research_stock, research_effort, cal.r_software
         )
 
         # Progress rate = software progress rate + training compute growth rate
@@ -482,7 +453,8 @@ class SoftwareRAndD(WorldUpdater):
             return world
 
         current_time = self._tensor_to_float(t)
-        params = self._takeoff_params
+        r = self.r_and_d
+        cal = self._calibrated
 
         for dev_id, dev in world.ai_software_developers.items():
             # Get inputs from developer entity (with time-varying compute scaling)
@@ -506,13 +478,19 @@ class SoftwareRAndD(WorldUpdater):
 
             # Compute automation fraction based on progress (not year)
             # This matches how the reference model computes automation fraction
-            automation_fraction = compute_automation_fraction(progress, params)
+            automation_fraction = compute_automation_fraction(progress, self._automation_model)
             dev.ai_software_progress.automation_fraction = torch.tensor(automation_fraction)
 
             # Compute AI research taste
-            ai_research_taste = compute_ai_research_taste(progress, params)
+            ai_research_taste = compute_ai_research_taste(
+                progress,
+                self._taste_distribution,
+                cal.ai_research_taste_slope,
+                cal.progress_at_aa,
+                r.ai_research_taste_at_coding_automation_anchor_sd,
+            )
             aggregate_research_taste = compute_aggregate_research_taste(
-                ai_research_taste, params.taste_distribution
+                ai_research_taste, self._taste_distribution
             )
             dev.ai_software_progress.ai_research_taste = torch.tensor(ai_research_taste)
             dev.ai_software_progress.aggregate_research_taste = torch.tensor(aggregate_research_taste)
@@ -524,14 +502,14 @@ class SoftwareRAndD(WorldUpdater):
             # Compute coding_labor by reversing the transformation
             # serial_coding_labor = (coding_labor ** parallel_penalty) * normalization
             # => coding_labor = (serial_coding_labor / normalization) ** (1/parallel_penalty)
-            if params.parallel_penalty != 0 and params.coding_labor_normalization > 0:
-                coding_labor = (serial_coding_labor / params.coding_labor_normalization) ** (1.0 / params.parallel_penalty)
+            if r.parallel_penalty != 0 and r.coding_labor_normalization > 0:
+                coding_labor = (serial_coding_labor / r.coding_labor_normalization) ** (1.0 / r.parallel_penalty)
             else:
-                coding_labor = serial_coding_labor / params.coding_labor_normalization if params.coding_labor_normalization > 0 else serial_coding_labor
+                coding_labor = serial_coding_labor / r.coding_labor_normalization if r.coding_labor_normalization > 0 else serial_coding_labor
             dev.ai_software_progress.coding_labor = torch.tensor(coding_labor)
 
             # Compute human-only serial coding labor for multiplier calculation
-            human_only_serial_coding_labor = (human_labor ** params.parallel_penalty) * params.coding_labor_normalization
+            human_only_serial_coding_labor = (human_labor ** r.parallel_penalty) * r.coding_labor_normalization
             serial_coding_labor_multiplier = serial_coding_labor / human_only_serial_coding_labor if human_only_serial_coding_labor > 0 else 1.0
             dev.ai_software_progress.serial_coding_labor_multiplier = torch.tensor(serial_coding_labor_multiplier)
 
@@ -539,9 +517,9 @@ class SoftwareRAndD(WorldUpdater):
             research_effort = compute_research_effort(
                 experiment_compute,
                 serial_coding_labor,
-                params.alpha_experiment_capacity,
-                params.rho_experiment_capacity,
-                params.experiment_compute_exponent,
+                cal.alpha_experiment_capacity,
+                cal.rho_experiment_capacity,
+                cal.experiment_compute_exponent,
                 aggregate_research_taste
             )
             dev.ai_software_progress.research_effort = torch.tensor(research_effort)
@@ -552,7 +530,7 @@ class SoftwareRAndD(WorldUpdater):
 
             # Software progress rate
             sw_rate = compute_software_progress_rate(
-                research_stock, research_effort, params.r_software
+                research_stock, research_effort, cal.r_software
             )
             dev.ai_software_progress.software_progress_rate = torch.tensor(sw_rate)
 

@@ -1,84 +1,77 @@
 """
 Compute parameters for modeling AI training compute dynamics.
-
 """
 
 from dataclasses import dataclass
+from typing import Optional, Dict, Any
+import numpy as np
+
+from parameters.classes.base_spec import BaseSpec, ParamValue
+
 
 @dataclass
-class ExogenousComputeTrends:
-    transistor_density_scaling_exponent: float # with respect to process node
-    state_of_the_art_architecture_efficiency_improvement_per_year: float
+class ExogenousComputeTrends(BaseSpec):
+    transistor_density_scaling_exponent: ParamValue = None
+    state_of_the_art_architecture_efficiency_improvement_per_year: ParamValue = None
+    transistor_density_at_end_of_dennard_scaling_m_per_mm2: ParamValue = None
+    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: ParamValue = None
+    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: ParamValue = None
+    state_of_the_art_energy_efficiency_improvement_per_year: ParamValue = None
 
-    # Energy efficiency parameters (Dennard scaling)
-    transistor_density_at_end_of_dennard_scaling_m_per_mm2: float
-    watts_per_tpp_vs_transistor_density_exponent_before_dennard_scaling_ended: float
-    watts_per_tpp_vs_transistor_density_exponent_after_dennard_scaling_ended: float
-    state_of_the_art_energy_efficiency_improvement_per_year: float
-
-@dataclass
-class USComputeParameters:
-    total_us_compute_tpp_h100e_in_2025: float
-    total_us_compute_annual_growth_rate: float # annual multiplier
-    proportion_of_compute_in_largest_ai_sw_developer: float
 
 @dataclass
-class ComputeAllocations:
-    fraction_for_ai_r_and_d_inference: float 
-    fraction_for_ai_r_and_d_training: float 
-    fraction_for_external_deployment: float
-    fraction_for_alignment_research: float
-    fraction_for_frontier_training: float
+class USComputeParameters(BaseSpec):
+    total_us_compute_tpp_h100e_in_2025: ParamValue = None
+    total_us_compute_annual_growth_rate: ParamValue = None
+    proportion_of_compute_in_largest_ai_sw_developer: ParamValue = None
+
 
 @dataclass
-class PRCComputeParameters:
-    total_prc_compute_tpp_h100e_in_2025: float
-    annual_growth_rate_of_prc_compute_stock: float
-    proportion_of_compute_in_largest_ai_sw_developer: float
-    prc_architecture_efficiency_relative_to_state_of_the_art : float # This should be 1.0
+class ComputeAllocations(BaseSpec):
+    fraction_for_ai_r_and_d_inference: ParamValue = None
+    fraction_for_ai_r_and_d_training: ParamValue = None
+    fraction_for_external_deployment: ParamValue = None
+    fraction_for_alignment_research: ParamValue = None
+    fraction_for_frontier_training: ParamValue = None
 
-    proportion_of_prc_chip_stock_produced_domestically_2026: float
-    proportion_of_prc_chip_stock_produced_domestically_2030: float
+
+@dataclass
+class PRCComputeParameters(BaseSpec):
+    total_prc_compute_tpp_h100e_in_2025: ParamValue = None
+    annual_growth_rate_of_prc_compute_stock: ParamValue = None
+    proportion_of_compute_in_largest_ai_sw_developer: ParamValue = None
+    prc_architecture_efficiency_relative_to_state_of_the_art: ParamValue = None
+
+    proportion_of_prc_chip_stock_produced_domestically_2026: ParamValue = None
+    proportion_of_prc_chip_stock_produced_domestically_2030: ParamValue = None
 
     # PRC lithography scanner production
-    prc_lithography_scanners_produced_in_first_year: float
-    prc_additional_lithography_scanners_produced_per_year: float
-    # Uncertainty multiplier for total PRC scanner production (sampled from lognormal, median=1.0)
-    # Reference: prc_scanner_production_relative_sigma=0.30
-    prc_scanner_production_multiplier: float
+    prc_lithography_scanners_produced_in_first_year: ParamValue = None
+    prc_additional_lithography_scanners_produced_per_year: ParamValue = None
+    prc_scanner_production_multiplier: ParamValue = None
 
-    # PRC localization probability curves: List of (year, cumulative_probability) tuples
-    p_localization_28nm_2030: float
-    p_localization_14nm_2030: float
-    p_localization_7nm_2030: float
+    # PRC localization probabilities
+    p_localization_28nm_2030: ParamValue = None
+    p_localization_14nm_2030: ParamValue = None
+    p_localization_7nm_2030: ParamValue = None
 
     # Fab production
-    h100_sized_chips_per_wafer: float
-    wafers_per_month_per_lithography_scanner: float
-    construction_time_for_5k_wafers_per_month: float
-    construction_time_for_100k_wafers_per_month: float
+    h100_sized_chips_per_wafer: ParamValue = None
+    wafers_per_month_per_lithography_scanner: ParamValue = None
+    construction_time_for_5k_wafers_per_month: ParamValue = None
+    construction_time_for_100k_wafers_per_month: ParamValue = None
+    fab_construction_time_multiplier: ParamValue = None
+    fab_wafers_per_month_per_operating_worker: ParamValue = None
+    fab_wafers_per_month_per_construction_worker_under_standard_timeline: ParamValue = None
+    fab_labor_productivity_multiplier: ParamValue = None
+    fab_scanner_productivity_multiplier: ParamValue = None
 
-    # Converting between number of workers and fab capacity (for black projects)
-    fab_wafers_per_month_per_operating_worker: float
-    fab_wafers_per_month_per_construction_worker_under_standard_timeline: float
-
-    # Fab construction time uncertainty multiplier (sampled from lognormal, median=1.0)
-    fab_construction_time_multiplier: float
-
-    # Fab productivity multipliers (sampled from lognormal, median=1.0)
-    # These capture uncertainty in wafer production capacity
-    # Reference: labor_productivity_relative_sigma=0.62, scanner_productivity_relative_sigma=0.20
-    fab_labor_productivity_multiplier: float
-    fab_scanner_productivity_multiplier: float
 
 @dataclass
-class SurvivalRateParameters:
-    # Base hazard rate parameters (p50 values)
-    initial_annual_hazard_rate: float  # Per year (base value, will be multiplied by hazard_rate_multiplier)
-    annual_hazard_rate_increase_per_year: float  # Per year^2 (base value, will be multiplied by hazard_rate_multiplier)
-    # Multiplier applied to both hazard rates (sampled from distribution in Monte Carlo mode)
-    # Discrete model uses metalog with p25=0.1, p50=1.0, p75=6.0
-    hazard_rate_multiplier: float
+class SurvivalRateParameters(BaseSpec):
+    initial_annual_hazard_rate: ParamValue = None
+    annual_hazard_rate_increase_per_year: ParamValue = None
+    hazard_rate_multiplier: ParamValue = None
 
     @property
     def effective_initial_hazard_rate(self) -> float:
@@ -90,10 +83,40 @@ class SurvivalRateParameters:
         """Hazard rate increase per year with multiplier applied."""
         return self.annual_hazard_rate_increase_per_year * self.hazard_rate_multiplier
 
+
 @dataclass
-class ComputeParameters:
-    exogenous_trends: ExogenousComputeTrends
-    survival_rate_parameters : SurvivalRateParameters
-    USComputeParameters: USComputeParameters
-    PRCComputeParameters: PRCComputeParameters
-    compute_allocations: ComputeAllocations
+class ComputeParameters(BaseSpec):
+    """All compute parameters (nested structure)."""
+    exogenous_trends: Optional[ExogenousComputeTrends] = None
+    survival_rate_parameters: Optional[SurvivalRateParameters] = None
+    USComputeParameters: Optional[USComputeParameters] = None
+    PRCComputeParameters: Optional[PRCComputeParameters] = None
+    compute_allocations: Optional[ComputeAllocations] = None
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "ComputeParameters":
+        return cls(
+            exogenous_trends=ExogenousComputeTrends.from_dict(d["exogenous_trends"]) if "exogenous_trends" in d else None,
+            survival_rate_parameters=SurvivalRateParameters.from_dict(d["survival_rate_parameters"]) if "survival_rate_parameters" in d else None,
+            USComputeParameters=USComputeParameters.from_dict(d["us_compute"]) if "us_compute" in d else None,
+            PRCComputeParameters=PRCComputeParameters.from_dict(d["prc_compute"]) if "prc_compute" in d else None,
+            compute_allocations=ComputeAllocations.from_dict(d["compute_allocations"]) if "compute_allocations" in d else None,
+        )
+
+    def sample(self, rng: np.random.Generator) -> "ComputeParameters":
+        return ComputeParameters(
+            exogenous_trends=self.exogenous_trends.sample(rng) if self.exogenous_trends else None,
+            survival_rate_parameters=self.survival_rate_parameters.sample(rng) if self.survival_rate_parameters else None,
+            USComputeParameters=self.USComputeParameters.sample(rng) if self.USComputeParameters else None,
+            PRCComputeParameters=self.PRCComputeParameters.sample(rng) if self.PRCComputeParameters else None,
+            compute_allocations=self.compute_allocations.sample(rng) if self.compute_allocations else None,
+        )
+
+    def get_modal(self) -> "ComputeParameters":
+        return ComputeParameters(
+            exogenous_trends=self.exogenous_trends.get_modal() if self.exogenous_trends else None,
+            survival_rate_parameters=self.survival_rate_parameters.get_modal() if self.survival_rate_parameters else None,
+            USComputeParameters=self.USComputeParameters.get_modal() if self.USComputeParameters else None,
+            PRCComputeParameters=self.PRCComputeParameters.get_modal() if self.PRCComputeParameters else None,
+            compute_allocations=self.compute_allocations.get_modal() if self.compute_allocations else None,
+        )

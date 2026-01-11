@@ -9,4 +9,4 @@
 - Pay attention to code quality and organization (though don't deviate from the organization described in the README unless I ask you to)
 
 # Project Context
-!INCLUDE "README-new.md"
+!INCLUDE "README.md"

@@ -65,8 +65,13 @@ def extract_reference_format(
     - initial_stock (12 keys)
     """
     results = simulation_results.get('simulation_results', [])
-    agreement_year = simulation_results.get('agreement_year', 2029)
     model_params = simulation_results.get('model_params')
+    # Use black_project_start_year from simulation params, as this is when the black project
+    # actually begins and when detection timing is calculated from
+    if model_params and hasattr(model_params, 'black_project') and 'black_project_start_year' in model_params.black_project:
+        agreement_year = model_params.black_project['black_project_start_year']
+    else:
+        agreement_year = simulation_results.get('agreement_year', 2029)
 
     if not results:
         return {"error": "No simulation results"}

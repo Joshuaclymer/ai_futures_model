@@ -5,13 +5,18 @@ This module contains:
 - ComputeUpdater: Combined updater that orchestrates all compute updates
 - NationComputeUpdater: Updates compute stock for nations
 - AISoftwareDeveloperComputeUpdater: Updates compute for AI software developers
+- BlackProjectComputeUpdater: Updates compute for black projects (fabs, stock, attrition)
 - Chip survival utilities: Functions for modeling chip attrition
-- Black project compute utilities: Functions for covert compute calculations
+- Fab calculation utilities: Functions for fab construction and production
+
+Datacenter utilities have been moved to world_updaters.datacenters_and_energy.
+Detection utilities have been moved to world_updaters.perceptions.black_project_perceptions.
 """
 
 from world_updaters.compute.update_compute import ComputeUpdater
 from world_updaters.compute.nation_compute import NationComputeUpdater
 from world_updaters.compute.ai_sw_developer_compute import AISoftwareDeveloperComputeUpdater
+from world_updaters.compute.black_compute import BlackProjectComputeUpdater
 from world_updaters.compute.chip_survival import (
     # Core attrition model functions
     calculate_hazard_rate,
@@ -34,25 +39,8 @@ from world_updaters.compute.black_compute import (
     calculate_watts_per_tpp_from_transistor_density,
     calculate_fab_watts_per_chip,
     calculate_fab_annual_production_h100e,
-    # Datacenter calculations
-    calculate_concealed_capacity_gw,
-    calculate_datacenter_capacity_gw,
-    calculate_datacenter_operating_labor,
-    # Compute calculations (operating compute only - survival moved to chip_survival.py)
+    # Compute calculations
     calculate_operating_compute,
-    # Labor utility
-    get_black_project_total_labor,
-    # Detection utilities
-    compute_detection_constants,
-    compute_mean_detection_time,
-    sample_detection_time,
-    compute_lr_over_time_vs_num_workers,
-    sample_us_estimate_with_error,
-    lr_from_discrepancy_in_us_estimate,
-    compute_lr_from_reported_energy_consumption,
-    compute_lr_from_satellite_detection,
-    compute_lr_from_prc_compute_accounting,
-    compute_detection_probability,
 )
 
 __all__ = [
@@ -61,6 +49,7 @@ __all__ = [
     # Individual updaters
     'NationComputeUpdater',
     'AISoftwareDeveloperComputeUpdater',
+    'BlackProjectComputeUpdater',
     # Chip attrition model functions
     'calculate_hazard_rate',
     'calculate_attrition_rate',
@@ -80,23 +69,6 @@ __all__ = [
     'calculate_watts_per_tpp_from_transistor_density',
     'calculate_fab_watts_per_chip',
     'calculate_fab_annual_production_h100e',
-    # Datacenter calculations
-    'calculate_concealed_capacity_gw',
-    'calculate_datacenter_capacity_gw',
-    'calculate_datacenter_operating_labor',
     # Compute calculations
     'calculate_operating_compute',
-    # Labor utility
-    'get_black_project_total_labor',
-    # Detection utilities
-    'compute_detection_constants',
-    'compute_mean_detection_time',
-    'sample_detection_time',
-    'compute_lr_over_time_vs_num_workers',
-    'sample_us_estimate_with_error',
-    'lr_from_discrepancy_in_us_estimate',
-    'compute_lr_from_reported_energy_consumption',
-    'compute_lr_from_satellite_detection',
-    'compute_lr_from_prc_compute_accounting',
-    'compute_detection_probability',
 ]

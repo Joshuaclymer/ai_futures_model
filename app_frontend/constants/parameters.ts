@@ -2,51 +2,9 @@ import pythonParameterConfig from '../config/python-parameter-config.json' asser
 
 export type ParameterPrimitive = number | string | boolean | null;
 
-export interface ParametersType {
-    [key: string]: ParameterPrimitive;
-    taste_schedule_type: string;
-    present_doubling_time: number;
-    ac_time_horizon_minutes: number;
-    doubling_difficulty_growth_factor: number;
-    rho_coding_labor: number;
-    rho_experiment_capacity: number;
-    alpha_experiment_capacity: number;
-    direct_input_exp_cap_ces_params: boolean;
-    r_software: number;
-    software_progress_rate_at_reference_year: number;
-    coding_labor_normalization: number;
-    experiment_compute_exponent: number;
-    coding_labor_exponent: number;
-    automation_fraction_at_coding_automation_anchor: number;
-    automation_interp_type: string;
-    automation_logistic_asymptote: number;
-    swe_multiplier_at_present_day: number;
-    automation_anchors: ParameterPrimitive;
-    ai_research_taste_at_coding_automation_anchor_sd: number;
-    ai_research_taste_slope: number;
-    progress_at_aa: number;
-    saturation_horizon_minutes: number;
-    present_day: number;
-    present_horizon: number;
-    horizon_extrapolation_type: string;
-    inf_labor_asymptote: number;
-    inf_compute_asymptote: number;
-    labor_anchor_exp_cap: number;
-    compute_anchor_exp_cap: ParameterPrimitive;
-    inv_compute_anchor_exp_cap: number;
-    benchmarks_and_gaps_mode: boolean;
-    gap_years: number;
-    coding_automation_efficiency_slope: number;
-    max_serial_coding_labor_multiplier: number;
-    median_to_top_taste_multiplier: number;
-    top_percentile: number;
-    taste_limit: number;
-    taste_limit_smoothing: number;
-    strat_ai_m2b: number;
-    ted_ai_m2b: number;
-    optimal_ces_eta_init: number;
-    us_frontier_project_compute_growth_rate: number;
-}
+// Parameters now use full dot-notation paths matching the backend structure
+// e.g., 'software_r_and_d.rho_coding_labor' instead of 'rho_coding_labor'
+export type ParametersType = Record<string, ParameterPrimitive>;
 
 const uiDefaults = pythonParameterConfig.ui_defaults as ParametersType;
 
@@ -76,9 +34,8 @@ export const H100E_TPP_TO_FLOP_OOM_OFFSET = 21.4;
 
 export function areParametersAtDefaults(parameters: ParametersType): boolean {
     return Object.keys(DEFAULT_PARAMETERS).every(key => {
-        const paramKey = key as keyof ParametersType;
-        const defaultValue = DEFAULT_PARAMETERS[paramKey];
-        const currentValue = parameters[paramKey];
+        const defaultValue = DEFAULT_PARAMETERS[key];
+        const currentValue = parameters[key];
         return currentValue === defaultValue;
     });
 }

@@ -1,22 +1,30 @@
 """
-Black project compute utility functions.
+Black project compute updater and utility functions.
 
-These functions compute derived values from black project assets.
-All logic is here rather than in the dataclass definitions to keep
-the classes/ directory free of methods.
-
-The detection and likelihood ratio logic mirrors the discrete model
-in black_project_backend for consistency.
+Contains:
+- BlackProjectComputeUpdater: WorldUpdater for black project compute (fabs, stock, attrition)
+- Fab calculation utilities (construction duration, wafer starts, chip performance)
+- Operating compute calculations
 """
 
 import math
-import numpy as np
-from scipy import stats
-from typing import Dict, List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from torch import Tensor
+
+from classes.world.world import World
+from classes.simulation_primitives import StateDerivative, WorldUpdater
+from parameters.classes import SimulationParameters
+from parameters.classes import BlackProjectParameters
+from parameters.classes import ComputeParameters
+from parameters.classes import DataCenterAndEnergyParameters
+from world_updaters.compute.chip_survival import (
+    calculate_survival_rate,
+    calculate_compute_derivative,
+    calculate_average_age_derivative,
+)
 
 
 if TYPE_CHECKING:
-    from classes.world.entities import AIBlackProject
     from parameters.classes import PRCComputeParameters, ExogenousComputeTrends
 
 
@@ -302,43 +310,6 @@ def calculate_fab_annual_production_h100e(
 
 
 # =============================================================================
-# DATACENTER METRIC CALCULATIONS
-# =============================================================================
-
-def calculate_datacenter_capacity_gw(
-    unconcealed_capacity_gw: float,
-    concealed_capacity_gw: float,
-) -> float:
-    """Calculate total datacenter capacity."""
-    return unconcealed_capacity_gw + concealed_capacity_gw
-
-
-def calculate_concealed_capacity_gw(
-    current_year: float,
-    construction_start_year: float,
-    construction_rate_gw_per_year: float,
-    max_concealed_capacity_gw: float,
-) -> float:
-    """Calculate concealed datacenter capacity at a given time (linear growth model)."""
-    years_since_start = current_year - construction_start_year
-    if years_since_start <= 0:
-        return 0.0
-
-    return min(
-        construction_rate_gw_per_year * years_since_start,
-        max_concealed_capacity_gw
-    )
-
-
-def calculate_datacenter_operating_labor(
-    datacenter_capacity_gw: float,
-    operating_labor_per_gw: float,
-) -> float:
-    """Calculate operating labor required for datacenter capacity."""
-    return datacenter_capacity_gw * operating_labor_per_gw
-
-
-# =============================================================================
 # COMPUTE METRIC CALCULATIONS
 # =============================================================================
 
@@ -358,650 +329,280 @@ def calculate_operating_compute(
 
 
 # =============================================================================
-# LABOR UTILITIES
+# BLACK PROJECT COMPUTE UPDATER
 # =============================================================================
 
-def get_black_project_total_labor(project: "AIBlackProject") -> int:
+class BlackProjectComputeUpdater(WorldUpdater):
     """
-    Total labor involved in the black project.
+    Updates compute attributes for black projects.
 
-    Args:
-        project: AIBlackProject instance
-
-    Returns:
-        Total labor count
+    Handles:
+    1. Fab production ODE (when operational)
+    2. Fab metrics (wafer starts, h100e per chip, production)
+    3. Compute stock with attrition
+    4. Operating compute (limited by datacenter capacity)
     """
-    labor = int(project.human_ai_capability_researchers)
-    labor += int(project.concealed_datacenter_capacity_construction_labor)
 
-    # Operating labor depends on datacenter capacity
-    if project.datacenters is not None:
-        operating_labor = calculate_datacenter_operating_labor(
-            project.datacenters.data_center_capacity_gw,
-            project.datacenters_operating_labor_per_gw,
-        )
-        labor += int(operating_labor)
-
-    # Fab labor
-    if project.fab_is_operational:
-        labor += int(project.fab_operating_labor)
-    else:
-        labor += int(project.fab_construction_labor)
-
-    return labor
-
-
-# =============================================================================
-# DETECTION UTILITIES
-# =============================================================================
-
-def compute_detection_constants(
-    mean_detection_time_100_workers: float,
-    mean_detection_time_1000_workers: float
-) -> tuple:
-    """
-    Compute detection time model constants A and B.
-
-    The mean detection time follows: mu(workers) = A / log10(workers)^B
-    """
-    x1, mu1 = 100, mean_detection_time_100_workers
-    x2, mu2 = 1000, mean_detection_time_1000_workers
-
-    B = np.log(mu1 / mu2) / np.log(np.log10(x2) / np.log10(x1))
-    A = mu1 * (np.log10(x1) ** B)
-
-    return A, B
-
-
-def compute_mean_detection_time(labor: int, A: float, B: float) -> float:
-    """Compute mean detection time for a given labor level."""
-    if labor <= 1:
-        return float('inf')
-    return A / (np.log10(labor) ** B)
-
-
-def sample_detection_time(
-    labor: int,
-    mean_detection_time_100_workers: float,
-    mean_detection_time_1000_workers: float,
-    variance: float
-) -> float:
-    """
-    Sample a detection time from the Gamma distribution for a given labor level.
-
-    The Gamma distribution is parameterized by:
-    - Mean = k * theta
-    - Variance = k * theta^2
-
-    The 'variance' parameter is used directly as the scale parameter (theta).
-    This matches the discrete reference model where variance_theta is passed
-    directly to scipy.stats.gamma as the scale parameter.
-    With k = mu / theta, we get:
-    - Mean = k * theta = mu
-    - Variance = k * theta^2 = mu * theta
-    """
-    if labor <= 1:
-        return float('inf')
-
-    A, B = compute_detection_constants(
-        mean_detection_time_100_workers,
-        mean_detection_time_1000_workers
-    )
-
-    mu = compute_mean_detection_time(labor, A, B)
-
-    # The 'variance' parameter is used directly as theta (scale parameter)
-    # This matches the discrete reference model's parameterization
-    theta = variance
-    k = mu / theta
-
-    return float(np.random.gamma(k, theta))
-
-
-def sample_us_estimate_with_error(true_quantity: float, median_error: float) -> float:
-    """Sample a US intelligence estimate of a quantity with exponential error distribution."""
-    if true_quantity <= 0:
-        return 0.0
-
-    k = -np.log(0.5) / median_error
-    u = np.random.uniform(0, 1)
-    relative_error = -np.log(1 - u) / k
-    error_sign = 1 if np.random.random() > 0.5 else -1
-    relative_error = error_sign * relative_error
-    us_estimate = true_quantity * (1 + relative_error)
-
-    return max(0, us_estimate)
-
-
-def lr_from_discrepancy_in_us_estimate(
-    true_if_project_exists: float,
-    true_if_no_project: float,
-    us_estimate: float,
-    median_error: float
-) -> float:
-    """Calculate likelihood ratio from discrepancy between US estimate and reported quantity."""
-    if true_if_project_exists < 1e-10 or true_if_no_project < 1e-10:
-        return 1.0
-
-    error_if_project_exists = abs(us_estimate - true_if_project_exists) / true_if_project_exists
-    error_if_no_project = abs(us_estimate - true_if_no_project) / true_if_no_project
-
-    k = -np.log(0.5) / median_error
-    p_if_project_exists = k * np.exp(-k * error_if_project_exists)
-    p_if_no_project = k * np.exp(-k * error_if_no_project)
-
-    if p_if_no_project > 0:
-        lr = p_if_project_exists / p_if_no_project
-    else:
-        lr = 1e6
-
-    return lr
-
-
-def compute_lr_from_reported_energy_consumption(
-    total_prc_energy_gw: float,
-    covert_energy_gw: float,
-    us_estimate_energy: float,
-    median_error: float
-) -> float:
-    """Calculate likelihood ratio from energy consumption accounting."""
-    if covert_energy_gw < 1e-10 or total_prc_energy_gw < 1e-10:
-        return 1.0
-
-    reported_energy = total_prc_energy_gw - covert_energy_gw
-
-    return lr_from_discrepancy_in_us_estimate(
-        true_if_project_exists=total_prc_energy_gw,
-        true_if_no_project=reported_energy,
-        us_estimate=us_estimate_energy,
-        median_error=median_error
-    )
-
-
-def compute_lr_from_satellite_detection(
-    diverted_capacity_gw: float,
-    total_unconcealed_capacity_gw: float,
-    us_estimate_capacity: float,
-    median_error: float
-) -> float:
-    """Calculate likelihood ratio from satellite detection of diverted datacenter capacity."""
-    if diverted_capacity_gw < 1e-10:
-        return 1.0
-
-    reported_capacity = total_unconcealed_capacity_gw - diverted_capacity_gw
-
-    return lr_from_discrepancy_in_us_estimate(
-        true_if_project_exists=reported_capacity,
-        true_if_no_project=total_unconcealed_capacity_gw,
-        us_estimate=us_estimate_capacity,
-        median_error=median_error
-    )
-
-
-def compute_lr_from_prc_compute_accounting(
-    reported_compute_stock: float,
-    diversion_proportion: float,
-    us_estimate_compute: float,
-    median_error: float
-) -> float:
-    """Calculate likelihood ratio from PRC compute stock accounting."""
-    if reported_compute_stock < 1e-10 or diversion_proportion <= 0:
-        return 1.0
-
-    true_stock_if_exists = reported_compute_stock / (1 - diversion_proportion)
-
-    return lr_from_discrepancy_in_us_estimate(
-        true_if_project_exists=true_stock_if_exists,
-        true_if_no_project=reported_compute_stock,
-        us_estimate=us_estimate_compute,
-        median_error=median_error
-    )
-
-
-def compute_lr_from_sme_inventory(
-    reported_scanner_count: float,
-    diversion_proportion: float,
-    us_estimate_scanners: float,
-    median_error: float
-) -> float:
-    """
-    Calculate likelihood ratio from SME (lithography scanner) inventory accounting.
-
-    If a covert project exists, some scanners were diverted, so:
-    - reported_scanners = true_scanners * (1 - diversion_proportion)
-    - true_scanners = reported_scanners / (1 - diversion_proportion)
-
-    Args:
-        reported_scanner_count: Number of scanners reported (after diversion)
-        diversion_proportion: Fraction of scanners diverted to black project
-        us_estimate_scanners: US intelligence estimate of scanner count
-        median_error: Median relative error in US estimates (e.g., 0.07 for 7%)
-
-    Returns:
-        Likelihood ratio P(evidence | project exists) / P(evidence | no project)
-    """
-    if reported_scanner_count < 1e-10 or diversion_proportion <= 0:
-        return 1.0
-
-    true_scanners_if_exists = reported_scanner_count / (1 - diversion_proportion)
-
-    return lr_from_discrepancy_in_us_estimate(
-        true_if_project_exists=true_scanners_if_exists,
-        true_if_no_project=reported_scanner_count,
-        us_estimate=us_estimate_scanners,
-        median_error=median_error
-    )
-
-
-def _build_composite_detection_distribution(
-    labor_by_year: Dict[float, int],
-    A: float,
-    B: float,
-    variance_theta: float
-) -> List[Tuple]:
-    """
-    Build composite distribution for detection time accounting for variable labor.
-
-    This matches the discrete reference model's approach which builds probability
-    ranges for each year based on varying labor levels.
-
-    Args:
-        labor_by_year: Dict mapping year (relative to project start) to labor count
-        A, B: Detection time constants
-        variance_theta: Scale parameter (theta) for the Gamma distribution
-
-    Returns:
-        List of tuples (year_start, year_end, labor, k, theta, cum_start, cum_end)
-    """
-    if not labor_by_year:
-        return []
-
-    sorted_years = sorted(labor_by_year.keys())
-
-    # Build composite distribution by calculating cumulative probabilities
-    cumulative_prob = 0.0
-    prob_ranges = []
-
-    for i, year in enumerate(sorted_years):
-        labor = labor_by_year[year]
-
-        if labor <= 0:
-            continue
-
-        # Calculate gamma parameters for this labor level
-        mu = A / (np.log10(labor) ** B)
-        k = mu / variance_theta
-
-        # Determine the time range for this period
-        year_start = year
-        year_end = sorted_years[i + 1] if i + 1 < len(sorted_years) else year + 100
-
-        # Calculate probability mass in this interval using CDF differences
-        cdf_start = stats.gamma.cdf(year_start, a=k, scale=variance_theta)
-        cdf_end = stats.gamma.cdf(year_end, a=k, scale=variance_theta)
-        prob_mass = cdf_end - cdf_start
-
-        cum_prob_end = cumulative_prob + prob_mass
-        prob_ranges.append((year_start, year_end, labor, k, variance_theta, cumulative_prob, cum_prob_end))
-        cumulative_prob = cum_prob_end
-
-    return prob_ranges
-
-
-def _sample_detection_time_from_composite(prob_ranges: List[Tuple]) -> float:
-    """
-    Sample a detection time from the precomputed composite distribution.
-
-    This matches the discrete reference model's approach.
-
-    Args:
-        prob_ranges: Precomputed probability ranges from _build_composite_detection_distribution
-
-    Returns:
-        Sampled detection time in years
-    """
-    if not prob_ranges:
-        return float('inf')
-
-    u = np.random.uniform(0, 1)
-
-    # Find which range the sample falls into
-    time_of_detection = float('inf')
-    for year_start, year_end, _, k, theta, cum_start, cum_end in prob_ranges:
-        if cum_start <= u < cum_end:
-            # Map u within this range back to the gamma distribution
-            if cum_end > cum_start:
-                u_normalized = (u - cum_start) / (cum_end - cum_start)
-                cdf_start = stats.gamma.cdf(year_start, a=k, scale=theta)
-                cdf_target = cdf_start + u_normalized * (stats.gamma.cdf(year_end, a=k, scale=theta) - cdf_start)
-                time_of_detection = stats.gamma.ppf(cdf_target, a=k, scale=theta)
-            else:
-                time_of_detection = year_start
-            break
-
-    return time_of_detection
-
-
-def compute_lr_over_time_vs_num_workers(
-    labor_by_year: Dict[float, int],
-    mean_detection_time_100_workers: float,
-    mean_detection_time_1000_workers: float,
-    variance: float
-) -> Tuple[Dict[float, float], float]:
-    """
-    Calculate likelihood ratios over time accounting for variable labor.
-
-    This function uses the same composite distribution approach as the discrete
-    reference model to properly account for varying labor levels over time when
-    sampling the detection time.
-
-    Args:
-        labor_by_year: Dict mapping year (relative to project start) to labor count
-        mean_detection_time_100_workers: Mean detection time for 100 workers
-        mean_detection_time_1000_workers: Mean detection time for 1000 workers
-        variance: Scale parameter (theta) for the Gamma distribution, used directly
-
-    Returns:
-        Tuple of (lr_by_year dict, sampled_detection_time)
-    """
-    if not labor_by_year:
-        return {}, float('inf')
-
-    sorted_years = sorted(labor_by_year.keys())
-    A, B = compute_detection_constants(
-        mean_detection_time_100_workers,
-        mean_detection_time_1000_workers
-    )
-
-    # Build composite distribution that accounts for varying labor
-    # This matches the discrete reference model's approach
-    prob_ranges = _build_composite_detection_distribution(
-        labor_by_year=labor_by_year,
-        A=A,
-        B=B,
-        variance_theta=variance
-    )
-
-    # Sample detection time from the composite distribution
-    time_of_detection = _sample_detection_time_from_composite(prob_ranges)
-
-    # Calculate likelihood ratios for each year
-    # The LR is the survival probability: P(not detected by year | project exists)
-    lr_by_year = {}
-    for year in sorted_years:
-        if year >= time_of_detection:
-            # Detection has occurred by this year
-            lr_by_year[year] = 100.0
-        else:
-            labor = labor_by_year[year]
-            if labor <= 0:
-                lr_by_year[year] = 1.0
+    def __init__(
+        self,
+        params: SimulationParameters,
+        black_project_params: BlackProjectParameters,
+        compute_params: ComputeParameters,
+        energy_params: DataCenterAndEnergyParameters,
+    ):
+        super().__init__()
+        self.params = params
+        self.black_project_params = black_project_params
+        self.compute_params = compute_params
+        self.energy_params = energy_params
+
+    def contribute_state_derivatives(self, t: Tensor, world: World) -> StateDerivative:
+        """
+        Compute continuous contributions to d(state)/dt for black project compute.
+
+        Computes derivatives for fab-produced compute stock using the average-age
+        attrition model.
+
+        For fab-produced compute:
+            dC_fab/dt = F - h(a_fab)*C_fab
+            da_fab/dt = 1 - (a_fab*F)/C_fab
+
+        where:
+            F = annual fab production rate (H100e/year)
+            h(a) = h0 + h1*a (hazard rate at average age)
+            C_fab = fab compute stock
+            a_fab = average age of fab chips
+        """
+        current_time = t.item() if isinstance(t, Tensor) else float(t)
+        d_world = World.zeros(world)
+        survival_params = self.compute_params.survival_rate_parameters
+        prc_compute = self.compute_params.PRCComputeParameters
+        exogenous_trends = self.compute_params.exogenous_trends
+
+        for project_id, project in world.black_projects.items():
+            d_project = d_world.black_projects.get(project_id)
+            if d_project is None:
                 continue
 
-            # Calculate survival probability using gamma distribution for current labor level
-            mu = A / (np.log10(labor) ** B)
-            k = mu / variance
+            # Get black_project_start_year (when fab construction starts)
+            black_project_start_year = float(
+                project.preparation_start_year.item()
+                if hasattr(project.preparation_start_year, 'item')
+                else project.preparation_start_year
+            )
 
-            # LR = P(evidence | project exists) / P(evidence | no project)
-            # P(evidence | no project) = 1.0 (no detection evidence if no project)
-            p_not_detected = stats.gamma.sf(year, a=k, scale=variance)
-            lr_by_year[year] = max(p_not_detected, 0.001)  # Floor at 0.001 to match discrete
+            # Check if fab is operational (can't rely on metric during ODE integration)
+            fab_was_built = project.fab_number_of_lithography_scanners > 0
 
-    return lr_by_year, time_of_detection
+            fab_is_operational = False
+            if fab_was_built:
+                # Calculate fab construction duration from state variables
+                target_wafer_starts = calculate_fab_wafer_starts_per_month(
+                    fab_operating_labor=project.fab_operating_labor,
+                    fab_number_of_lithography_scanners=project.fab_number_of_lithography_scanners,
+                    wafers_per_month_per_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
+                    wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
+                    labor_productivity_multiplier=prc_compute.fab_labor_productivity_multiplier,
+                    scanner_productivity_multiplier=prc_compute.fab_scanner_productivity_multiplier,
+                )
+                fab_construction_duration = calculate_fab_construction_duration(
+                    fab_construction_labor=project.fab_construction_labor,
+                    target_wafer_starts_per_month=target_wafer_starts,
+                    prc_compute_params=prc_compute,
+                )
+                fab_operational_year = black_project_start_year + fab_construction_duration
+                fab_is_operational = current_time >= fab_operational_year
 
+            # Only compute derivatives if fab is operational
+            if fab_is_operational:
+                # Calculate fab metrics inline
+                wafer_starts = calculate_fab_wafer_starts_per_month(
+                    fab_operating_labor=project.fab_operating_labor,
+                    fab_number_of_lithography_scanners=project.fab_number_of_lithography_scanners,
+                    wafers_per_month_per_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
+                    wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
+                    labor_productivity_multiplier=prc_compute.fab_labor_productivity_multiplier,
+                    scanner_productivity_multiplier=prc_compute.fab_scanner_productivity_multiplier,
+                )
 
-def compute_detection_probability(
-    years_since_start: float,
-    labor: int,
-    mean_detection_time_100_workers: float,
-    mean_detection_time_1000_workers: float,
-    variance: float
-) -> float:
-    """
-    Compute the probability of detection by a given time.
+                # Chip specs fixed at fab construction time (black_project_start_year)
+                h100e_per_chip = calculate_fab_h100e_per_chip(
+                    fab_process_node_nm=project.fab_process_node_nm,
+                    year=black_project_start_year,
+                    exogenous_trends=exogenous_trends,
+                )
 
-    Args:
-        years_since_start: Time since project started
-        labor: Number of workers
-        mean_detection_time_100_workers: Mean detection time for 100 workers
-        mean_detection_time_1000_workers: Mean detection time for 1000 workers
-        variance: Scale parameter (theta) for the Gamma distribution, used directly
+                # Calculate annual fab production rate
+                annual_production = calculate_fab_annual_production_h100e(
+                    fab_wafer_starts_per_month=wafer_starts,
+                    fab_chips_per_wafer=project.fab_chips_per_wafer,
+                    fab_h100e_per_chip=h100e_per_chip,
+                    fab_is_operational=True,
+                )
 
-    Returns:
-        Probability of detection by the given time
-    """
-    if labor <= 1 or years_since_start <= 0:
-        return 0.0
+                # Get current fab compute stock and average age
+                fab_compute = project.fab_compute_stock_h100e
+                fab_avg_age = project.fab_compute_average_age_years
 
-    A, B = compute_detection_constants(
-        mean_detection_time_100_workers,
-        mean_detection_time_1000_workers
-    )
+                # Compute derivatives using average-age attrition model
+                dC_fab_dt = calculate_compute_derivative(
+                    functional_compute=fab_compute,
+                    average_age=fab_avg_age,
+                    production_rate=annual_production,
+                    initial_hazard_rate=survival_params.effective_initial_hazard_rate,
+                    hazard_rate_increase_per_year=survival_params.effective_hazard_rate_increase,
+                )
 
-    mu = compute_mean_detection_time(labor, A, B)
+                da_fab_dt = calculate_average_age_derivative(
+                    functional_compute=fab_compute,
+                    average_age=fab_avg_age,
+                    production_rate=annual_production,
+                )
 
-    # The 'variance' parameter is used directly as theta (scale parameter)
-    theta = variance
-    k = mu / theta
+                # Set derivatives
+                d_project._set_frozen_field('fab_compute_stock_h100e', dC_fab_dt)
+                d_project._set_frozen_field('fab_compute_average_age_years', da_fab_dt)
+                d_project._set_frozen_field('fab_total_produced_h100e', annual_production)
 
-    return float(stats.gamma.cdf(years_since_start, a=k, scale=theta))
+        return StateDerivative(d_world)
 
+    def set_state_attributes(self, t: Tensor, world: World) -> World | None:
+        """
+        Apply discrete state changes for black project compute.
 
-# =============================================================================
-# CONTINUOUS DETECTION MODEL (HAZARD RATE APPROACH)
-# =============================================================================
+        Triggers:
+        1. Fab becomes operational when construction completes
+        """
+        current_time = t.item() if isinstance(t, Tensor) else float(t)
+        changed = False
 
-def compute_gamma_hazard_rate(
-    t: float,
-    k: float,
-    theta: float,
-    min_hazard: float = 1e-10,
-    max_hazard: float = 100.0
-) -> float:
-    """
-    Compute the hazard rate h(t) for a Gamma(k, theta) distribution.
+        for _, project in world.black_projects.items():
+            # Check if fab should become operational
+            if not project.fab_is_operational and project.fab_number_of_lithography_scanners > 0:
+                black_project_start_year = float(
+                    project.preparation_start_year.item()
+                    if hasattr(project.preparation_start_year, 'item')
+                    else project.preparation_start_year
+                )
+                fab_operational_year = black_project_start_year + project.fab_construction_duration
+                if current_time >= fab_operational_year:
+                    project._set_frozen_field('fab_is_operational', True)
+                    changed = True
 
-    The hazard rate is h(t) = f(t) / S(t) where:
-    - f(t) is the PDF
-    - S(t) = 1 - F(t) is the survival function
+        return world if changed else None
 
-    For the detection model, this represents the instantaneous rate of detection
-    at time t, given that detection has not occurred yet.
+    def set_metric_attributes(self, t: Tensor, world: World) -> World:
+        """
+        Compute derived compute metrics for black projects.
 
-    Args:
-        t: Time since project start (years)
-        k: Shape parameter (k = mu / theta)
-        theta: Scale parameter (variance parameter from detection config)
-        min_hazard: Minimum hazard rate to return (prevents numerical issues)
-        max_hazard: Maximum hazard rate to return (caps extreme values)
+        Updates:
+        - Fab metrics (wafer_starts, h100e_per_chip, watts_per_chip, production)
+        - Compute stock (survival, total compute)
+        - Operating compute (limited by datacenter capacity)
+        """
+        current_time = t.item() if isinstance(t, Tensor) else float(t)
+        prc_compute = self.compute_params.PRCComputeParameters
+        prc_energy = self.energy_params.prc_energy_consumption
+        survival_params = self.compute_params.survival_rate_parameters
+        exogenous_trends = self.compute_params.exogenous_trends
 
-    Returns:
-        Hazard rate h(t)
-    """
-    if t <= 0 or k <= 0 or theta <= 0:
-        return min_hazard
+        for _, project in world.black_projects.items():
+            black_project_start_year = float(
+                project.preparation_start_year.item()
+                if hasattr(project.preparation_start_year, 'item')
+                else project.preparation_start_year
+            )
+            years_since_project_start = current_time - black_project_start_year
 
-    # Use scipy's gamma distribution functions
-    pdf = stats.gamma.pdf(t, a=k, scale=theta)
-    survival = stats.gamma.sf(t, a=k, scale=theta)  # sf = survival function = 1 - cdf
+            # --- Fab metrics ---
+            project._set_frozen_field('fab_wafer_starts_per_month', calculate_fab_wafer_starts_per_month(
+                fab_operating_labor=project.fab_operating_labor,
+                fab_number_of_lithography_scanners=project.fab_number_of_lithography_scanners,
+                wafers_per_month_per_worker=prc_compute.fab_wafers_per_month_per_operating_worker,
+                wafers_per_month_per_scanner=prc_compute.wafers_per_month_per_lithography_scanner,
+                labor_productivity_multiplier=prc_compute.fab_labor_productivity_multiplier,
+                scanner_productivity_multiplier=prc_compute.fab_scanner_productivity_multiplier,
+            ))
 
-    if survival < 1e-15:
-        # If survival is essentially 0, detection is certain
-        return max_hazard
+            # Chip specs fixed at fab construction time (black_project_start_year)
+            project._set_frozen_field('fab_h100e_per_chip', calculate_fab_h100e_per_chip(
+                fab_process_node_nm=project.fab_process_node_nm,
+                year=black_project_start_year,
+                exogenous_trends=exogenous_trends,
+            ))
 
-    hazard = pdf / survival
-    return float(np.clip(hazard, min_hazard, max_hazard))
+            project._set_frozen_field('fab_watts_per_chip', calculate_fab_watts_per_chip(
+                fab_process_node_nm=project.fab_process_node_nm,
+                year=black_project_start_year,
+                exogenous_trends=exogenous_trends,
+            ))
 
+            # Fab production metrics
+            if project.fab_is_operational:
+                monthly_h100e = (
+                    project.fab_wafer_starts_per_month *
+                    project.fab_chips_per_wafer *
+                    project.fab_h100e_per_chip
+                )
+                project.fab.monthly_compute_production._set_frozen_field('tpp_h100e_including_attrition', monthly_h100e)
+                project.fab.monthly_compute_production._set_frozen_field('functional_tpp_h100e', monthly_h100e)
 
-def compute_worker_detection_hazard_rate(
-    t: float,
-    labor: int,
-    mean_detection_time_100_workers: float,
-    mean_detection_time_1000_workers: float,
-    variance: float
-) -> float:
-    """
-    Compute the instantaneous hazard rate for worker-based detection.
+            # --- Compute stock ---
+            initial_diverted = project.initial_diverted_compute_h100e
 
-    This is the continuous derivative of the log-likelihood ratio contribution
-    from worker-based intelligence detection. The hazard rate h(t) represents
-    the rate at which evidence accumulates against the project.
+            # Survival rate for initial diverted compute
+            chip_years_of_life = max(0.0, years_since_project_start)
+            survival_rate = calculate_survival_rate(
+                years_since_acquisition=chip_years_of_life,
+                initial_hazard_rate=survival_params.effective_initial_hazard_rate,
+                hazard_rate_increase_per_year=survival_params.effective_hazard_rate_increase,
+            )
 
-    Args:
-        t: Time since project start (years)
-        labor: Number of workers in the black project
-        mean_detection_time_100_workers: Mean detection time for 100 workers
-        mean_detection_time_1000_workers: Mean detection time for 1000 workers
-        variance: Scale parameter (theta) for the Gamma distribution, used directly
+            surviving_initial = initial_diverted * survival_rate
+            project._set_frozen_field('initial_compute_surviving_h100e', surviving_initial)
 
-    Returns:
-        Hazard rate h(t) for worker-based detection
-    """
-    if labor <= 1 or t <= 0:
-        return 0.0
+            # Fab compute from ODE state
+            fab_compute = project.fab_compute_stock_h100e
 
-    A, B = compute_detection_constants(
-        mean_detection_time_100_workers,
-        mean_detection_time_1000_workers
-    )
+            # Fab production metrics for reporting
+            monthly_fab_production = 0.0
+            if project.fab_is_operational:
+                annual_production = calculate_fab_annual_production_h100e(
+                    fab_wafer_starts_per_month=project.fab_wafer_starts_per_month,
+                    fab_chips_per_wafer=project.fab_chips_per_wafer,
+                    fab_h100e_per_chip=project.fab_h100e_per_chip,
+                    fab_is_operational=True,
+                )
+                monthly_fab_production = annual_production / 12.0
 
-    mu = compute_mean_detection_time(labor, A, B)
-    if mu <= 0:
-        return 0.0
+            project._set_frozen_field('fab_cumulative_production_h100e', project.fab_total_produced_h100e)
+            project._set_frozen_field('fab_monthly_production_h100e', monthly_fab_production)
 
-    # The 'variance' parameter is used directly as theta (scale parameter)
-    theta = variance
-    k = mu / theta
+            # Total compute
+            total_compute = surviving_initial + fab_compute
+            functional_compute = total_compute
 
-    return compute_gamma_hazard_rate(t, k, theta)
+            # Overall survival rate
+            total_ever_added = initial_diverted + project.fab_total_produced_h100e
+            overall_survival_rate = total_compute / total_ever_added if total_ever_added > 0 else 1.0
+            project._set_frozen_field('survival_rate', overall_survival_rate)
 
+            # Update compute stock metric
+            project.compute_stock._set_frozen_field('tpp_h100e_including_attrition', total_compute)
+            project.compute_stock._set_frozen_field('functional_tpp_h100e', functional_compute)
 
-def compute_log_survival_probability(
-    t: float,
-    labor: int,
-    mean_detection_time_100_workers: float,
-    mean_detection_time_1000_workers: float,
-    variance: float
-) -> float:
-    """
-    Compute log(S(t)) where S(t) is the survival probability for worker detection.
+            # --- Operating compute (limited by datacenter capacity) ---
+            # Get energy values (computed by BlackProjectDatacenterUpdater)
+            total_energy_gw = getattr(project, 'total_compute_energy_gw', 0.0)
+            total_capacity_gw = project.datacenters.data_center_capacity_gw if project.datacenters else 0.0
 
-    The survival probability S(t) = P(detection time > t) is the probability
-    that the project has NOT been detected by time t. The log of this is
-    used as the log-likelihood ratio contribution from worker-based evidence.
+            if total_energy_gw <= 0:
+                operating_compute = 0.0
+            elif total_energy_gw <= total_capacity_gw:
+                operating_compute = functional_compute
+            else:
+                # Scale down proportionally to fit within capacity
+                operating_compute = functional_compute * (total_capacity_gw / total_energy_gw)
+            project._set_frozen_field('operating_compute_tpp_h100e', operating_compute)
 
-    Args:
-        t: Time since project start (years)
-        labor: Number of workers in the black project
-        mean_detection_time_100_workers: Mean detection time for 100 workers
-        mean_detection_time_1000_workers: Mean detection time for 1000 workers
-        variance: Scale parameter (theta) for the Gamma distribution, used directly
-
-    Returns:
-        log(S(t)) - this is negative and becomes more negative over time
-    """
-    if labor <= 1 or t <= 0:
-        return 0.0  # log(1) = 0, no evidence accumulation
-
-    A, B = compute_detection_constants(
-        mean_detection_time_100_workers,
-        mean_detection_time_1000_workers
-    )
-
-    mu = compute_mean_detection_time(labor, A, B)
-    if mu <= 0:
-        return 0.0
-
-    # The 'variance' parameter is used directly as theta (scale parameter)
-    theta = variance
-    k = mu / theta
-
-    # Survival function S(t) = 1 - CDF(t)
-    survival = stats.gamma.sf(t, a=k, scale=theta)
-
-    if survival < 1e-15:
-        return -35.0  # log(1e-15) ≈ -34.5, cap to prevent -inf
-
-    return float(np.log(survival))
-
-
-def compute_cumulative_log_lr(
-    t: float,
-    labor: int,
-    mean_detection_time_100_workers: float,
-    mean_detection_time_1000_workers: float,
-    variance: float,
-    static_log_lr: float = 0.0,
-    detected: bool = False,
-    detection_log_lr: float = np.log(100.0)
-) -> float:
-    """
-    Compute the cumulative log-likelihood ratio at time t.
-
-    The total LR combines:
-    1. Static evidence (resource accounting, SME inventory, etc.) - constant
-    2. Worker-based evidence - evolves over time based on survival probability
-    3. Detection event - if detected, LR jumps to detection_log_lr
-
-    Args:
-        t: Time since project start (years)
-        labor: Number of workers in the black project
-        mean_detection_time_100_workers: Mean detection time for 100 workers
-        mean_detection_time_1000_workers: Mean detection time for 1000 workers
-        variance: Scale parameter (theta) for the Gamma distribution, used directly
-        static_log_lr: Log-LR from static evidence sources (computed at init)
-        detected: Whether detection has occurred
-        detection_log_lr: Log-LR to assign after detection (default log(100))
-
-    Returns:
-        Cumulative log-likelihood ratio
-    """
-    if detected:
-        # After detection, LR is high (evidence strongly supports project exists)
-        return static_log_lr + detection_log_lr
-
-    # Before detection, worker evidence is based on survival probability
-    # LR_workers = S(t) because no detection = evidence against project
-    # As time passes without detection, this becomes more evidence against
-    log_survival = compute_log_survival_probability(
-        t, labor,
-        mean_detection_time_100_workers,
-        mean_detection_time_1000_workers,
-        variance
-    )
-
-    return static_log_lr + log_survival
-
-
-def compute_posterior_probability(
-    cumulative_log_lr: float,
-    prior_odds: float
-) -> float:
-    """
-    Compute posterior probability of project existing from log-LR.
-
-    Using Bayes' theorem:
-    posterior_odds = prior_odds * likelihood_ratio
-    posterior_prob = posterior_odds / (1 + posterior_odds)
-
-    Args:
-        cumulative_log_lr: Cumulative log-likelihood ratio
-        prior_odds: Prior odds of project existing (odds = p / (1-p))
-
-    Returns:
-        Posterior probability P(project exists | evidence)
-    """
-    # Compute posterior odds in log space to avoid overflow
-    log_prior_odds = np.log(prior_odds) if prior_odds > 0 else -35.0
-    log_posterior_odds = log_prior_odds + cumulative_log_lr
-
-    # Convert to probability
-    # P = odds / (1 + odds) = 1 / (1 + 1/odds) = 1 / (1 + exp(-log_odds))
-    # This is the sigmoid function
-    if log_posterior_odds > 35:
-        return 1.0
-    elif log_posterior_odds < -35:
-        return 0.0
-
-    posterior_odds = np.exp(log_posterior_odds)
-    return float(posterior_odds / (1 + posterior_odds))
+        return world

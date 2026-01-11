@@ -53,29 +53,49 @@ class CombinedUpdater(WorldUpdater):
                 from world_updaters.software_r_and_d import SoftwareRAndD
                 updaters.append(SoftwareRAndD(params))
 
-            # Add black project updater if enabled in params
+            # Add black project updaters if enabled in params
+            # Order matters: datacenter/energy first (compute depends on energy values),
+            # then compute, then perceptions
             if (params.black_project is not None and
                 params.black_project.run_a_black_project):
-                from world_updaters.black_project import BlackProjectUpdater
+                from world_updaters.datacenters_and_energy import BlackProjectDatacenterUpdater
+                from world_updaters.compute import BlackProjectComputeUpdater
+                from world_updaters.perceptions import BlackProjectPerceptionsUpdater
+
                 # Get perception params for detection model
                 perception_params = None
                 if (params.perceptions is not None and
                     hasattr(params.perceptions, 'black_project_perception_parameters')):
                     perception_params = params.perceptions.black_project_perception_parameters
-                updaters.append(BlackProjectUpdater(
+
+                # 1. Datacenter and energy updater (computes energy needed by compute updater)
+                updaters.append(BlackProjectDatacenterUpdater(
+                    params=params,
+                    black_project_params=params.black_project,
+                    energy_params=params.datacenter_and_energy,
+                ))
+
+                # 2. Compute updater (fabs, compute stock, attrition, operating compute)
+                updaters.append(BlackProjectComputeUpdater(
                     params=params,
                     black_project_params=params.black_project,
                     compute_params=params.compute,
                     energy_params=params.datacenter_and_energy,
-                    perception_params=perception_params,
                 ))
 
-            # Add perceptions updater if enabled in params
+                # 3. Perceptions updater (detection LRs, posterior probability)
+                if perception_params is not None:
+                    updaters.append(BlackProjectPerceptionsUpdater(
+                        params=params,
+                        black_project_params=params.black_project,
+                        energy_params=params.datacenter_and_energy,
+                        perception_params=perception_params,
+                    ))
+
+            # Add state perceptions updater if enabled in params
             if (params.perceptions is not None and
                 params.perceptions.update_perceptions):
-                from world_updaters.state_perceptions_of_covert_compute import (
-                    StatePerceptionsOfCovertComputeUpdater
-                )
+                from world_updaters.perceptions import StatePerceptionsOfCovertComputeUpdater
                 updaters.append(StatePerceptionsOfCovertComputeUpdater(params, params.perceptions))
 
         # Register updaters as submodules for proper parameter tracking

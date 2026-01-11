@@ -1,21 +1,19 @@
 """
 Policy parameters for modeling AI governance and international agreements.
-
-NOTE: Default values are NOT stored here. All defaults are in modal_parameters.yaml.
-These dataclasses define the structure only.
 """
 
 from dataclasses import dataclass
 
+from parameters.classes.base_spec import BaseSpec
+from parameters.distribution_spec import ParamValue
+
 
 @dataclass
-class PolicyParameters:
+class PolicyParameters(BaseSpec):
     """
     Parameters for AI policy scenarios.
 
     Currently only contains the AI slowdown start year, which determines
     when international agreements take effect and covert development begins.
     """
-
-    # Year when AI slowdown agreement takes effect
-    ai_slowdown_start_year: float
+    ai_slowdown_start_year: ParamValue = None

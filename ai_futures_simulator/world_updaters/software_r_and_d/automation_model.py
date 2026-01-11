@@ -9,27 +9,38 @@ and optimal CES frontier calculations.
 import numpy as np
 import copy
 import time
-from typing import Optional, Dict, Any, Tuple, NamedTuple, TYPE_CHECKING
+from typing import Optional, Dict, Any, Tuple, NamedTuple
 from scipy.optimize import brentq, minimize_scalar
 import logging
 
-import model_config as cfg
+from . import model_config as cfg
 from .ces_functions import compute_coding_labor_deprecated
-
-if TYPE_CHECKING:
-    from .parameters import Parameters
 
 logger = logging.getLogger(__name__)
 
 
 class AutomationModel:
-    """Automation model"""
-    def __init__(self, params):
+    """Automation model for computing automation fractions and optimal CES frontier."""
+
+    def __init__(
+        self,
+        automation_interp_type: str,
+        automation_anchors: Dict[float, float],
+        automation_logistic_asymptote: float = 1.0,
+    ):
+        """
+        Initialize the AutomationModel.
+
+        Args:
+            automation_interp_type: Type of interpolation ("linear" or "logistic")
+            automation_anchors: Dict mapping progress values to automation fractions
+            automation_logistic_asymptote: Asymptote for logistic schedule (default 1.0)
+        """
         self.initial_FTE_per_GPU = 1
         self.FTE_per_GPU_slope = 1.0
         self.progress_base_unit = cfg.BASE_FOR_SOFTWARE_LOM
-        self.schedule_type = params.automation_interp_type
-        anchors = list(params.automation_anchors.items())
+        self.schedule_type = automation_interp_type
+        anchors = list(automation_anchors.items())
         anchors.sort(key=lambda x: x[0])
         self.anchor_points = anchors
         (prog_1, aut_1), (prog_2, aut_2) = self.anchor_points
@@ -40,7 +51,7 @@ class AutomationModel:
         # Logistic schedule parameters: f(x) = L / (1 + exp(-k(x - x0)))
         # Only compute if using logistic schedule to avoid errors with incompatible anchors
         if self.schedule_type == "logistic":
-            self.logistic_L = params.automation_logistic_asymptote
+            self.logistic_L = automation_logistic_asymptote
             # Compute k and x0 from anchor points
             # Need L > aut_1 and L > aut_2 for valid logistic fit
             if self.logistic_L > aut_1 and self.logistic_L > aut_2:
@@ -850,7 +861,11 @@ def solve_lower_anchor_via_automation_model(
             }
             try:
                 _prof_am_start = time.perf_counter()
-                am = AutomationModel(p)
+                am = AutomationModel(
+                    automation_interp_type=p.automation_interp_type,
+                    automation_anchors=p.automation_anchors,
+                    automation_logistic_asymptote=getattr(p, 'automation_logistic_asymptote', 1.0),
+                )
                 _prof_automationmodel_init_time += time.perf_counter() - _prof_am_start
 
                 H = float(L_HUMAN)
