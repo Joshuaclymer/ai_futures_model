@@ -16,7 +16,7 @@ from classes.flat_world import FlatWorld
 from classes.simulation_primitives import SimulationResult
 from parameters.classes import SimulationParameters
 from parameters.model_parameters import ModelParameters
-from initialize_world_history import initialize_world_for_year
+from initialize_world_history import initialize_world
 from world_updaters.combined_updater import CombinedUpdater, FlatCombinedUpdater
 
 
@@ -138,7 +138,7 @@ class AIFuturesSimulator(nn.Module):
         # Get initial world state for simulation start year
         start_year = params.settings.simulation_start_year
         if world_history is None:
-            initial_world = initialize_world_for_year(params, start_year)
+            initial_world = initialize_world(params, start_year)
         else:
             if start_year not in world_history:
                 raise ValueError(
