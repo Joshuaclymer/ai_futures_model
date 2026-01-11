@@ -19,12 +19,10 @@ import json
 import os
 from contextlib import contextmanager
 
-# Add new version of takeoff model to path (contains the progress_model package)
-# Path: ai_futures_simulator/ai_futures_simulator/parameters/calibrate.py
-# Need to go up 3 levels to reach ai_futures_simulator/ then into new_version_of_takeoff_model/
-AI_FUTURES_CALCULATOR_PATH = Path(__file__).resolve().parent.parent.parent / "new_version_of_takeoff_model" / "ai-futures-calculator"
-if str(AI_FUTURES_CALCULATOR_PATH) not in sys.path:
-    sys.path.insert(0, str(AI_FUTURES_CALCULATOR_PATH))
+# Add progress_model package to path (progress_model is at repo root)
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 @contextmanager

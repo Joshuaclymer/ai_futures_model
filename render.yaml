@@ -16,7 +16,7 @@ services:
   - type: web
     name: ai-futures-backend
     runtime: python
-    buildCommand: git clone https://github.com/LessWrong2/ai-futures-calculator.git new_version_of_takeoff_model/ai-futures-calculator && pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: cd app_backend && python api.py
     envVars:
       - key: PYTHON_VERSION

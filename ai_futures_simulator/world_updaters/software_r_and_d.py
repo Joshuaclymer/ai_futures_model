@@ -10,10 +10,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Add progress_model package to path
-PROGRESS_MODEL_PATH = Path(__file__).resolve().parent.parent.parent / "new_version_of_takeoff_model" / "ai-futures-calculator"
-if str(PROGRESS_MODEL_PATH) not in sys.path:
-    sys.path.insert(0, str(PROGRESS_MODEL_PATH))
+# Add progress_model package to path (progress_model is at repo root)
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 import torch
 from torch import Tensor
