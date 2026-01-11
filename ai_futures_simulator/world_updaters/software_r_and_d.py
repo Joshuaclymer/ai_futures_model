@@ -39,8 +39,7 @@ from progress_model import (
 import model_config as cfg
 
 # Load historical time series data for interpolation
-# This is the same data used by the reference ProgressModel
-_HISTORICAL_CSV_PATH = SOFTWARE_R_AND_D_DIR / "input_data.csv"
+_HISTORICAL_CSV_PATH = Path(__file__).parent.parent / "parameters" / "historical_calibration_data.csv"
 _historical_time_series = None
 
 def _load_historical_time_series() -> TimeSeriesData:
@@ -53,7 +52,7 @@ def _load_historical_time_series() -> TimeSeriesData:
             L_HUMAN=df['L_HUMAN'].values,
             inference_compute=df['inference_compute'].values,
             experiment_compute=df['experiment_compute'].values,
-            training_compute_growth_rate=df['training_compute_growth_rate'].values,
+            training_compute=df['training_compute'].values,
         )
     return _historical_time_series
 
@@ -150,8 +149,9 @@ class SoftwareRAndD(WorldUpdater):
                 min(current_time, time_max), ts.time, ts.L_HUMAN
             ))
 
-        training_compute_growth_rate = float(np.interp(
-            min(current_time, time_max), ts.time, ts.training_compute_growth_rate
+        # Get training compute growth rate using the TimeSeriesData method
+        training_compute_growth_rate = float(ts.get_training_compute_growth_rate(
+            min(current_time, time_max)
         ))
 
         # For years after the historical data range, apply growth from the end point

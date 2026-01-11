@@ -28,7 +28,7 @@ class AutomationModel:
         self.initial_FTE_per_GPU = 1
         self.FTE_per_GPU_slope = 1.0
         self.progress_base_unit = cfg.BASE_FOR_SOFTWARE_LOM
-        self.schedule_type = getattr(params, 'automation_interp_type', cfg.DEFAULT_PARAMETERS['automation_interp_type'])
+        self.schedule_type = params.automation_interp_type
         anchors = list(params.automation_anchors.items())
         anchors.sort(key=lambda x: x[0])
         self.anchor_points = anchors
@@ -40,7 +40,7 @@ class AutomationModel:
         # Logistic schedule parameters: f(x) = L / (1 + exp(-k(x - x0)))
         # Only compute if using logistic schedule to avoid errors with incompatible anchors
         if self.schedule_type == "logistic":
-            self.logistic_L = getattr(params, 'automation_logistic_asymptote', cfg.DEFAULT_PARAMETERS['automation_logistic_asymptote'])
+            self.logistic_L = params.automation_logistic_asymptote
             # Compute k and x0 from anchor points
             # Need L > aut_1 and L > aut_2 for valid logistic fit
             if self.logistic_L > aut_1 and self.logistic_L > aut_2:

@@ -44,8 +44,13 @@ class TasteDistribution:
     - taste_limit_smoothing: smoothing parameter L (0 < L < 1)
 
     Example usage:
-        # Create distribution with default parameters
-        taste_dist = TasteDistribution()
+        # Create distribution with required parameters (values from default_parameters.yaml)
+        taste_dist = TasteDistribution(
+            top_percentile=0.999,
+            median_to_top_gap=3.7,
+            taste_limit_m2b=8.0,
+            taste_limit_smoothing=0.51
+        )
 
         # Get taste at 90th percentile
         top_taste = taste_dist.get_taste_at_quantile(0.9)
@@ -60,11 +65,11 @@ class TasteDistribution:
     """
 
     def __init__(self,
-                 top_percentile: float = cfg.TOP_PERCENTILE,
-                 median_to_top_gap: float = cfg.MEDIAN_TO_TOP_TASTE_MULTIPLIER,
-                 baseline_mean: float = cfg.AGGREGATE_RESEARCH_TASTE_BASELINE,
-                 taste_limit_m2b: float = cfg.DEFAULT_PARAMETERS['taste_limit'],
-                 taste_limit_smoothing: float = cfg.DEFAULT_PARAMETERS['taste_limit_smoothing']):
+                 top_percentile: float,
+                 median_to_top_gap: float,
+                 taste_limit_m2b: float,
+                 taste_limit_smoothing: float,
+                 baseline_mean: float = cfg.AGGREGATE_RESEARCH_TASTE_BASELINE):
         """
         Initialize the taste distribution with empirical anchors.
 
@@ -701,11 +706,11 @@ def compute_ai_research_taste(
 
 
 def get_or_create_taste_distribution(
-    top_percentile: float = cfg.TOP_PERCENTILE,
-    median_to_top_gap: float = cfg.MEDIAN_TO_TOP_TASTE_MULTIPLIER,
-    baseline_mean: float = cfg.AGGREGATE_RESEARCH_TASTE_BASELINE,
-    taste_limit: float = cfg.DEFAULT_PARAMETERS['taste_limit'],
-    taste_limit_smoothing: float = cfg.DEFAULT_PARAMETERS['taste_limit_smoothing']
+    top_percentile: float,
+    median_to_top_gap: float,
+    taste_limit: float,
+    taste_limit_smoothing: float,
+    baseline_mean: float = cfg.AGGREGATE_RESEARCH_TASTE_BASELINE
 ) -> TasteDistribution:
     """
     Get or create a cached TasteDistribution instance with LRU eviction.

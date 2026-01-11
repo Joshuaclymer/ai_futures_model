@@ -160,14 +160,14 @@ _calibration_cache: Dict[str, CalibratedParameters] = {}
 
 def _load_historical_time_series() -> TimeSeriesData:
     """Load the historical time series data used for calibration."""
-    csv_path = SOFTWARE_R_AND_D_DIR / "input_data.csv"
+    csv_path = Path(__file__).parent / "historical_calibration_data.csv"
     df = pd.read_csv(csv_path)
     return TimeSeriesData(
         time=df['time'].values,
         L_HUMAN=df['L_HUMAN'].values,
         inference_compute=df['inference_compute'].values,
         experiment_compute=df['experiment_compute'].values,
-        training_compute_growth_rate=df['training_compute_growth_rate'].values
+        training_compute=df['training_compute'].values
     )
 
 
