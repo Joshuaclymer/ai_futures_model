@@ -40,7 +40,7 @@ import model_config as cfg
 
 # Load historical time series data for interpolation
 # This is the same data used by the reference ProgressModel
-_HISTORICAL_CSV_PATH = PROGRESS_MODEL_PATH / "input_data.csv"
+_HISTORICAL_CSV_PATH = REPO_ROOT / "input_data.csv"
 _historical_time_series = None
 
 def _load_historical_time_series() -> TimeSeriesData:
