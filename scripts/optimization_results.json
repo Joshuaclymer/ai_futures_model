@@ -1,39 +1,63 @@
 {
   "best_params": {
-    "total_labor": 31366.090508801695,
-    "fraction_of_labor_devoted_to_datacenter_construction": 0.45944934453728964,
-    "fraction_of_labor_devoted_to_black_fab_construction": 0.17456424930606,
-    "fraction_of_labor_devoted_to_black_fab_operation": 0.15195160725929405,
-    "fraction_of_labor_devoted_to_ai_research": 0.21403479889735638,
-    "fraction_of_initial_compute_stock_to_divert_at_black_project_start": 0.46726570456327904,
-    "fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start": 0.15665004263755236,
-    "fraction_of_lithography_scanners_to_divert_at_black_project_start": 0.31294568821850455,
-    "max_fraction_of_total_national_energy_consumption": 0.13298197596219993,
-    "years_before_black_project_start_to_begin_datacenter_construction": 1.1859781765875215
+    "total_labor": 45990.00440484852,
+    "fraction_of_labor_devoted_to_datacenter_construction": 0.6981288807070648,
+    "fraction_of_labor_devoted_to_black_fab_construction": 0.013741144632239828,
+    "fraction_of_labor_devoted_to_black_fab_operation": 0.08740458790613326,
+    "fraction_of_labor_devoted_to_ai_research": 0.20072538675456195,
+    "fraction_of_initial_compute_stock_to_divert_at_black_project_start": 0.5,
+    "fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start": 0.002551931024610682,
+    "fraction_of_lithography_scanners_to_divert_at_black_project_start": 0.3840458433301108,
+    "max_fraction_of_total_national_energy_consumption": 0.10550941615077018,
+    "years_before_black_project_start_to_begin_datacenter_construction": 4.813564513078174
   },
-  "best_median_compute": 20704940.0,
-  "total_evaluations": 60,
-  "elapsed_time_seconds": 27.0047607421875,
+  "best_median_compute": 19724918.0,
+  "total_evaluations": 2122,
+  "elapsed_time_seconds": 5289.290744781494,
   "optimization_history": [
     {
       "evaluation": 1,
-      "objective": 14629233.0
+      "objective": 13833062.5
     },
     {
-      "evaluation": 5,
-      "objective": 15577253.0
+      "evaluation": 37,
+      "objective": 15599689.0
     },
     {
-      "evaluation": 15,
-      "objective": 15927467.0
+      "evaluation": 70,
+      "objective": 16618006.5
     },
     {
-      "evaluation": 29,
-      "objective": 19329598.0
+      "evaluation": 129,
+      "objective": 17942990.0
     },
     {
-      "evaluation": 47,
-      "objective": 20704940.0
+      "evaluation": 288,
+      "objective": 19047910.0
+    },
+    {
+      "evaluation": 444,
+      "objective": 19085736.0
+    },
+    {
+      "evaluation": 516,
+      "objective": 19441461.0
+    },
+    {
+      "evaluation": 686,
+      "objective": 19723946.0
+    },
+    {
+      "evaluation": 2087,
+      "objective": 19724504.0
+    },
+    {
+      "evaluation": 2107,
+      "objective": 19724505.0
+    },
+    {
+      "evaluation": 2112,
+      "objective": 19724918.0
     }
   ]
 }

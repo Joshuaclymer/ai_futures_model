@@ -1,2 +1,20 @@
 new_version_of_takeoff_model
 old
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+
+# MCP
+.mcp.json
+.playwright-mcp/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

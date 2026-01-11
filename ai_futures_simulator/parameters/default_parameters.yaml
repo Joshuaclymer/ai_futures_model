@@ -384,10 +384,10 @@ perceptions:
     # Prior odds that a covert project exists (odds = p / (1-p))
     prior_odds_of_covert_project: 0.25  # Reference: 20% probability = 0.25 odds
     # US intelligence estimation error (median absolute relative error)
-    intelligence_median_error_in_estimate_of_compute_stock: 0.07
-    intelligence_median_error_in_estimate_of_fab_stock: 0.07  # Reference: 7%
-    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.1  # Reference: 5%
-    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.03  # Reference: 5%
+    intelligence_median_error_in_estimate_of_compute_stock: 0.05
+    intelligence_median_error_in_estimate_of_fab_stock: 0.05 
+    intelligence_median_error_in_energy_consumption_estimate_of_datacenter_capacity: 0.05
+    intelligence_median_error_in_satellite_estimate_of_datacenter_capacity: 0.03
     # Worker detection model (Gamma distribution parameters)
     # Detection time ~ Gamma(k, theta) where k = mean/sigma, theta = sigma
     mean_detection_time_for_100_workers: 6.95  # Reference: 6.95 years

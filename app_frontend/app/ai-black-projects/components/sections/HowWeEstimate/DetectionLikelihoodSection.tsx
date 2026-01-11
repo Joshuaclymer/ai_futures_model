@@ -154,8 +154,7 @@ export function DetectionLikelihoodSection({ agreementYear = 2030, data, paramet
       </p>
       <p className="text-[14px] text-[#666] leading-[1.6] max-w-[900px] mb-5">
         US intelligence becomes more confident in the existence of the covert project because
-        of two sources of evidence: <strong>accounting for key resources</strong> and noticing
-        discrepancies and <strong>direct observations of covert operations</strong> (via IMGINT,
+        of two sources of evidence: US intelligence <strong>accounts for AI-critical resources</strong> and <strong>directly observes covert AI operations</strong> (via IMGINT,
         HUMINT, SIGINT, etc).
       </p>
 
