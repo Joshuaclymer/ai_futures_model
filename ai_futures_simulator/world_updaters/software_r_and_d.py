@@ -10,10 +10,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Add progress_model package to path (progress_model is at repo root)
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# Add progress_model package to path (progress_model is in software_r_and_d/)
+SOFTWARE_R_AND_D_DIR = Path(__file__).resolve().parent / "software_r_and_d"
+if str(SOFTWARE_R_AND_D_DIR) not in sys.path:
+    sys.path.insert(0, str(SOFTWARE_R_AND_D_DIR))
 
 import torch
 from torch import Tensor
@@ -40,7 +40,7 @@ import model_config as cfg
 
 # Load historical time series data for interpolation
 # This is the same data used by the reference ProgressModel
-_HISTORICAL_CSV_PATH = REPO_ROOT / "input_data.csv"
+_HISTORICAL_CSV_PATH = SOFTWARE_R_AND_D_DIR / "input_data.csv"
 _historical_time_series = None
 
 def _load_historical_time_series() -> TimeSeriesData:

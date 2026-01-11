@@ -19,10 +19,10 @@ import json
 import os
 from contextlib import contextmanager
 
-# Add progress_model package to path (progress_model is at repo root)
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# Add progress_model package to path (progress_model is in world_updaters/software_r_and_d/)
+SOFTWARE_R_AND_D_DIR = Path(__file__).resolve().parent.parent / "world_updaters" / "software_r_and_d"
+if str(SOFTWARE_R_AND_D_DIR) not in sys.path:
+    sys.path.insert(0, str(SOFTWARE_R_AND_D_DIR))
 
 
 @contextmanager
@@ -160,7 +160,7 @@ _calibration_cache: Dict[str, CalibratedParameters] = {}
 
 def _load_historical_time_series() -> TimeSeriesData:
     """Load the historical time series data used for calibration."""
-    csv_path = AI_FUTURES_CALCULATOR_PATH / "input_data.csv"
+    csv_path = SOFTWARE_R_AND_D_DIR / "input_data.csv"
     df = pd.read_csv(csv_path)
     return TimeSeriesData(
         time=df['time'].values,
@@ -247,7 +247,7 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     calibration_start_year = min(2012.0, inputs.start_year)
     model = ProgressModel(params, time_series)
     time_range = [calibration_start_year, 2050.0]
-    with working_directory(AI_FUTURES_CALCULATOR_PATH):
+    with working_directory(SOFTWARE_R_AND_D_DIR):
         times, progress_values, research_stock_values = model.compute_progress_trajectory(
             time_range, initial_progress=0.0
         )

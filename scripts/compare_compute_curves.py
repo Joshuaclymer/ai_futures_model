@@ -15,8 +15,9 @@ import matplotlib.pyplot as plt
 
 # Add paths for imports
 REPO_ROOT = Path(__file__).resolve().parent.parent
+SOFTWARE_R_AND_D_DIR = REPO_ROOT / "ai_futures_simulator" / "world_updaters" / "software_r_and_d"
 sys.path.insert(0, str(REPO_ROOT / "ai_futures_simulator"))
-sys.path.insert(0, str(REPO_ROOT / "new_version_of_takeoff_model" / "ai-futures-calculator"))
+sys.path.insert(0, str(SOFTWARE_R_AND_D_DIR))
 
 # Import current model
 from ai_futures_simulator import AIFuturesSimulator
@@ -113,7 +114,7 @@ def run_current_model(start_year=2024, end_year=2040):
 def run_reference_model(start_year=2024, end_year=2040):
     """Run the reference model (new_version_of_takeoff_model)."""
     # Load default input data
-    input_csv = REPO_ROOT / "new_version_of_takeoff_model" / "ai-futures-calculator" / "input_data.csv"
+    input_csv = SOFTWARE_R_AND_D_DIR / "input_data.csv"
     data = load_time_series_from_csv(str(input_csv))
 
     # Create default parameters (these match the reference model's defaults)
