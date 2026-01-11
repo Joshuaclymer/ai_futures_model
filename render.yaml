@@ -16,7 +16,7 @@ services:
   - type: web
     name: ai-futures-backend
     runtime: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: git submodule update --init --recursive && pip install -r requirements.txt
     startCommand: cd app_backend && python api.py
     envVars:
       - key: PYTHON_VERSION
