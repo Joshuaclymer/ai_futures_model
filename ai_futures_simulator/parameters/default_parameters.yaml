@@ -78,11 +78,11 @@ software_r_and_d:
   # =========================================================================
   automation_fraction_at_coding_automation_anchor: 1.0
   automation_anchors: null
-  automation_interp_type: "linear"
-  automation_logistic_asymptote: 1.05
+  automation_interp_type: "logistic"
+  automation_logistic_asymptote: 1.1
 
-  # Set to 1.6 to match reference model (new_version_of_takeoff_model)
-  swe_multiplier_at_present_day: 1.6
+  # Set to 1.8 to match reference model (ai-futures-calculator)
+  swe_multiplier_at_present_day: 1.8
 
   coding_labor_mode: "optimal_ces"
 
@@ -137,7 +137,7 @@ software_r_and_d:
     dist: lognormal
     ci80: [12456, 28000000000]
     min: 960  # At least 16 hours (longest METR tasks)
-    modal: 12000000.0
+    modal: 15000000.0  # 125 work years
 
   # Pre-gap AC horizon (minutes)
   # ci80: [0.1 work year, 10 work years]
@@ -150,8 +150,8 @@ software_r_and_d:
   horizon_extrapolation_type: "decaying doubling time"
 
   # Manual horizon fitting
-  present_day: 2025.6
-  present_horizon: 26.0
+  present_day: 2025.9  # GPT-5.1-codex-max
+  present_horizon: 32.0
 
   present_doubling_time:
     dist: lognormal
@@ -173,7 +173,7 @@ software_r_and_d:
     dist: lognormal
     ci80: [1, 9]
     min: 0
-    modal: 3.0
+    modal: 1.5
 
   # =========================================================================
   # GAP MODE PARAMETERS
@@ -188,7 +188,7 @@ software_r_and_d:
     dist: lognormal
     ci80: [0.3, 7.5]
     min: 0.0
-    modal: 1.5
+    modal: 0.7
 
 # =============================================================================
 # COMPUTE PARAMETERS
