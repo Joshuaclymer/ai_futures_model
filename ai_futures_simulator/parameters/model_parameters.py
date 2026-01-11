@@ -96,11 +96,11 @@ class ModelParameters:
     # Correlation matrix specification (optional)
     correlation_matrix: Optional[Dict[str, Any]] = None
 
-    # Random seed
-    seed: int = 42
+    # Random seed (from YAML)
+    seed: Optional[int] = None
 
-    # Initial progress value
-    initial_progress: float = 0.0
+    # Initial progress value (from YAML)
+    initial_progress: Optional[float] = None
 
     # Internal random generator for sampling (initialized on first use)
     _rng: Optional[np.random.Generator] = None
@@ -116,18 +116,19 @@ class ModelParameters:
         with open(path, "r") as f:
             config = yaml.safe_load(f)
 
+        # All parameters must be specified in YAML - no fallbacks
         return cls(
-            settings=config.get("settings", {}),
-            software_r_and_d=config.get("software_r_and_d", {}),
-            compute=config.get("compute", {}),
-            datacenter_and_energy=config.get("datacenter_and_energy", {}),
-            policy=config.get("policy", {}),
+            settings=config["settings"],
+            software_r_and_d=config["software_r_and_d"],
+            compute=config["compute"],
+            datacenter_and_energy=config["datacenter_and_energy"],
+            policy=config["policy"],
             ai_researcher_headcount=config.get("ai_researcher_headcount"),
             black_project=config.get("black_project"),
             perceptions=config.get("perceptions"),
             correlation_matrix=config.get("correlation_matrix"),
-            seed=config.get("seed", 42),
-            initial_progress=config.get("initial_progress", 0.0),
+            seed=config["seed"],
+            initial_progress=config["initial_progress"],
         )
 
     def _sample_nested_dict(
@@ -199,68 +200,54 @@ class ModelParameters:
         settings = SimulationSettings(**sampled_settings)
         software_r_and_d = SoftwareRAndDParameters(**sampled_r_and_d)
 
-        # Build nested compute parameters
+        # Build nested compute parameters - all values must be in YAML
         compute = ComputeParameters(
-            exogenous_trends=ExogenousComputeTrends(**sampled_compute.get("exogenous_trends", {})),
-            survival_rate_parameters=SurvivalRateParameters(**sampled_compute.get("survival_rate_parameters", {})),
-            USComputeParameters=USComputeParameters(**sampled_compute.get("us_compute", {})),
-            PRCComputeParameters=PRCComputeParameters(**sampled_compute.get("prc_compute", {})),
-            compute_allocations=ComputeAllocations(**sampled_compute.get("compute_allocations", {
-                "fraction_for_ai_r_and_d_inference": 0.29,
-                "fraction_for_ai_r_and_d_training": 0.25,
-                "fraction_for_external_deployment": 0.3,
-                "fraction_for_alignment_research": 0.01,
-                "fraction_for_frontier_training": 0.15,
-            })),
+            exogenous_trends=ExogenousComputeTrends(**sampled_compute["exogenous_trends"]),
+            survival_rate_parameters=SurvivalRateParameters(**sampled_compute["survival_rate_parameters"]),
+            USComputeParameters=USComputeParameters(**sampled_compute["us_compute"]),
+            PRCComputeParameters=PRCComputeParameters(**sampled_compute["prc_compute"]),
+            compute_allocations=ComputeAllocations(**sampled_compute["compute_allocations"]),
         )
 
-        # Build nested datacenter and energy parameters
+        # Build nested datacenter and energy parameters - all values must be in YAML
         datacenter_and_energy = DataCenterAndEnergyParameters(
-            prc_energy_consumption=PRCDataCenterAndEnergyParameters(**sampled_dc_energy.get("prc_energy_consumption", {})),
+            prc_energy_consumption=PRCDataCenterAndEnergyParameters(**sampled_dc_energy["prc_energy_consumption"]),
         )
 
         policy = PolicyParameters(**sampled_policy)
 
-        # Build black project parameters if present
+        # Build black project parameters if present - all values must be in YAML
         black_project = None
         if self.black_project is not None:
             sampled_bp = self._sample_nested_dict(self.black_project, rng)
             black_project = BlackProjectParameters(
-                run_a_black_project=sampled_bp.get("run_a_black_project", True),
-                black_project_start_year=sampled_bp.get("black_project_start_year", 2030.0),
-                black_project_properties=BlackProjectProperties(**sampled_bp.get("properties", {})),
+                run_a_black_project=sampled_bp["run_a_black_project"],
+                black_project_start_year=sampled_bp["black_project_start_year"],
+                black_project_properties=BlackProjectProperties(**sampled_bp["properties"]),
             )
 
-        # Build perceptions parameters if present
+        # Build perceptions parameters if present - all values must be in YAML
         perceptions = None
         if self.perceptions is not None:
             sampled_perceptions = self._sample_nested_dict(self.perceptions, rng)
             perceptions = PerceptionsParameters(
-                update_perceptions=sampled_perceptions.get("update_perceptions", True),
+                update_perceptions=sampled_perceptions["update_perceptions"],
                 black_project_perception_parameters=BlackProjectPerceptionsParameters(
-                    **sampled_perceptions.get("black_project_perception_parameters", {})
+                    **sampled_perceptions["black_project_perception_parameters"]
                 ),
             )
 
-        # Build AI researcher headcount parameters if present
+        # Build AI researcher headcount parameters if present - all values must be in YAML
         ai_researcher_headcount = None
         if self.ai_researcher_headcount is not None:
             sampled_researchers = self._sample_nested_dict(self.ai_researcher_headcount, rng)
             ai_researcher_headcount = AIResearcherHeadcountParameters(
-                us_researchers=USResearcherParameters(**sampled_researchers.get("us_researchers", {})),
-                prc_researchers=PRCResearcherParameters(**sampled_researchers.get("prc_researchers", {})),
-                initial_global_ai_researcher_headcount=sampled_researchers.get(
-                    "initial_global_ai_researcher_headcount", 90000.0
-                ),
-                annual_growth_rate_of_ai_researcher_headcount=sampled_researchers.get(
-                    "annual_growth_rate_of_ai_researcher_headcount", 1.12
-                ),
-                proportion_of_global_ai_researchers_in_us=sampled_researchers.get(
-                    "proportion_of_global_ai_researchers_in_us", 0.55
-                ),
-                proportion_of_global_ai_researchers_in_prc=sampled_researchers.get(
-                    "proportion_of_global_ai_researchers_in_prc", 0.44
-                ),
+                us_researchers=USResearcherParameters(**sampled_researchers["us_researchers"]),
+                prc_researchers=PRCResearcherParameters(**sampled_researchers["prc_researchers"]),
+                initial_global_ai_researcher_headcount=sampled_researchers["initial_global_ai_researcher_headcount"],
+                annual_growth_rate_of_ai_researcher_headcount=sampled_researchers["annual_growth_rate_of_ai_researcher_headcount"],
+                proportion_of_global_ai_researchers_in_us=sampled_researchers["proportion_of_global_ai_researchers_in_us"],
+                proportion_of_global_ai_researchers_in_prc=sampled_researchers["proportion_of_global_ai_researchers_in_prc"],
             )
 
         return SimulationParameters(
@@ -351,68 +338,54 @@ class ModelParameters:
         settings = SimulationSettings(**modal_settings)
         software_r_and_d = SoftwareRAndDParameters(**modal_r_and_d)
 
-        # Build nested compute parameters
+        # Build nested compute parameters - all values must be in YAML
         compute = ComputeParameters(
-            exogenous_trends=ExogenousComputeTrends(**modal_compute.get("exogenous_trends", {})),
-            survival_rate_parameters=SurvivalRateParameters(**modal_compute.get("survival_rate_parameters", {})),
-            USComputeParameters=USComputeParameters(**modal_compute.get("us_compute", {})),
-            PRCComputeParameters=PRCComputeParameters(**modal_compute.get("prc_compute", {})),
-            compute_allocations=ComputeAllocations(**modal_compute.get("compute_allocations", {
-                "fraction_for_ai_r_and_d_inference": 0.29,
-                "fraction_for_ai_r_and_d_training": 0.25,
-                "fraction_for_external_deployment": 0.3,
-                "fraction_for_alignment_research": 0.01,
-                "fraction_for_frontier_training": 0.15,
-            })),
+            exogenous_trends=ExogenousComputeTrends(**modal_compute["exogenous_trends"]),
+            survival_rate_parameters=SurvivalRateParameters(**modal_compute["survival_rate_parameters"]),
+            USComputeParameters=USComputeParameters(**modal_compute["us_compute"]),
+            PRCComputeParameters=PRCComputeParameters(**modal_compute["prc_compute"]),
+            compute_allocations=ComputeAllocations(**modal_compute["compute_allocations"]),
         )
 
-        # Build nested datacenter and energy parameters
+        # Build nested datacenter and energy parameters - all values must be in YAML
         datacenter_and_energy = DataCenterAndEnergyParameters(
-            prc_energy_consumption=PRCDataCenterAndEnergyParameters(**modal_dc_energy.get("prc_energy_consumption", {})),
+            prc_energy_consumption=PRCDataCenterAndEnergyParameters(**modal_dc_energy["prc_energy_consumption"]),
         )
 
         policy = PolicyParameters(**modal_policy)
 
-        # Build black project parameters if present
+        # Build black project parameters if present - all values must be in YAML
         black_project = None
         if self.black_project is not None:
             modal_bp = self._get_modal_nested_dict(self.black_project)
             black_project = BlackProjectParameters(
-                run_a_black_project=modal_bp.get("run_a_black_project", True),
-                black_project_start_year=modal_bp.get("black_project_start_year", 2030.0),
-                black_project_properties=BlackProjectProperties(**modal_bp.get("properties", {})),
+                run_a_black_project=modal_bp["run_a_black_project"],
+                black_project_start_year=modal_bp["black_project_start_year"],
+                black_project_properties=BlackProjectProperties(**modal_bp["properties"]),
             )
 
-        # Build perceptions parameters if present
+        # Build perceptions parameters if present - all values must be in YAML
         perceptions = None
         if self.perceptions is not None:
             modal_perceptions = self._get_modal_nested_dict(self.perceptions)
             perceptions = PerceptionsParameters(
-                update_perceptions=modal_perceptions.get("update_perceptions", True),
+                update_perceptions=modal_perceptions["update_perceptions"],
                 black_project_perception_parameters=BlackProjectPerceptionsParameters(
-                    **modal_perceptions.get("black_project_perception_parameters", {})
+                    **modal_perceptions["black_project_perception_parameters"]
                 ),
             )
 
-        # Build AI researcher headcount parameters if present
+        # Build AI researcher headcount parameters if present - all values must be in YAML
         ai_researcher_headcount = None
         if self.ai_researcher_headcount is not None:
             modal_researchers = self._get_modal_nested_dict(self.ai_researcher_headcount)
             ai_researcher_headcount = AIResearcherHeadcountParameters(
-                us_researchers=USResearcherParameters(**modal_researchers.get("us_researchers", {})),
-                prc_researchers=PRCResearcherParameters(**modal_researchers.get("prc_researchers", {})),
-                initial_global_ai_researcher_headcount=modal_researchers.get(
-                    "initial_global_ai_researcher_headcount", 90000.0
-                ),
-                annual_growth_rate_of_ai_researcher_headcount=modal_researchers.get(
-                    "annual_growth_rate_of_ai_researcher_headcount", 1.12
-                ),
-                proportion_of_global_ai_researchers_in_us=modal_researchers.get(
-                    "proportion_of_global_ai_researchers_in_us", 0.55
-                ),
-                proportion_of_global_ai_researchers_in_prc=modal_researchers.get(
-                    "proportion_of_global_ai_researchers_in_prc", 0.44
-                ),
+                us_researchers=USResearcherParameters(**modal_researchers["us_researchers"]),
+                prc_researchers=PRCResearcherParameters(**modal_researchers["prc_researchers"]),
+                initial_global_ai_researcher_headcount=modal_researchers["initial_global_ai_researcher_headcount"],
+                annual_growth_rate_of_ai_researcher_headcount=modal_researchers["annual_growth_rate_of_ai_researcher_headcount"],
+                proportion_of_global_ai_researchers_in_us=modal_researchers["proportion_of_global_ai_researchers_in_us"],
+                proportion_of_global_ai_researchers_in_prc=modal_researchers["proportion_of_global_ai_researchers_in_prc"],
             )
 
         return SimulationParameters(

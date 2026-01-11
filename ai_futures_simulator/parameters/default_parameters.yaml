@@ -398,6 +398,23 @@ perceptions:
     detection_thresholds: [1, 2, 4]
 
 # =============================================================================
+# AI RESEARCHER HEADCOUNT PARAMETERS
+# =============================================================================
+ai_researcher_headcount:
+  initial_global_ai_researcher_headcount: 90000.0
+  annual_growth_rate_of_ai_researcher_headcount: 1.12
+  proportion_of_global_ai_researchers_in_us: 0.55
+  proportion_of_global_ai_researchers_in_prc: 0.44
+  us_researchers:
+    initial_ai_researcher_headcount_2025: 49500.0  # 90000 * 0.55
+    annual_growth_rate: 1.12
+    proportion_of_researchers_in_largest_ai_sw_developer: 0.1
+  prc_researchers:
+    initial_ai_researcher_headcount_2025: 39600.0  # 90000 * 0.44
+    annual_growth_rate: 1.12
+    proportion_of_researchers_in_largest_ai_sw_developer: 0.1
+
+# =============================================================================
 # CORRELATION MATRIX (optional)
 # =============================================================================
 # Creates correlations between related parameters using Spearman rank correlation
