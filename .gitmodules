@@ -1,0 +1,3 @@
+[submodule "new_version_of_takeoff_model/ai-futures-calculator"]
+	path = new_version_of_takeoff_model/ai-futures-calculator
+	url = https://github.com/LessWrong2/ai-futures-calculator.git
