@@ -5,13 +5,13 @@ import { formatSCHorizon, formatAsPowerOfTenText, formatWorkTimeDuration } from 
 import { formatTo3SigFigs } from '@/utils/formatting';
 
 interface ModelDefaults {
-    optimal_ces_eta_init?: number;
-    automation_interp_type?: string;
-    ai_research_taste_slope?: number;
+    'software_r_and_d.optimal_ces_eta_init'?: number;
+    'software_r_and_d.automation_interp_type'?: string;
+    'software_r_and_d.ai_research_taste_slope'?: number;
     anchor_progress_at_strong_cognitive_horizon?: number;
     present_year?: number;
     present_progress?: number;
-    progress_at_aa?: number;
+    'software_r_and_d.progress_at_aa'?: number;
 }
 
 export interface ParameterConfig {
@@ -71,7 +71,7 @@ type SliderProps = Omit<ParameterSliderProps,
     'value' | 'uiParameters' | 'setUiParameters' | 'allParameters' |
     'isDragging' | 'setIsDragging' | 'commitParameters'
 > & {
-    paramName: keyof ParametersType;
+    paramName: string;
     lockedBy?: string | string[];
 };
 
@@ -200,20 +200,20 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
     simplificationCheckboxes,
     samplingConfigBounds,
 }) => {
-    const handleToggle = (paramName: keyof ParametersType) => (checked: boolean) => {
+    const handleToggle = (paramName: string) => (checked: boolean) => {
         const next = { ...uiParameters, [paramName]: checked };
         setUiParameters(next);
         commitParameters(next);
     };
 
     const handleTasteScheduleChange = (value: string) => {
-        const next = { ...uiParameters, taste_schedule_type: value as ParametersType['taste_schedule_type'] };
+        const next = { ...uiParameters, 'software_r_and_d.taste_schedule_type': value };
         setUiParameters(next);
         commitParameters(next);
     };
 
     const handleAutomationInterpTypeChange = (value: string) => {
-        const next = { ...uiParameters, automation_interp_type: value };
+        const next = { ...uiParameters, 'software_r_and_d.automation_interp_type': value };
         setUiParameters(next);
         commitParameters(next);
     };
@@ -231,7 +231,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                     <div className="mt-2">
                         <SliderGrid>
                             <Slider
-                                paramName="us_frontier_project_compute_growth_rate"
+                                paramName="compute.USComputeParameters.total_us_compute_annual_growth_rate"
                                 label="US Frontier Project Compute Growth Rate"
                                 description="Annual growth rate of US frontier project compute (OOMs/year)"
                                 step={0.01}
@@ -247,10 +247,10 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                 {/* Time Horizon & Progress */}
                 <Section
                     title="Coding Time Horizon Requirement"
-                // subtitle={uiParameters.benchmarks_and_gaps_mode ? "(Benchmarks & Gaps Mode)" : "(Standard Mode)"}
+                // subtitle={uiParameters['software_r_and_d.benchmarks_and_gaps_mode'] ? "(Benchmarks & Gaps Mode)" : "(Standard Mode)"}
                 >
                     <div className={`mb-4 text-xs font-bold text-black/75 rounded-lg`}>
-                        {uiParameters.benchmarks_and_gaps_mode
+                        {uiParameters['software_r_and_d.benchmarks_and_gaps_mode']
                             ? 'Gap mode: AC is reached when the pre-gap horizon is met and after a further increase in effective compute equal to the specified gap.'
                             : 'Standard mode: AC is reached when the AC horizon threshold is met.'}
                     </div>
@@ -258,15 +258,15 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                     <Toggle
                         label="Include an Effective Compute Gap"
                         description="Require additional effective compute for AC to be achieved after the time horizon requirement is met."
-                        checked={uiParameters.benchmarks_and_gaps_mode}
-                        onChange={handleToggle('benchmarks_and_gaps_mode')}
+                        checked={uiParameters['software_r_and_d.benchmarks_and_gaps_mode'] as boolean}
+                        onChange={handleToggle('software_r_and_d.benchmarks_and_gaps_mode')}
                     />
 
                     <SliderGrid>
-                        {uiParameters.benchmarks_and_gaps_mode ? (
+                        {uiParameters['software_r_and_d.benchmarks_and_gaps_mode'] ? (
                             <>
                                 <Slider
-                                    paramName="saturation_horizon_minutes"
+                                    paramName="software_r_and_d.saturation_horizon_minutes"
                                     label="Pre-gap AC Horizon (Target)"
                                     description="Target horizon before adding the gap"
                                     customMin={preGapHorizonBounds.min}
@@ -275,7 +275,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                     useLogScale
                                 />
                                 <Slider
-                                    paramName="gap_years"
+                                    paramName="software_r_and_d.gap_years"
                                     label="Effective Compute Gap"
                                     description="A value of 1 means the magnitude of the gap is the effective compute increase in the present year."
                                     customMin={0.1}
@@ -287,7 +287,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             </>
                         ) : (
                             <Slider
-                                paramName="ac_time_horizon_minutes"
+                                paramName="software_r_and_d.ac_time_horizon_minutes"
                                 label="AC Time Horizon (Target)"
                                 description="Target 80% reliability time horizon for Automated Coder determination"
                                 customMin={scHorizonLogBounds.min}
@@ -305,7 +305,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                 <Section title="Coding Automation">
                     <SliderGrid>
                         <Slider
-                            paramName="swe_multiplier_at_present_day"
+                            paramName="software_r_and_d.swe_multiplier_at_present_day"
                             label="Present Day Parallel Coding Labor Multiplier"
                             description="For what value of N would an AGI company in the present be indifferent between getting Nx more programmers and foregoing AI usage, vs. the status quo including AI usage."
                             step={0.05}
@@ -315,7 +315,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             useLogScale
                         />
                         <Slider
-                            paramName="coding_automation_efficiency_slope"
+                            paramName="software_r_and_d.coding_automation_efficiency_slope"
                             label="Coding Automation Efficiency Slope (η)"
                             description="For a given task, each time we increase effective compute by the amount crossed in the present year (on top of the initial effective compute requirement to automate a task), by how many OOMs does the 'conversion rate' of GPUs->humans improve?"
                             step={0.1}
@@ -326,7 +326,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             useLogScale
                         />
                         <Slider
-                            paramName="rho_coding_labor"
+                            paramName="software_r_and_d.rho_coding_labor"
                             label="Coding Labor Substitutability (ρ_c)"
                             description="This controls to what extent coding is a fixed series of tasks, vs. being able to substitute automated tasks for non-automated ones (lower values means more like the former)."
                             step={0.1}
@@ -335,7 +335,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             decimalPlaces={2}
                         />
                         <Slider
-                            paramName="max_serial_coding_labor_multiplier"
+                            paramName="software_r_and_d.max_serial_coding_labor_multiplier"
                             label="Max Serial Coding Labor Multiplier"
                             description="At the physical limits of coding capability, AI could provide productivity benefits equivalent to speeding up all human coders by this much."
                             step={1.0}
@@ -353,7 +353,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                 How automation fraction interpolates between anchor points
                             </div>
                             <select
-                                value={uiParameters.automation_interp_type}
+                                value={uiParameters['software_r_and_d.automation_interp_type'] as string}
                                 onChange={(e) => handleAutomationInterpTypeChange(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             >
@@ -361,9 +361,9 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                 <option value="logistic">Logistic</option>
                             </select>
                         </div>
-                        {uiParameters.automation_interp_type === 'logistic' && (
+                        {uiParameters['software_r_and_d.automation_interp_type'] === 'logistic' && (
                             <Slider
-                                paramName="automation_logistic_asymptote"
+                                paramName="software_r_and_d.automation_logistic_asymptote"
                                 label="Logistic Asymptote"
                                 description="Upper asymptote for the logistic automation schedule. Values above 1 allow automation fraction to overshoot before being clipped to 1."
                                 step={0.01}
@@ -379,7 +379,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                 {/* CES Production Functions */}
                 <Section
                     title="Experiment Throughput Production"
-                // subtitle={uiParameters.direct_input_exp_cap_ces_params ? "(Direct Input Mode)" : "(Computed from Constraints)"}
+                // subtitle={uiParameters['software_r_and_d.direct_input_exp_cap_ces_params'] ? "(Direct Input Mode)" : "(Computed from Constraints)"}
                 >
                     <div className="mb-4 text-xs font-bold">
                         Constraints mode: CES parameters are computed from constraints
@@ -387,19 +387,19 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                     <Toggle
                         label="Direct Input CES Params"
                         description="Use direct CES parameter input vs. computed from constraints"
-                        checked={uiParameters.direct_input_exp_cap_ces_params}
-                        onChange={handleToggle('direct_input_exp_cap_ces_params')}
-                        disabled={lockedParameters?.has('direct_input_exp_cap_ces_params')}
+                        checked={uiParameters['software_r_and_d.direct_input_exp_cap_ces_params'] as boolean}
+                        onChange={handleToggle('software_r_and_d.direct_input_exp_cap_ces_params')}
+                        disabled={lockedParameters?.has('software_r_and_d.direct_input_exp_cap_ces_params')}
                     />
 
-                    {uiParameters.direct_input_exp_cap_ces_params ? (
+                    {uiParameters['software_r_and_d.direct_input_exp_cap_ces_params'] ? (
                         <div className="space-y-4">
                             <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
                                 Direct input mode: CES parameters are used as provided
                             </div>
                             <SliderGrid>
                                 <Slider
-                                    paramName="rho_experiment_capacity"
+                                    paramName="software_r_and_d.rho_experiment_capacity"
                                     label="Substitutability (ρ_x)"
                                     description="Controls the degree of substitutability between experiment compute and coding labor. Lower values mean more substitutable."
                                     step={0.01}
@@ -408,7 +408,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                     decimalPlaces={3}
                                 />
                                 <Slider
-                                    paramName="alpha_experiment_capacity"
+                                    paramName="software_r_and_d.alpha_experiment_capacity"
                                     label="Experiment Compute Weight (α)"
                                     description="Higher values mean experiment compute is more important relative to coding labor"
                                     step={0.01}
@@ -417,7 +417,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                     decimalPlaces={3}
                                 />
                                 <Slider
-                                    paramName="experiment_compute_exponent"
+                                    paramName="software_r_and_d.experiment_compute_exponent"
                                     label="Experiment Compute Discounting (ζ)"
                                     description="Experiment compute is taken to the exponent ζ before being combined with coding labor."
                                     step={0.01}
@@ -426,14 +426,14 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                     decimalPlaces={3}
                                 />
                                 <Slider
-                                    paramName="coding_labor_exponent"
+                                    paramName="software_r_and_d.coding_labor_exponent"
                                     label="Coding Parallel Penalty (λ)"
                                     description="Multiplying the size of your coding labor force by N× is equivalent to speeding up coding labor by (N^λ)×. This is used to convert parallel to serial coding labor before entering the CES."
                                     customMin={parallelPenaltyBounds.min}
                                     customMax={parallelPenaltyBounds.max}
                                     step={0.01}
                                     decimalPlaces={3}
-                                    lockedBy={['parallel_penalty', 'coding_labor_exponent']}
+                                    lockedBy={['software_r_and_d.parallel_penalty', 'software_r_and_d.coding_labor_exponent']}
                                 />
                             </SliderGrid>
                         </div>
@@ -442,7 +442,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
 
                             <SliderGrid>
                                 <Slider
-                                    paramName="inf_labor_asymptote"
+                                    paramName="software_r_and_d.inf_labor_asymptote"
                                     label="Infinite Coding Labor Asymptote"
                                     description="By what factor faster AI software progress would go in 2024 if you immediately got unlimited coding labor."
                                     step={0.1}
@@ -452,7 +452,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                     useLogScale
                                 />
                                 <Slider
-                                    paramName="inf_compute_asymptote"
+                                    paramName="software_r_and_d.inf_compute_asymptote"
                                     label="Infinite Experiment Compute Asymptote"
                                     description="By what factor faster AI software progress would go in 2024 if you immediately got unlimited experiment compute."
                                     step={10}
@@ -462,7 +462,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                     useLogScale
                                 />
                                 <Slider
-                                    paramName="inv_compute_anchor_exp_cap"
+                                    paramName="software_r_and_d.inv_compute_anchor_exp_cap"
                                     label="Slowdown from 10× less Experiment Compute"
                                     description="By what factor slower AI software progress would go in 2024 if you immediately had 10× less experiment compute."
                                     step={0.1}
@@ -472,14 +472,14 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                     useLogScale
                                 />
                                 <Slider
-                                    paramName="coding_labor_exponent"
+                                    paramName="software_r_and_d.coding_labor_exponent"
                                     label="Coding Parallel Penalty (λ)"
                                     description="Multiplying the size of your coding labor force by N× is equivalent to speeding up coding labor by (N^λ)×. This is used to convert parallel to serial coding labor before entering the CES."
                                     customMin={parallelPenaltyBounds.min}
                                     customMax={parallelPenaltyBounds.max}
                                     step={0.01}
                                     decimalPlaces={3}
-                                    lockedBy={['parallel_penalty', 'coding_labor_exponent']}
+                                    lockedBy={['software_r_and_d.parallel_penalty', 'software_r_and_d.coding_labor_exponent']}
                                 />
                             </SliderGrid>
                         </div>
@@ -490,7 +490,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                 <Section title="Experiment Selection Automation">
                     <SliderGrid>
                         <Slider
-                            paramName="ai_research_taste_at_coding_automation_anchor_sd"
+                            paramName="software_r_and_d.ai_research_taste_at_coding_automation_anchor_sd"
                             label="AI Experiment Selection Skill at AC (SDs)"
                             description="When we reach SC, how good will AIs be at experiment selection relative to the median OpenBrain research scientist (0 SDs=median, ~3 SDs=best)"
                             step={0.1}
@@ -499,7 +499,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             decimalPlaces={1}
                         />
                         <Slider
-                            paramName="ai_research_taste_slope"
+                            paramName="software_r_and_d.ai_research_taste_slope"
                             label="AI Experiment Selection Slope (SDs/present-OOMs-per-year)"
                             description="For each amount of effective OOMs crossed in the present year, by how many SDs in the OpenBrain range is AIs' experiment selection increased?"
                             step={0.1}
@@ -509,7 +509,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             useLogScale
                         />
                         <Slider
-                            paramName="median_to_top_taste_multiplier"
+                            paramName="software_r_and_d.median_to_top_taste_multiplier"
                             label="Median-to-Top-Human Experiment Selection Multiplier"
                             description="Ratio of the top researcher's experiment selection skill to the median researcher's skill"
                             step={0.1}
@@ -519,7 +519,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             useLogScale
                         />
                         <Slider
-                            paramName="taste_limit"
+                            paramName="software_r_and_d.taste_limit"
                             label="Maximum Experiment Selection Skill"
                             description="Number of multiplicative median-to-top experiment selection gaps between the best humans and maximally capable AIs."
                             step={0.1}
@@ -529,7 +529,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                             customFormatValue={(v) => `${v.toFixed(1)} top-to-median gaps above the best human`}
                         />
                         <Slider
-                            paramName="taste_limit_smoothing"
+                            paramName="software_r_and_d.taste_limit_smoothing"
                             label="Experiment Selection Slowdown Factor Halfway to Algorithmic Limit"
                             description="Halfway in log space to maximum experiment selection skill, each SD of experiment selection skill translates into the near-human-range-skill-per-SD taken to this power."
                             step={0.001}
@@ -544,7 +544,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                 <Section title="General Capabilities">
                     <SliderGrid>
                         <Slider
-                            paramName="ted_ai_m2b"
+                            paramName="software_r_and_d.ted_ai_m2b"
                             label="Median-to-top-human jumps above SAR needed to reach TED-AI"
                             description="This multiplier on median-to-top experiment selection SDs above SAR corresponds to experiment selection skill at which TED-AI is achieved."
                             step={0.1}
@@ -560,7 +560,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                 <Section title="Effective Compute">
                     <SliderGrid>
                         <Slider
-                            paramName="software_progress_rate_at_reference_year"
+                            paramName="software_r_and_d.software_progress_rate_at_reference_year"
                             label="Software Efficiency OOMs/year in 2024"
                             description="In OOMs/year, how quickly was software efficiency growing in 2024?"
                             step={0.1}
@@ -582,7 +582,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                     <div className="">
                         <SliderGrid>
                             <Slider
-                                paramName="present_day"
+                                paramName="software_r_and_d.present_day"
                                 label="Present Day"
                                 description="Used as a reference point for setting other parameters and for capability metrics."
                                 step={0.1}
@@ -591,7 +591,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                 decimalPlaces={1}
                             />
                             <Slider
-                                paramName="present_horizon"
+                                paramName="software_r_and_d.present_horizon"
                                 label="Present Horizon"
                                 description="The time horizon in present day; change if you change the present time."
                                 step={0.1}
@@ -601,7 +601,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                 useLogScale
                             />
                             <Slider
-                                paramName="automation_fraction_at_coding_automation_anchor"
+                                paramName="software_r_and_d.automation_fraction_at_coding_automation_anchor"
                                 label="Coding Automation Fraction at AC"
                                 description="The fraction of coding tasks efficiently automatable at AC. This is constant at 1 during our simulations, only change if you understand the model."
                                 step={0.01}
@@ -610,7 +610,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                 decimalPlaces={2}
                             />
                             <Slider
-                                paramName="optimal_ces_eta_init"
+                                paramName="software_r_and_d.optimal_ces_eta_init"
                                 label="Initial Automation Efficiency (η_init)"
                                 description="The automation efficiency of a task at the point it is considered efficiently automated (via the coding automation fraction). Measured in coding FTEs per H100be."
                                 step={0.001}
@@ -620,7 +620,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                 useLogScale
                             />
                             <Slider
-                                paramName="top_percentile"
+                                paramName="software_r_and_d.top_percentile"
                                 label="Percentile of Best Human Researcher"
                                 description="The percentile of the best researcher in the AGI project human range"
                                 step={0.001}
@@ -661,7 +661,7 @@ export const AdvancedSections: React.FC<AdvancedSectionsProps> = ({
                                 </label>
                                 <div className="text-xs text-gray-500 mb-2">Type of research taste schedule</div>
                                 <select
-                                    value={uiParameters.taste_schedule_type}
+                                    value={uiParameters['software_r_and_d.taste_schedule_type'] as string}
                                     onChange={(e) => handleTasteScheduleChange(e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >

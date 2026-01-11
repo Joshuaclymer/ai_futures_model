@@ -29,45 +29,50 @@ export const DEFAULT_CHECKBOX_STATES: Record<CheckboxStateKey, boolean> = {
   useVariableHorizonDifficulty: true,
 };
 
-const PARAM_ABBREVIATIONS: Record<string, keyof ParametersType> = {
-  'tst': 'taste_schedule_type',
-  'pdt': 'present_doubling_time',
-  'acth': 'ac_time_horizon_minutes',
-  'ddgf': 'doubling_difficulty_growth_factor',
-  'rcl': 'rho_coding_labor',
-  'rec': 'rho_experiment_capacity',
-  'aec': 'alpha_experiment_capacity',
-  'diec': 'direct_input_exp_cap_ces_params',
-  'rsw': 'r_software',
-  'spry': 'software_progress_rate_at_reference_year',
-  'cln': 'coding_labor_normalization',
-  'ece': 'experiment_compute_exponent',
-  'cle': 'coding_labor_exponent',
-  'afca': 'automation_fraction_at_coding_automation_anchor',
-  'ait': 'automation_interp_type',
-  'swm': 'swe_multiplier_at_present_day',
-  'aa': 'automation_anchors',
-  'artc': 'ai_research_taste_at_coding_automation_anchor_sd',
-  'arts': 'ai_research_taste_slope',
-  'paa': 'progress_at_aa',
-  'shm': 'saturation_horizon_minutes',
-  'pd': 'present_day',
-  'ph': 'present_horizon',
-  'het': 'horizon_extrapolation_type',
-  'ila': 'inf_labor_asymptote',
-  'ica': 'inf_compute_asymptote',
-  'laec': 'labor_anchor_exp_cap',
-  'caec': 'compute_anchor_exp_cap',
-  'icaec': 'inv_compute_anchor_exp_cap',
-  'bgm': 'benchmarks_and_gaps_mode',
-  'gy': 'gap_years',
-  'caes': 'coding_automation_efficiency_slope',
-  'mscl': 'max_serial_coding_labor_multiplier',
-  'mttm': 'median_to_top_taste_multiplier',
-  'tp': 'top_percentile',
-  'sam': 'strat_ai_m2b',
-  'tam': 'ted_ai_m2b',
-  'ocei': 'optimal_ces_eta_init',
+// Maps short URL codes to full parameter paths (matching backend structure)
+const PARAM_ABBREVIATIONS: Record<string, string> = {
+  'tst': 'software_r_and_d.taste_schedule_type',
+  'pdt': 'software_r_and_d.present_doubling_time',
+  'acth': 'software_r_and_d.ac_time_horizon_minutes',
+  'ddgf': 'software_r_and_d.doubling_difficulty_growth_factor',
+  'rcl': 'software_r_and_d.rho_coding_labor',
+  'rec': 'software_r_and_d.rho_experiment_capacity',
+  'aec': 'software_r_and_d.alpha_experiment_capacity',
+  'diec': 'software_r_and_d.direct_input_exp_cap_ces_params',
+  'rsw': 'software_r_and_d.r_software',
+  'spry': 'software_r_and_d.software_progress_rate_at_reference_year',
+  'cln': 'software_r_and_d.coding_labor_normalization',
+  'ece': 'software_r_and_d.experiment_compute_exponent',
+  'cle': 'software_r_and_d.coding_labor_exponent',
+  'afca': 'software_r_and_d.automation_fraction_at_coding_automation_anchor',
+  'ait': 'software_r_and_d.automation_interp_type',
+  'swm': 'software_r_and_d.swe_multiplier_at_present_day',
+  'aa': 'software_r_and_d.automation_anchors',
+  'artc': 'software_r_and_d.ai_research_taste_at_coding_automation_anchor_sd',
+  'arts': 'software_r_and_d.ai_research_taste_slope',
+  'paa': 'software_r_and_d.progress_at_aa',
+  'shm': 'software_r_and_d.saturation_horizon_minutes',
+  'pd': 'software_r_and_d.present_day',
+  'ph': 'software_r_and_d.present_horizon',
+  'het': 'software_r_and_d.horizon_extrapolation_type',
+  'ila': 'software_r_and_d.inf_labor_asymptote',
+  'ica': 'software_r_and_d.inf_compute_asymptote',
+  'laec': 'software_r_and_d.labor_anchor_exp_cap',
+  'caec': 'software_r_and_d.compute_anchor_exp_cap',
+  'icaec': 'software_r_and_d.inv_compute_anchor_exp_cap',
+  'bgm': 'software_r_and_d.benchmarks_and_gaps_mode',
+  'gy': 'software_r_and_d.gap_years',
+  'caes': 'software_r_and_d.coding_automation_efficiency_slope',
+  'mscl': 'software_r_and_d.max_serial_coding_labor_multiplier',
+  'mttm': 'software_r_and_d.median_to_top_taste_multiplier',
+  'tp': 'software_r_and_d.top_percentile',
+  'sam': 'software_r_and_d.strat_ai_m2b',
+  'tam': 'software_r_and_d.ted_ai_m2b',
+  'ocei': 'software_r_and_d.optimal_ces_eta_init',
+  'ala': 'software_r_and_d.automation_logistic_asymptote',
+  'tl': 'software_r_and_d.taste_limit',
+  'tls': 'software_r_and_d.taste_limit_smoothing',
+  'uscgr': 'compute.USComputeParameters.total_us_compute_annual_growth_rate',
 };
 
 const PARAM_ABBREVIATIONS_REVERSE: Record<string, string> = Object.fromEntries(
@@ -88,9 +93,9 @@ const CHECKBOX_ABBREVIATIONS_REVERSE: Record<string, string> = Object.fromEntrie
 );
 
 const sanitizeParameterValue = (
-  key: keyof ParametersType,
+  key: string,
   value: string | null
-): ParametersType[typeof key] | undefined => {
+): string | number | boolean | null | undefined => {
   if (value === null) {
     return undefined;
   }
@@ -100,34 +105,34 @@ const sanitizeParameterValue = (
   if (typeof defaultValue === 'number') {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) {
-      return parsed as ParametersType[typeof key];
+      return parsed;
     }
     return undefined;
   }
 
   if (typeof defaultValue === 'string') {
-    return value as ParametersType[typeof key];
+    return value;
   }
 
   if (typeof defaultValue === 'boolean') {
     if (value === 'true') {
-      return true as ParametersType[typeof key];
+      return true;
     }
     if (value === 'false') {
-      return false as ParametersType[typeof key];
+      return false;
     }
     return undefined;
   }
 
   if (defaultValue === null) {
     if (value === 'null') {
-      return null as ParametersType[typeof key];
+      return null;
     }
     const parsed = Number(value);
     if (Number.isFinite(parsed)) {
-      return parsed as ParametersType[typeof key];
+      return parsed;
     }
-    return value as ParametersType[typeof key];
+    return value;
   }
 
   return undefined;
@@ -137,7 +142,7 @@ export const encodeFullStateToParams = (state: FullUIState): URLSearchParams => 
   const params = new URLSearchParams();
 
   // Add all parameters that differ from defaults (using short names)
-  (Object.keys(DEFAULT_PARAMETERS) as Array<keyof ParametersType>).forEach((paramKey) => {
+  Object.keys(DEFAULT_PARAMETERS).forEach((paramKey) => {
     const value = state.parameters[paramKey];
     const defaultValue = DEFAULT_PARAMETERS[paramKey];
 
@@ -220,4 +225,3 @@ export const decodeFullStateFromParams = (searchParams: URLSearchParams): FullUI
     useVariableHorizonDifficulty,
   };
 };
-

@@ -12,7 +12,7 @@ CACHE_DIR = Path(__file__).parent.parent / 'cache'
 
 # Default simulation parameters
 DEFAULT_NUM_SIMULATIONS = 200
-DEFAULT_AGREEMENT_YEAR = 2030
+DEFAULT_AI_SLOWDOWN_START_YEAR = 2030
 DEFAULT_END_YEAR = 2037
 
 # Metric comparison tolerances (percent)

@@ -2,8 +2,8 @@ import { cacheLife } from 'next/cache';
 import { loadBenchmarkData } from '@/utils/benchmarkLoader';
 import ProgressChartClient from './ProgressChartClient';
 import { DEFAULT_PARAMETERS } from '@/constants/parameters';
-import type { ComputeApiResponse } from '@/lib/serverApi';
-import { GDocContent } from '@/components/GDocContent';
+import type { ComputeApiResponse } from '@/app/types';
+import { GDocContent } from './sections/GDocContent';
 import { convertParametersToAPIFormat, ParameterRecord } from '@/utils/monteCarlo';
 
 const DEFAULT_SEED = 12345;
@@ -12,8 +12,8 @@ const SIMULATION_END_YEAR = 2045;
 
 // Use local API in development, production API in production
 const API_URL = process.env.NODE_ENV === 'development'
-  ? 'http://127.0.0.1:5329/api/run-sw-progress-simulation'
-  : 'https://ai-rates-calculator.vercel.app/api/run-sw-progress-simulation';
+  ? 'http://127.0.0.1:5329/api/get-data-for-ai-timelines-and-takeoff-page'
+  : 'https://ai-rates-calculator.vercel.app/api/get-data-for-ai-timelines-and-takeoff-page';
 
 async function fetchInitialChartData(): Promise<ComputeApiResponse> {
   'use cache';

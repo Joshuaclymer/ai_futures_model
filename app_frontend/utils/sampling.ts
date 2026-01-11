@@ -893,8 +893,8 @@ export function getDistributionBounds(config: DistributionConfig): { min?: numbe
 
 // Mapping from UI parameter names to sampling config parameter names
 const UI_TO_SAMPLING_PARAM_MAP: Record<string, string> = {
-  'coding_labor_exponent': 'parallel_penalty',
-  'saturation_horizon_minutes': 'pre_gap_ac_time_horizon',
+  'software_r_and_d.coding_labor_exponent': 'software_r_and_d.parallel_penalty',
+  'software_r_and_d.saturation_horizon_minutes': 'software_r_and_d.pre_gap_ac_time_horizon',
 };
 
 // Reverse mapping from sampling config names to UI names
@@ -906,7 +906,7 @@ const SAMPLING_TO_UI_PARAM_MAP: Record<string, string> = Object.fromEntries(
 // Returns bounds in the format expected by sliders, with special handling for log-scale parameters
 export function extractSamplingConfigBounds(
   samplingConfig: SamplingConfig,
-  logScaleParams: Set<string> = new Set(['ac_time_horizon_minutes'])
+  logScaleParams: Set<string> = new Set(['software_r_and_d.ac_time_horizon_minutes'])
 ): Record<string, { min?: number; max?: number }> {
   const bounds: Record<string, { min?: number; max?: number }> = {};
 

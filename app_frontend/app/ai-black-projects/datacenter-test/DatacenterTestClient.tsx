@@ -24,7 +24,7 @@ export default function DatacenterTestClient() {
       try {
         setIsLoading(true);
         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5329';
-        const response = await fetch(`${BACKEND_URL}/api/black-project-dummy?agreement_year=2027`);
+        const response = await fetch(`${BACKEND_URL}/api/black-project-dummy?ai_slowdown_start_year=2027`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }

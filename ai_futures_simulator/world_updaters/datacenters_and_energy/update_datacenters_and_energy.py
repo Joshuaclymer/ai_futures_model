@@ -100,9 +100,9 @@ class BlackProjectDatacenterUpdater(WorldUpdater):
         for _, project in world.black_projects.items():
             # Get black_project_start_year (when black project and construction starts)
             black_project_start_year = float(
-                project.preparation_start_year.item()
-                if hasattr(project.preparation_start_year, 'item')
-                else project.preparation_start_year
+                project.black_project_start_year.item()
+                if hasattr(project.black_project_start_year, 'item')
+                else project.black_project_start_year
             )
 
             # --- Datacenter capacity ---

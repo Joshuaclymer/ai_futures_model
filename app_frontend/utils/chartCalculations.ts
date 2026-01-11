@@ -53,10 +53,10 @@ export function computeHorizonFromProgress(
   uiParameters: ParametersType,
   anchorProgress?: number
 ): number {
-  const H_0 = uiParameters.present_horizon; // Horizon at present_day (anchor year)
-  const difficultyGrowth = uiParameters.doubling_difficulty_growth_factor;
+  const H_0 = uiParameters['software_r_and_d.present_horizon'] as number; // Horizon at present_day (anchor year)
+  const difficultyGrowth = uiParameters['software_r_and_d.doubling_difficulty_growth_factor'] as number;
   const A_0 = 1 - difficultyGrowth; // Decay parameter derived from growth rate
-  const T_0 = uiParameters.present_doubling_time; // Time constant
+  const T_0 = uiParameters['software_r_and_d.present_doubling_time'] as number; // Time constant
 
   // Handle special case where A_0 is zero (no decay)
   if (A_0 === 0) {
@@ -291,21 +291,21 @@ export function createDefaultSCHorizonConfig(uiParameters: ParametersType): SCHo
     baseForSoftwareLOM: 10.0,  // cfg.BASE_FOR_SOFTWARE_LOM
     trainingComputeReferenceOOMs: TRAINING_COMPUTE_REFERENCE_OOMS,
     trainingComputeReferenceYear: TRAINING_COMPUTE_REFERENCE_YEAR,
-    presentHorizon: uiParameters.present_horizon,
-    presentDoublingTime: uiParameters.present_doubling_time,
-    doublingDifficultyGrowthRate: uiParameters.doubling_difficulty_growth_factor,
+    presentHorizon: uiParameters['software_r_and_d.present_horizon'] as number,
+    presentDoublingTime: uiParameters['software_r_and_d.present_doubling_time'] as number,
+    doublingDifficultyGrowthRate: uiParameters['software_r_and_d.doubling_difficulty_growth_factor'] as number,
     anchorProgress: undefined,  // Will be provided by backend if using shifted form
     automationAnchors: {
       lowerProgress: 0,  // Present day - simplified assumption
       lowerAutomation: 0.01,  // Small starting automation
       upperProgress: progress_at_aa,
-      upperAutomation: uiParameters.automation_fraction_at_coding_automation_anchor || 1.0,
+      upperAutomation: (uiParameters['software_r_and_d.automation_fraction_at_coding_automation_anchor'] as number) || 1.0,
     },
     medianToTopGap: 3.25,  // cfg.MEDIAN_TO_TOP_TASTE_MULTIPLIER
     topPercentile: 0.999,  // cfg.TOP_PERCENTILE
     aggregateResearchTasteBaseline: 1.0,  // cfg.AGGREGATE_RESEARCH_TASTE_BASELINE
-    aiResearchTasteSlope: uiParameters.ai_research_taste_slope || 2.5,
-    aiResearchTasteAtSuperhuman_SD: uiParameters.ai_research_taste_at_coding_automation_anchor_sd || 0.0,
+    aiResearchTasteSlope: (uiParameters['software_r_and_d.ai_research_taste_slope'] as number) || 2.5,
+    aiResearchTasteAtSuperhuman_SD: (uiParameters['software_r_and_d.ai_research_taste_at_coding_automation_anchor_sd'] as number) || 0.0,
     aiResearchTasteMaxSD: 100,  // cfg.AI_RESEARCH_TASTE_MAX_SD
     aiResearchTasteMin: 0.0,  // cfg.AI_RESEARCH_TASTE_MIN
     aiResearchTasteMax: 1e30,  // cfg.AI_RESEARCH_TASTE_MAX
@@ -351,7 +351,7 @@ export function generateSCHorizonData(
   }
 
   // Step 1: Calculate progress_at_aa from ac_time_horizon_minutes
-  const scHorizonMinutes = Math.pow(10, uiParameters.ac_time_horizon_minutes);
+  const scHorizonMinutes = Math.pow(10, uiParameters['software_r_and_d.ac_time_horizon_minutes'] as number);
   const progress_at_aa = calculateProgressAtSC(scHorizonMinutes, config);
 
   // Use fallback if calculation failed

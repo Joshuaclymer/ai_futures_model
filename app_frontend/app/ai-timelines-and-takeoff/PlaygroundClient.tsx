@@ -15,12 +15,11 @@ import { AdvancedSections } from './components/sections/AdvancedSections';
 import { ParameterSlider } from './components/ui/ParameterSlider';
 
 // Shared components
-import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from '@/components/chartTooltipStyle';
+import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from './components/charts/chartTooltipStyle';
 import { ChartDataPoint, BenchmarkPoint } from '@/app/types';
-import type { DataPoint } from '@/components/CustomLineChart';
-import { ChartSyncProvider } from '@/components/ChartSyncContext';
+import type { DataPoint } from './components/charts/CustomLineChart';
+import { ChartSyncProvider } from './components/charts/ChartSyncContext';
 import { ParameterHoverProvider } from '@/components/ParameterHoverContext';
-import ModelDiagram from '@/svgs/model-diagram-semantic.svg';
 
 // Utils and constants
 import { formatTo3SigFigs, formatWorkTimeDuration, formatUplift, formatCompactNumberNode, formatAsPowerOfTenText, formatSCHorizon, formatTimeDuration, yearsToMinutes } from '@/utils/formatting';
@@ -30,7 +29,7 @@ import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, Para
 import { encodeFullStateToParams, decodeFullStateFromParams, DEFAULT_CHECKBOX_STATES } from '@/utils/urlState';
 import type { MilestoneMap } from '@/types/milestones';
 import { SamplingConfig, generateParameterSampleWithUserValues, initializeCorrelationSampling, extractSamplingConfigBounds, flattenMonteCarloConfig } from '@/utils/sampling';
-import type { ComputeApiResponse } from '@/lib/serverApi';
+import type { ComputeApiResponse } from '@/app/types';
 
 interface SampleTrajectoryWithParams {
   trajectory: ChartDataPoint[];
@@ -303,7 +302,7 @@ export default function PlaygroundClient({
 
     try {
       const apiParameters = convertParametersToAPIFormat(params as unknown as ParameterRecord);
-      const response = await fetch(`${API_BASE_URL}/api/run-sw-progress-simulation`, {
+      const response = await fetch(`${API_BASE_URL}/api/get-data-for-ai-timelines-and-takeoff-page`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -384,15 +383,15 @@ export default function PlaygroundClient({
 
   // Update SC horizon line immediately while slider moves
   useEffect(() => {
-    const instantHorizon = Math.pow(10, uiParameters.ac_time_horizon_minutes);
+    const instantHorizon = Math.pow(10, uiParameters['software_r_and_d.ac_time_horizon_minutes'] as number);
     setScHorizonMinutes(instantHorizon);
-  }, [uiParameters.ac_time_horizon_minutes]);
+  }, [uiParameters['software_r_and_d.ac_time_horizon_minutes'] as number]);
 
   // Fetch sample trajectory
   const fetchSampleTrajectory = useCallback(async (params: Record<string, number | string | boolean>, signal?: AbortSignal) => {
     try {
       const apiParams = convertSampledParametersToAPIFormat(params as ParameterRecord);
-      const response = await fetch(`${API_BASE_URL}/api/run-sw-progress-simulation`, {
+      const response = await fetch(`${API_BASE_URL}/api/get-data-for-ai-timelines-and-takeoff-page`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -414,22 +413,35 @@ export default function PlaygroundClient({
   const convertParametersForSampling = useCallback((params: ParametersType): Record<string, number | string | boolean> => {
     const rawParams = params as unknown as Record<string, number | string | boolean>;
     const userParams: Record<string, number | string | boolean> = { ...rawParams };
-    
-    if (typeof rawParams.ac_time_horizon_minutes === 'number') {
-      userParams.ac_time_horizon_minutes = Math.pow(10, rawParams.ac_time_horizon_minutes);
+
+    // Convert log-scale ac_time_horizon_minutes back to linear
+    const acTimeHorizonKey = 'software_r_and_d.ac_time_horizon_minutes';
+    if (typeof rawParams[acTimeHorizonKey] === 'number') {
+      userParams[acTimeHorizonKey] = Math.pow(10, rawParams[acTimeHorizonKey] as number);
     }
-    
-    if ('saturation_horizon_minutes' in rawParams) {
-      userParams.pre_gap_ac_time_horizon = rawParams.saturation_horizon_minutes;
+
+    // Map saturation_horizon_minutes to pre_gap_ac_time_horizon
+    const satHorizonKey = 'software_r_and_d.saturation_horizon_minutes';
+    const preGapKey = 'software_r_and_d.pre_gap_ac_time_horizon';
+    if (satHorizonKey in rawParams) {
+      userParams[preGapKey] = rawParams[satHorizonKey];
     }
-    if ('benchmarks_and_gaps_mode' in rawParams) {
-      const includeGap = rawParams.benchmarks_and_gaps_mode === true || rawParams.benchmarks_and_gaps_mode === 'gap';
-      userParams.include_gap = includeGap ? 'gap' : 'no gap';
+
+    // Map benchmarks_and_gaps_mode to include_gap
+    const bgmKey = 'software_r_and_d.benchmarks_and_gaps_mode';
+    const includeGapKey = 'software_r_and_d.include_gap';
+    if (bgmKey in rawParams) {
+      const includeGap = rawParams[bgmKey] === true || rawParams[bgmKey] === 'gap';
+      userParams[includeGapKey] = includeGap ? 'gap' : 'no gap';
     }
-    if ('coding_labor_exponent' in rawParams && typeof rawParams.coding_labor_exponent === 'number') {
-      userParams.parallel_penalty = rawParams.coding_labor_exponent;
+
+    // Map coding_labor_exponent to parallel_penalty
+    const cleKey = 'software_r_and_d.coding_labor_exponent';
+    const ppKey = 'software_r_and_d.parallel_penalty';
+    if (cleKey in rawParams && typeof rawParams[cleKey] === 'number') {
+      userParams[ppKey] = rawParams[cleKey];
     }
-    
+
     return userParams;
   }, []);
 
@@ -747,7 +759,6 @@ export default function PlaygroundClient({
               <div className="flex-1 border-t border-gray-500/30" />
             </div>
             <div className="opacity-80 hover:opacity-100 transition-opacity">
-              <ModelDiagram className="w-full h-auto" />
             </div>
           </div>
           
@@ -788,7 +799,7 @@ export default function PlaygroundClient({
                   customMax={scHorizonLogBounds.max}
                   step={0.1}
                   customFormatValue={formatSCHorizon}
-                  value={uiParameters.ac_time_horizon_minutes}
+                  value={uiParameters['software_r_and_d.ac_time_horizon_minutes'] as number}
                   uiParameters={uiParameters}
                   setUiParameters={setUiParameters}
                   allParameters={allParameters}
@@ -806,7 +817,7 @@ export default function PlaygroundClient({
                   step={0.01}
                   decimalPlaces={2}
                   customFormatValue={(years) => formatTimeDuration(yearsToMinutes(years))}
-                  value={uiParameters.present_doubling_time}
+                  value={uiParameters['software_r_and_d.present_doubling_time'] as number}
                   uiParameters={uiParameters}
                   setUiParameters={setUiParameters}
                   allParameters={allParameters}
@@ -824,7 +835,7 @@ export default function PlaygroundClient({
                   fallbackMax={1.5}
                   step={0.01}
                   decimalPlaces={3}
-                  value={uiParameters.doubling_difficulty_growth_factor}
+                  value={uiParameters['software_r_and_d.doubling_difficulty_growth_factor'] as number}
                   uiParameters={uiParameters}
                   setUiParameters={setUiParameters}
                   allParameters={allParameters}
@@ -842,7 +853,7 @@ export default function PlaygroundClient({
                   fallbackMin={0.1}
                   fallbackMax={10.0}
                   decimalPlaces={1}
-                  value={uiParameters.ai_research_taste_slope}
+                  value={uiParameters['software_r_and_d.ai_research_taste_slope'] as number}
                   uiParameters={uiParameters}
                   setUiParameters={setUiParameters}
                   allParameters={allParameters}
@@ -860,7 +871,7 @@ export default function PlaygroundClient({
                   fallbackMax={20.0}
                   step={0.1}
                   decimalPlaces={2}
-                  value={uiParameters.median_to_top_taste_multiplier}
+                  value={uiParameters['software_r_and_d.median_to_top_taste_multiplier'] as number}
                   uiParameters={uiParameters}
                   setUiParameters={setUiParameters}
                   allParameters={allParameters}

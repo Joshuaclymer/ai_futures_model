@@ -78,11 +78,11 @@ def initialize_black_project(
     exogenous_trends = compute_params.exogenous_trends
 
     # Get preparation start year directly from parameter
-    preparation_start_year = black_project_params.black_project_start_year
+    black_project_start_year = black_project_params.black_project_start_year
     # Agreement year (when AI slowdown starts) - stored for reference, but construction starts at black_project_start_year
-    agreement_year = policy_params.ai_slowdown_start_year
+    ai_slowdown_start_year = policy_params.ai_slowdown_start_year
     # Fab construction start year - construction begins when the black project starts
-    fab_construction_start_year = preparation_start_year
+    fab_construction_start_year = black_project_start_year
 
     # Determine which process nodes are localized by fab construction start
     localization_years = {
@@ -127,7 +127,7 @@ def initialize_black_project(
     energy_efficiency_relative_to_sota = prc_energy.energy_efficiency_of_compute_stock_relative_to_state_of_the_art
 
     h100_release_year = 2022
-    years_since_h100 = max(0, preparation_start_year - h100_release_year)
+    years_since_h100 = max(0, black_project_start_year - h100_release_year)
     sota_energy_efficiency_improvement_per_year = exogenous_trends.state_of_the_art_energy_efficiency_improvement_per_year
     sota_efficiency_relative_to_h100 = sota_energy_efficiency_improvement_per_year ** years_since_h100
     combined_energy_efficiency = energy_efficiency_relative_to_sota * sota_efficiency_relative_to_h100
@@ -154,8 +154,8 @@ def initialize_black_project(
 
     # Initial concealed capacity
     head_start_years = props.years_before_black_project_start_to_begin_datacenter_construction
-    construction_start = preparation_start_year - head_start_years
-    years_of_construction_at_init = max(0, preparation_start_year - construction_start)
+    construction_start = black_project_start_year - head_start_years
+    years_of_construction_at_init = max(0, black_project_start_year - construction_start)
     initial_concealed = min(
         construction_rate * years_of_construction_at_init,
         max(0, max_capacity_gw - unconcealed_capacity_gw)
@@ -195,16 +195,16 @@ def initialize_black_project(
 
     # Fab h100e per chip
     process_node_nm = actual_process_node_nm if build_a_black_fab else 28.0
-    # Chip specs fixed at fab construction time (preparation_start_year)
+    # Chip specs fixed at fab construction time (black_project_start_year)
     fab_h100e_per_chip = calculate_fab_h100e_per_chip(
         fab_process_node_nm=process_node_nm,
-        year=preparation_start_year,
+        year=black_project_start_year,
         exogenous_trends=exogenous_trends,
     )
 
     # --- Pre-compute labor_by_year for detection ---
     if simulation_years is None:
-        simulation_years = [preparation_start_year + i for i in range(21)]
+        simulation_years = [black_project_start_year + i for i in range(21)]
 
     combined_labor_by_relative_year = {}
     fab_labor_by_year_since_construction = {}
@@ -214,14 +214,14 @@ def initialize_black_project(
     for year in simulation_years:
         for i in range(10):
             fine_grained_year = year + i * 0.1
-            if fine_grained_year >= preparation_start_year:
+            if fine_grained_year >= black_project_start_year:
                 fine_grained_years.append(round(fine_grained_year, 1))
     fine_grained_years = sorted(set(fine_grained_years))
 
     for year in fine_grained_years:
-        relative_year = round(year - preparation_start_year, 1)
+        relative_year = round(year - black_project_start_year, 1)
 
-        datacenter_construction_start = preparation_start_year - head_start_years
+        datacenter_construction_start = black_project_start_year - head_start_years
         years_since_construction_start = year - datacenter_construction_start
         concealed_at_year = min(
             construction_rate * years_since_construction_start,
@@ -322,8 +322,8 @@ def initialize_black_project(
         ai_software_progress=ai_software_progress,
         training_compute_growth_rate=training_compute_growth_rate,
         parent_nation=parent_nation,
-        preparation_start_year=preparation_start_year,
-        agreement_year=agreement_year,
+        black_project_start_year=black_project_start_year,
+        ai_slowdown_start_year=ai_slowdown_start_year,
         fab_process_node_nm=process_node_nm,
         fab_number_of_lithography_scanners=float(num_scanners),
         fab_construction_labor=float(black_fab_construction_labor),
@@ -352,7 +352,7 @@ def initialize_black_project(
     project._set_frozen_field('fab_h100e_per_chip', fab_h100e_per_chip)
     project._set_frozen_field('fab_watts_per_chip', calculate_fab_watts_per_chip(
         fab_process_node_nm=process_node_nm,
-        year=preparation_start_year,
+        year=black_project_start_year,
         exogenous_trends=exogenous_trends,
     ))
 
@@ -447,7 +447,7 @@ def initialize_black_project(
     project._set_frozen_field('fab_cumulative_production_h100e', 0.0)
     project._set_frozen_field('fab_monthly_production_h100e', 0.0)
     project._set_frozen_field('fab_architecture_efficiency',
-        exogenous_trends.state_of_the_art_architecture_efficiency_improvement_per_year ** (preparation_start_year - 2022.0))
+        exogenous_trends.state_of_the_art_architecture_efficiency_improvement_per_year ** (black_project_start_year - 2022.0))
     project._set_frozen_field('fab_transistor_density_relative_to_h100',
         (4.0 / process_node_nm) ** exogenous_trends.transistor_density_scaling_exponent)
 

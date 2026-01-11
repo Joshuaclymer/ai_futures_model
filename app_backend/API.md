@@ -4,27 +4,34 @@ This document describes the Flask API endpoints for the AI Futures Simulator.
 
 **Base URL:** `http://localhost:5329`
 
-## Architecture
+## Endpoint Directory Structure
 
-The frontend communicates directly with this Flask backend. There are no intermediate proxy layers.
+Each endpoint has its own directory under `endpoints/`, named using snake_case matching the URL path:
+
+```
+endpoints/
+├── run_simulation/                      # /api/run-simulation
+├── run_sw_progress_simulation/          # /api/run-sw-progress-simulation
+├── get_data_for_ai_black_projects_page/ # /api/get-data-for-ai-black-projects-page
+├── black_project_defaults/              # /api/black-project-defaults
+├── sampling_config/                     # /api/sampling-config
+└── parameter_config/                    # /api/parameter-config
+```
 
 ## Endpoints
 
-### Core Simulation Endpoints
+### `POST /api/run-simulation`
 
-#### `POST /api/run-ai-futures-simulation`
-
-Runs a **single** AI futures simulation rollout with the provided parameters.
+Runs a single simulation and returns the full raw World trajectory.
 
 **Request Body:**
 ```json
 {
   "parameters": {
-    // ModelParameters fields - see parameters/simulation_parameters.py
-    "agreement_year": 2027,
-    // ... other parameters
+    "software_r_and_d.rho_coding_labor": 0.5,
+    "software_r_and_d.present_doubling_time": 0.458
   },
-  "time_range": [2027, 2037]  // [start_year, end_year]
+  "time_range": [2024, 2040]
 }
 ```
 
@@ -32,130 +39,93 @@ Runs a **single** AI futures simulation rollout with the provided parameters.
 ```json
 {
   "success": true,
-  "simulation_result": {
-    // Single SimulationResult object with world trajectory
+  "times": [2024.0, 2024.16, ...],
+  "trajectory": [...],
+  "params": {...},
+  "generation_time_seconds": 1.234
+}
+```
+
+---
+
+### `POST /api/run-sw-progress-simulation`
+
+Runs a simulation and returns software progress metrics formatted for visualization.
+
+**Request Body:**
+```json
+{
+  "parameters": {
+    "software_r_and_d.rho_coding_labor": 0.5
+  },
+  "time_range": [2024, 2040]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "time_series": [
+    {
+      "year": 2024.0,
+      "progress": 0.0,
+      "horizonLength": 26.0,
+      "automationFraction": 0.0,
+      "softwareProgressRate": 0.5,
+      "trainingCompute": 26.54,
+      "softwareEfficiency": 0.0,
+      "effectiveCompute": 26.54
+    }
+  ],
+  "milestones": {
+    "AC": { "metric": "progress", "target": 4.5, "time": 2028.5 },
+    "TED-AI": { "metric": "ai_research_taste_sd", "target": 12.36 }
+  },
+  "exp_capacity_params": {
+    "rho": 0.5,
+    "alpha": 0.5,
+    "experiment_compute_exponent": 0.5
   }
 }
 ```
 
 ---
 
-#### `POST /api/run-ai-futures-simulations`
+### `POST /api/get-data-for-ai-black-projects-page`
 
-Runs **multiple** AI futures simulations, sampling parameters for each run according to configured distributions (Monte Carlo).
+Runs N Monte Carlo simulations for black project scenarios and returns aggregated plot data.
 
 **Request Body:**
 ```json
 {
-  "parameters": {
-    // Base ModelParameters - distributions will be sampled around these
-  },
+  "parameters": {},
   "num_simulations": 100,
-  "time_range": [2027, 2037]
+  "ai_slowdown_start_year": 2030,
+  "end_year": 2037
 }
 ```
 
 **Response:**
 ```json
 {
-  "success": true,
   "num_simulations": 100,
-  "simulation_results": [
-    // Array of SimulationResult objects
-  ]
+  "prob_fab_built": 0.55,
+  "p_project_exists": 0.2,
+  "researcher_headcount": 500,
+  "black_project_model": {...},
+  "black_datacenters": {...},
+  "black_fab": {...},
+  "initial_black_project": {...},
+  "initial_stock": {...}
 }
 ```
 
----
-
-### Page Data Endpoints (Streaming)
-
-These endpoints return data formatted for specific frontend pages. They use **Server-Sent Events (SSE)** to stream results progressively:
-
-1. First, return data from a single "central" simulation (fast initial render)
-2. Then, stream aggregated data from multiple Monte Carlo simulations
-
-#### `GET /api/stream-ai-timelines-data`
-
-Returns data for the AI Timelines and Takeoff page.
-
-**Query Parameters:**
-- `agreement_year` (int): Start year for simulation
-- `num_simulations` (int): Total simulations to run (default: 100)
-- Additional parameters as needed
-
-**SSE Stream Format:**
-```
-event: initial
-data: {"success": true, "type": "initial", "data": {...}}
-
-event: progress
-data: {"success": true, "type": "progress", "completed": 10, "total": 100}
-
-event: aggregated
-data: {"success": true, "type": "aggregated", "data": {...}}
-
-event: done
-data: {"success": true, "type": "done"}
-```
-
-**Initial Data Payload:**
-- Single simulation trajectory data
-- Formatted for immediate chart rendering
-
-**Aggregated Data Payload:**
-- Percentile bands (p25, median, p75)
-- CCDFs for key metrics
-- Distribution samples
+**Caching:** Set `USE_CACHE=true` environment variable to enable caching for default parameter requests.
 
 ---
 
-#### `GET /api/stream-black-project-data`
-
-Returns data for the Black Projects page.
-
-**Query Parameters:**
-- `agreement_year` (int): Year the agreement starts
-- `num_simulations` (int): Total simulations to run (default: 100)
-- `proportion_of_initial_chip_stock_to_divert` (float)
-- `workers_in_covert_project` (int)
-- Additional parameters as needed
-
-**SSE Stream Format:**
-```
-event: initial
-data: {"success": true, "type": "initial", "data": {...}}
-
-event: progress
-data: {"success": true, "type": "progress", "completed": 10, "total": 100}
-
-event: aggregated
-data: {"success": true, "type": "aggregated", "data": {...}}
-
-event: done
-data: {"success": true, "type": "done"}
-```
-
-**Initial Data Payload:**
-Contains single-simulation data for:
-- `initial_stock`: Initial compute stock data
-- `rate_of_computation`: Chip stock and energy over time
-- `covert_fab`: Fab production data
-- `detection_likelihood`: Detection probability data
-- `black_datacenters`: Datacenter capacity data
-- `black_project_model`: Overall project metrics
-
-**Aggregated Data Payload:**
-Contains Monte Carlo aggregated data:
-- Percentile bands for all time series
-- CCDFs for detection thresholds (1x, 2x, 4x)
-- Distribution samples for dashboard statistics
-
----
-
-### Utility Endpoints
-
-#### `GET /api/black-project-defaults`
+### `GET /api/black-project-defaults`
 
 Returns default parameter values for the Black Projects page.
 
@@ -164,61 +134,50 @@ Returns default parameter values for the Black Projects page.
 {
   "success": true,
   "defaults": {
-    "agreementYear": 2027,
-    "proportionOfInitialChipStockToDivert": 0.05,
-    // ... other defaults
+    "ai_slowdown_start_year": 2030,
+    "end_year": 2037
   }
 }
 ```
 
 ---
 
-#### `GET /api/config`
+### `GET /api/sampling-config`
 
-Returns simulation configuration and available parameter ranges.
+Returns parameter distribution configuration for Monte Carlo sampling.
+
+**Response:**
+```json
+{
+  "success": true,
+  "config": {...}
+}
+```
 
 ---
 
-## Streaming Implementation Notes
+### `GET /api/parameter-config`
 
-### Why Streaming?
+Returns parameter bounds and default values.
 
-Simulations can take 10-60+ seconds for 100 Monte Carlo runs. Streaming provides:
-
-1. **Fast initial render**: Users see data within 1-2 seconds (single simulation)
-2. **Progressive enhancement**: Charts update as more data arrives
-3. **Progress feedback**: Users see simulation progress
-
-### Frontend Consumption
-
-```typescript
-const eventSource = new EventSource('/api/stream-black-project-data?agreement_year=2027');
-
-eventSource.addEventListener('initial', (e) => {
-  const data = JSON.parse(e.data);
-  // Render initial charts immediately
-});
-
-eventSource.addEventListener('progress', (e) => {
-  const { completed, total } = JSON.parse(e.data);
-  // Update progress indicator
-});
-
-eventSource.addEventListener('aggregated', (e) => {
-  const data = JSON.parse(e.data);
-  // Update charts with full Monte Carlo data
-});
-
-eventSource.addEventListener('done', () => {
-  eventSource.close();
-});
+**Response:**
+```json
+{
+  "success": true,
+  "config": {...}
+}
 ```
 
-### Error Handling
+---
+
+## Parameter Format
+
+All simulation endpoints accept parameters using **dot-notation paths** that match the backend dataclass structure:
 
 ```
-event: error
-data: {"success": false, "error": "Error message here"}
+software_r_and_d.rho_coding_labor
+software_r_and_d.present_doubling_time
+compute.USComputeParameters.total_us_compute_annual_growth_rate
 ```
 
 ## Running the Server

@@ -5,5 +5,4 @@ from .parameters import (
 )
 from .simulation import (
     run_simulation_internal,
-    extract_sw_progress_from_raw,
 )

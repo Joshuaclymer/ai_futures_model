@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { CustomSliderChart } from '@/components/CustomSliderChart';
+import { CustomSliderChart } from './CustomSliderChart';
 import {
   SliderPopoverProps,
   ChartDefinition,

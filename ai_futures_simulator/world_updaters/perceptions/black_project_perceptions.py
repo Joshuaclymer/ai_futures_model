@@ -723,9 +723,9 @@ class BlackProjectPerceptionsUpdater(WorldUpdater):
 
         for _, project in world.black_projects.items():
             black_project_start_year = float(
-                project.preparation_start_year.item()
-                if hasattr(project.preparation_start_year, 'item')
-                else project.preparation_start_year
+                project.black_project_start_year.item()
+                if hasattr(project.black_project_start_year, 'item')
+                else project.black_project_start_year
             )
             years_since_project_start = current_time - black_project_start_year
 

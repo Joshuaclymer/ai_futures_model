@@ -17,7 +17,7 @@ import sys
 
 from .config import (
     DEFAULT_NUM_SIMULATIONS,
-    DEFAULT_AGREEMENT_YEAR,
+    DEFAULT_AI_SLOWDOWN_START_YEAR,
     DEFAULT_END_YEAR,
 )
 from .reference_api import fetch_reference_api, clear_cache as clear_reference_cache
@@ -27,7 +27,7 @@ from .auto_compare import compare_apis, print_comparison_results
 
 def run_comparison(
     num_simulations: int = DEFAULT_NUM_SIMULATIONS,
-    agreement_year: int = DEFAULT_AGREEMENT_YEAR,
+    ai_slowdown_start_year: int = DEFAULT_AI_SLOWDOWN_START_YEAR,
     end_year: int = DEFAULT_END_YEAR,
     use_cache: bool = True,
     show_all: bool = False,
@@ -41,7 +41,7 @@ def run_comparison(
 
     Args:
         num_simulations: Number of Monte Carlo simulations
-        agreement_year: Year when AI slowdown agreement takes effect
+        ai_slowdown_start_year: Year when AI slowdown agreement takes effect
         end_year: Simulation end year
         use_cache: Whether to use cached reference API responses
         show_all: Whether to show passing comparisons too
@@ -55,7 +55,7 @@ def run_comparison(
     print("=" * 60)
     print(f"\nConfiguration:")
     print(f"  Simulations: {num_simulations}")
-    print(f"  Agreement year: {agreement_year}, End year: {end_year}")
+    print(f"  Agreement year: {ai_slowdown_start_year}, End year: {end_year}")
     print(f"  Use Cache (reference only): {use_cache}")
     print()
 
@@ -63,7 +63,7 @@ def run_comparison(
     print("Step 1: Fetching reference API data")
     ref_response = fetch_reference_api(
         num_simulations=num_simulations,
-        start_year=agreement_year,  # Reference API still uses start_year
+        start_year=ai_slowdown_start_year,  # Reference API still uses start_year
         end_year=end_year,
         use_cache=use_cache,
         verbose=verbose,
@@ -77,7 +77,7 @@ def run_comparison(
     print("\nStep 2: Fetching ai_futures_simulator data")
     afs_response = fetch_ai_futures_simulator(
         num_simulations=num_simulations,
-        agreement_year=agreement_year,
+        ai_slowdown_start_year=ai_slowdown_start_year,
         end_year=end_year,
         use_cache=False,  # Never cache ai_futures_simulator - always run fresh
         verbose=verbose,

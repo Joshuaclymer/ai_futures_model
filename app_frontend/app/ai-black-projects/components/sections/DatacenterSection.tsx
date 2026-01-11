@@ -358,8 +358,8 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
-                {data.black_datacenters.prc_capacity_at_agreement_year_gw
-                  ? formatCapacity(data.black_datacenters.prc_capacity_at_agreement_year_gw)
+                {data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw
+                  ? formatCapacity(data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw)
                   : '--'}
               </div>
             </div>
@@ -392,8 +392,8 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
-                {data.black_datacenters.prc_capacity_at_agreement_year_gw
-                  ? formatCapacity(data.black_datacenters.prc_capacity_at_agreement_year_gw * fractionDiverted)
+                {data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw
+                  ? formatCapacity(data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw * fractionDiverted)
                   : '--'}
               </div>
             </div>
@@ -458,8 +458,8 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy, fontSize: '20px' }}>
-                {data.black_datacenters.prc_capacity_at_agreement_year_gw
-                  ? formatCapacity(data.black_datacenters.prc_capacity_at_agreement_year_gw * fractionDiverted)
+                {data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw
+                  ? formatCapacity(data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw * fractionDiverted)
                   : '--'}
               </div>
             </div>

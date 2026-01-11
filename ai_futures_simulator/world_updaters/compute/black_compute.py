@@ -386,9 +386,9 @@ class BlackProjectComputeUpdater(WorldUpdater):
 
             # Get black_project_start_year (when fab construction starts)
             black_project_start_year = float(
-                project.preparation_start_year.item()
-                if hasattr(project.preparation_start_year, 'item')
-                else project.preparation_start_year
+                project.black_project_start_year.item()
+                if hasattr(project.black_project_start_year, 'item')
+                else project.black_project_start_year
             )
 
             # Check if fab is operational (can't rely on metric during ODE integration)
@@ -480,9 +480,9 @@ class BlackProjectComputeUpdater(WorldUpdater):
             # Check if fab should become operational
             if not project.fab_is_operational and project.fab_number_of_lithography_scanners > 0:
                 black_project_start_year = float(
-                    project.preparation_start_year.item()
-                    if hasattr(project.preparation_start_year, 'item')
-                    else project.preparation_start_year
+                    project.black_project_start_year.item()
+                    if hasattr(project.black_project_start_year, 'item')
+                    else project.black_project_start_year
                 )
                 fab_operational_year = black_project_start_year + project.fab_construction_duration
                 if current_time >= fab_operational_year:
@@ -508,9 +508,9 @@ class BlackProjectComputeUpdater(WorldUpdater):
 
         for _, project in world.black_projects.items():
             black_project_start_year = float(
-                project.preparation_start_year.item()
-                if hasattr(project.preparation_start_year, 'item')
-                else project.preparation_start_year
+                project.black_project_start_year.item()
+                if hasattr(project.black_project_start_year, 'item')
+                else project.black_project_start_year
             )
             years_since_project_start = current_time - black_project_start_year
 

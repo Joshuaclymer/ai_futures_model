@@ -327,7 +327,7 @@ black_project:
     fraction_of_labor_devoted_to_black_fab_operation: 0.049      # 550/11300
     fraction_of_labor_devoted_to_ai_research: 0.044              # 500/11300
     # Diverted resources (with uncertainty)
-    # Initial stock is calculated at agreement_year (2030), matching reference model
+    # Initial stock is calculated at ai_slowdown_start_year (2030), matching reference model
     fraction_of_initial_compute_stock_to_divert_at_black_project_start: 0.05  # Reference: 5%
     fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start: 0.01  # Reference: 1% diversion
     fraction_of_lithography_scanners_to_divert_at_black_project_start: 0.10  # Fixed 10% to match reference model
@@ -346,7 +346,7 @@ black_project:
 
     # 28nm localization: calibrated to match reference model's behavior
     # Reference model has [(2025, 0.0), (2031, 0.25)] with polynomial extrapolation
-    # Fabs only get built when localization <= agreement_year (2030)
+    # Fabs only get built when localization <= ai_slowdown_start_year (2030)
     # Front-weighted to give more scanners when fab IS built
     prc_localization_year_28nm:
       dist: choice

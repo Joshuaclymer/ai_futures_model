@@ -9,6 +9,29 @@ export interface TooltipProps {
   label?: number;
 }
 
+export interface ComputeApiResponse {
+  success: boolean;
+  summary?: Record<string, unknown>;
+  time_series?: Array<{
+    year: number;
+    horizonLength: number;
+    effectiveCompute: number;
+    automationFraction: number;
+    [key: string]: number | string | boolean | undefined;
+  }>;
+  milestones?: Record<string, unknown>;
+  horizon_params?: {
+    uses_shifted_form: boolean;
+    anchor_progress: number | null;
+  };
+  exp_capacity_params?: {
+    rho: number | null;
+    alpha: number | null;
+    experiment_compute_exponent: number | null;
+  };
+  error?: string;
+}
+
 export interface ChartDataPoint {
     year: number;
     horizonLength: number;

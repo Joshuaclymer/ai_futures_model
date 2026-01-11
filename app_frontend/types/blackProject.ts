@@ -111,8 +111,8 @@ export interface BlackDatacenters {
     median: number[];
     p75: number[];
   };
-  prc_capacity_at_agreement_year_gw: number;
-  prc_capacity_at_agreement_year_samples: number[];
+  prc_capacity_at_ai_slowdown_start_year_gw: number;
+  prc_capacity_at_ai_slowdown_start_year_samples: number[];
   fraction_diverted: number;
 
   // Min[] formula parameters

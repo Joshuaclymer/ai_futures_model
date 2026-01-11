@@ -110,7 +110,7 @@ def run_simulations_with_params(
     params_dict: Dict[str, float],
     base_model_params: ModelParameters,
     num_simulations: int = 50,
-    agreement_year: float = 2030.0,
+    ai_slowdown_start_year: float = 2030.0,
     end_year: float = 2037.0,
 ) -> List[Dict[str, Any]]:
     """
@@ -154,7 +154,7 @@ def run_simulations_with_params(
 
 def compute_objective(
     world_data_list: List[Dict[str, Any]],
-    agreement_year: float = 2030.0,
+    ai_slowdown_start_year: float = 2030.0,
 ) -> float:
     """
     Compute the optimization objective: median of max operational compute.
@@ -182,7 +182,7 @@ def compute_objective(
         # Find max operational compute after agreement year
         max_compute = 0.0
         for i, year in enumerate(years):
-            if year >= agreement_year and i < len(operational_compute):
+            if year >= ai_slowdown_start_year and i < len(operational_compute):
                 compute = operational_compute[i]
                 if compute > max_compute:
                     max_compute = compute
@@ -206,13 +206,13 @@ class BlackProjectOptimizer:
     def __init__(
         self,
         num_simulations: int = 50,
-        agreement_year: float = 2030.0,
+        ai_slowdown_start_year: float = 2030.0,
         end_year: float = 2037.0,
         seed: int = 42,
         verbose: bool = False,
     ):
         self.num_simulations = num_simulations
-        self.agreement_year = agreement_year
+        self.ai_slowdown_start_year = ai_slowdown_start_year
         self.end_year = end_year
         self.seed = seed
         self.verbose = verbose
@@ -247,12 +247,12 @@ class BlackProjectOptimizer:
                 params_dict,
                 self.base_model_params,
                 num_simulations=self.num_simulations,
-                agreement_year=self.agreement_year,
+                ai_slowdown_start_year=self.ai_slowdown_start_year,
                 end_year=self.end_year,
             )
 
             # Compute objective (median max operational compute)
-            objective_value = compute_objective(world_data_list, self.agreement_year)
+            objective_value = compute_objective(world_data_list, self.ai_slowdown_start_year)
 
         except Exception as e:
             if self.verbose:

@@ -12,20 +12,20 @@ from typing import Dict, Optional
 from .config import (
     CACHE_DIR,
     DEFAULT_NUM_SIMULATIONS,
-    DEFAULT_AGREEMENT_YEAR,
+    DEFAULT_AI_SLOWDOWN_START_YEAR,
     DEFAULT_END_YEAR,
 )
 
 
 def fetch_ai_futures_simulator(
     num_simulations: int = DEFAULT_NUM_SIMULATIONS,
-    agreement_year: int = DEFAULT_AGREEMENT_YEAR,
+    ai_slowdown_start_year: int = DEFAULT_AI_SLOWDOWN_START_YEAR,
     end_year: int = DEFAULT_END_YEAR,
     use_cache: bool = True,
     verbose: bool = True,
 ) -> Optional[Dict]:
     """Run ai_futures_simulator simulations directly in-process."""
-    cache_file = CACHE_DIR / f"afs_{num_simulations}_{agreement_year}_{end_year}.json"
+    cache_file = CACHE_DIR / f"afs_{num_simulations}_{ai_slowdown_start_year}_{end_year}.json"
 
     if use_cache and cache_file.exists():
         if verbose:
@@ -49,7 +49,7 @@ def fetch_ai_futures_simulator(
         result = run_black_project_simulations(
             frontend_params=frontend_params,
             num_simulations=num_simulations,
-            agreement_year=agreement_year,
+            ai_slowdown_start_year=ai_slowdown_start_year,
             end_year=end_year,
         )
         response = extract_black_project_plot_data(result, frontend_params)

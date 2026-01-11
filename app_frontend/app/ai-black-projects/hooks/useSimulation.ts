@@ -86,7 +86,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
       body: JSON.stringify({
         parameters: params,
         num_simulations: params.numSimulations || 100,
-        agreement_year: params.agreementYear || 2030,
+        ai_slowdown_start_year: params.agreementYear || 2030,
         end_year: 2037,
       }),
       signal,

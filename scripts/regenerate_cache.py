@@ -48,7 +48,7 @@ def main():
 
     print(f"Regenerating black project cache...")
     print(f"  Simulations: {args.num_simulations}")
-    print(f"  Agreement year: {args.agreement_year}")
+    print(f"  Agreement year: {args.ai_slowdown_start_year}")
     print(f"  End year: {args.end_year}")
     print()
 
@@ -58,7 +58,7 @@ def main():
     result = run_black_project_simulations(
         frontend_params={},
         num_simulations=args.num_simulations,
-        agreement_year=args.agreement_year,
+        ai_slowdown_start_year=args.ai_slowdown_start_year,
         end_year=args.end_year,
     )
 

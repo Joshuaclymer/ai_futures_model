@@ -70,7 +70,7 @@ def run_simulations_with_params(
     params_dict: Dict[str, float],
     base_model_params: ModelParameters,
     num_simulations: int = 100,
-    agreement_year: float = 2030.0,
+    ai_slowdown_start_year: float = 2030.0,
     end_year: float = 2037.0,
 ) -> List[Dict[str, Any]]:
     """Run simulations with the given black project parameters."""
@@ -104,7 +104,7 @@ def run_simulations_with_params(
 
 def compute_objective(
     world_data_list: List[Dict[str, Any]],
-    agreement_year: float = 2030.0,
+    ai_slowdown_start_year: float = 2030.0,
 ) -> float:
     """Compute median of max operational compute across simulations."""
     max_operational_computes = []
@@ -124,7 +124,7 @@ def compute_objective(
 
         max_compute = 0.0
         for i, year in enumerate(years):
-            if year >= agreement_year and i < len(operational_compute):
+            if year >= ai_slowdown_start_year and i < len(operational_compute):
                 compute = operational_compute[i]
                 if compute > max_compute:
                     max_compute = compute

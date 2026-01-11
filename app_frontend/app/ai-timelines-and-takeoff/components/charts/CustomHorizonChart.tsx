@@ -1,19 +1,19 @@
 import { memo, useMemo, ReactNode, useState, useCallback, useRef } from "react";
 import { BenchmarkPoint, ChartDataPoint } from "@/app/types";
-import { CustomLineChart, DataPoint, CustomElementsContext } from '@/components/CustomLineChart';
+import { CustomLineChart, DataPoint, CustomElementsContext } from './CustomLineChart';
 import {
   createDiamondShape,
   createSquareShape,
   createTriangleShape,
   createStarShape,
   createCircleShape
-} from '@/components/ChartShapes';
+} from './ChartShapes';
 import { createScale, calculateTimeLogTicks, clamp } from '@/utils/chartUtils';
 import { formatLogWorkTick, formatWorkTimeDurationDetailed } from '@/utils/formatting';
-import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from '@/components/chartTooltipStyle';
+import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from './chartTooltipStyle';
 import { CHART_LAYOUT } from '@/constants/chartLayout';
 import { HORIZON_LENGTH_EXPLANATION } from '@/constants/chartExplanations';
-import { WithChartTooltip } from '@/components/ChartTitleTooltip';
+import { WithChartTooltip } from './ChartTitleTooltip';
 
 const CODING_AUTOMATION_MARKER_COLOR = '#6b7280';
 

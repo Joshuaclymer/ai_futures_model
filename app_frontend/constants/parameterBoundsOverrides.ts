@@ -1,80 +1,75 @@
 /**
  * Parameter bounds overrides
- * 
+ *
  * These bounds take the highest priority when determining slider min/max values.
  * Priority order: overrides > customMin/customMax props > API bounds > fallbackMin/fallbackMax
- * 
+ *
  * Set min/max to override the bounds for a parameter, or leave undefined to use other sources.
- * 
+ *
  * Example usage:
  * ```typescript
  * export const PARAMETER_BOUNDS_OVERRIDES: ParameterBoundsOverrides = {
- *   present_doubling_time: { min: 0.05, max: 1.5 },  // Override both bounds
- *   ai_research_taste_slope: { min: 0.5 },          // Override only min
- *   median_to_top_taste_multiplier: undefined,       // No override
+ *   'software_r_and_d.present_doubling_time': { min: 0.05, max: 1.5 },  // Override both bounds
+ *   'software_r_and_d.ai_research_taste_slope': { min: 0.5 },          // Override only min
+ *   'software_r_and_d.median_to_top_taste_multiplier': undefined,       // No override
  * };
  * ```
  */
-
-import type { ParametersType } from './parameters';
 
 export interface BoundsOverride {
   min?: number;
   max?: number;
 }
 
-export type ParameterBoundsOverrides = {
-  [K in keyof ParametersType]?: BoundsOverride;
-};
+export type ParameterBoundsOverrides = Record<string, BoundsOverride | undefined>;
 
 export const PARAMETER_BOUNDS_OVERRIDES: ParameterBoundsOverrides = {
   // Main UI Parameters (ProgressChartClient.tsx)
-  present_doubling_time: undefined,
-  ac_time_horizon_minutes: undefined,
-  doubling_difficulty_growth_factor: undefined,
-  ai_research_taste_slope: undefined,
-  median_to_top_taste_multiplier: undefined,
+  'software_r_and_d.present_doubling_time': undefined,
+  'software_r_and_d.ac_time_horizon_minutes': undefined,
+  'software_r_and_d.doubling_difficulty_growth_factor': undefined,
+  'software_r_and_d.ai_research_taste_slope': undefined,
+  'software_r_and_d.median_to_top_taste_multiplier': undefined,
 
   // Advanced Parameters (AdvancedSections.tsx)
-  
+
   // Time Horizon & Progress
-  saturation_horizon_minutes: { max: 50 * 2000 * 60 },  // 50 work years in minutes
-  gap_years: { max: 50 },
+  'software_r_and_d.saturation_horizon_minutes': { max: 50 * 2000 * 60 },  // 50 work years in minutes
+  'software_r_and_d.gap_years': { max: 50 },
 
   // Coding Automation
-  swe_multiplier_at_present_day: { max: 100 },
-  coding_automation_efficiency_slope: undefined,
-  rho_coding_labor: undefined,
-  max_serial_coding_labor_multiplier: undefined,
-  
+  'software_r_and_d.swe_multiplier_at_present_day': { max: 100 },
+  'software_r_and_d.coding_automation_efficiency_slope': undefined,
+  'software_r_and_d.rho_coding_labor': undefined,
+  'software_r_and_d.max_serial_coding_labor_multiplier': undefined,
+
   // Experiment Throughput Production
-  rho_experiment_capacity: undefined,
-  alpha_experiment_capacity: undefined,
-  experiment_compute_exponent: undefined,
-  coding_labor_exponent: undefined,
-  inf_labor_asymptote: undefined,
-  inf_compute_asymptote: undefined,
-  inv_compute_anchor_exp_cap: undefined,
-  
+  'software_r_and_d.rho_experiment_capacity': undefined,
+  'software_r_and_d.alpha_experiment_capacity': undefined,
+  'software_r_and_d.experiment_compute_exponent': undefined,
+  'software_r_and_d.coding_labor_exponent': undefined,
+  'software_r_and_d.inf_labor_asymptote': undefined,
+  'software_r_and_d.inf_compute_asymptote': undefined,
+  'software_r_and_d.inv_compute_anchor_exp_cap': undefined,
+
   // Experiment Selection Automation
-  ai_research_taste_at_coding_automation_anchor_sd: undefined,
-  taste_limit: undefined,
-  taste_limit_smoothing: undefined,
-  
+  'software_r_and_d.ai_research_taste_at_coding_automation_anchor_sd': undefined,
+  'software_r_and_d.taste_limit': undefined,
+  'software_r_and_d.taste_limit_smoothing': undefined,
+
   // General Capabilities
-  ted_ai_m2b: undefined,
+  'software_r_and_d.ted_ai_m2b': undefined,
 
   // Effective Compute
-  software_progress_rate_at_reference_year: undefined,
-  
+  'software_r_and_d.software_progress_rate_at_reference_year': undefined,
+
   // Training Compute Growth
-  us_frontier_project_compute_growth_rate: { min: 0, max: 10 },
+  'compute.USComputeParameters.total_us_compute_annual_growth_rate': { min: 0, max: 10 },
 
   // Extra Parameters
-  present_day: undefined,
-  present_horizon: { max: 2000 * 60 },  // 1 work year in minutes
-  automation_fraction_at_coding_automation_anchor: undefined,
-  optimal_ces_eta_init: undefined,
-  top_percentile: undefined,
+  'software_r_and_d.present_day': undefined,
+  'software_r_and_d.present_horizon': { max: 2000 * 60 },  // 1 work year in minutes
+  'software_r_and_d.automation_fraction_at_coding_automation_anchor': undefined,
+  'software_r_and_d.optimal_ces_eta_init': undefined,
+  'software_r_and_d.top_percentile': undefined,
 };
-

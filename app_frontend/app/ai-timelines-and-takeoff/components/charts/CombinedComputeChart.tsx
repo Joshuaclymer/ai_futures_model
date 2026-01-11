@@ -1,14 +1,14 @@
 'use client';
 
 import { memo, useMemo, ReactNode, useState } from 'react';
-import { CustomLineChart, DataPoint, CustomElementsContext } from '@/components/CustomLineChart';
+import { CustomLineChart, DataPoint, CustomElementsContext } from './CustomLineChart';
 import { ChartDataPoint } from '@/app/types';
 import { calculateDynamicXDomain, calculateTicks, clamp } from '@/utils/chartUtils';
 import { formatYearMonth, formatPowerOfTenNode, formatEffectiveComputeValue, formatOOMSuperscriptText } from '@/utils/formatting';
-import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from '@/components/chartTooltipStyle';
+import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from './chartTooltipStyle';
 import { CHART_LAYOUT } from '@/constants/chartLayout';
 import { COMPUTE_CHART_EXPLANATION } from '@/constants/chartExplanations';
-import { WithChartTooltip } from '@/components/ChartTitleTooltip';
+import { WithChartTooltip } from './ChartTitleTooltip';
 import { XYPoint, interpolateAtX, getVisibleEndpoints } from '@/utils/chartLabelUtils';
 
 export interface CombinedComputeChartProps {

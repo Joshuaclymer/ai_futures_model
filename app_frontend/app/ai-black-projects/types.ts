@@ -416,8 +416,8 @@ export interface SimulationData {
     operational_compute?: { median: number[]; p25: number[]; p75: number[] };
     prc_capacity_years?: number[];
     prc_capacity_gw?: { median: number[]; p25: number[]; p75: number[] };
-    prc_capacity_at_agreement_year_gw?: number;
-    prc_capacity_at_agreement_year_samples?: number[];
+    prc_capacity_at_ai_slowdown_start_year_gw?: number;
+    prc_capacity_at_ai_slowdown_start_year_samples?: number[];
     fraction_diverted?: number;
     energy_by_source?: number[][];
     source_labels?: string[];

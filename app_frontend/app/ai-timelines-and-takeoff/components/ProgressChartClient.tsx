@@ -4,10 +4,10 @@ import { useState, useCallback, useEffect, useRef, useMemo, ChangeEvent, Fragmen
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import CustomHorizonChart from './charts/CustomHorizonChart';
 import { CombinedComputeChart } from './charts/CombinedComputeChart';
-import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from '@/components/chartTooltipStyle';
+import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from './charts/chartTooltipStyle';
 import { ChartDataPoint, BenchmarkPoint } from '@/app/types';
 import { CustomMetricChart } from './charts/CustomMetricChart';
-import type { DataPoint } from '@/components/CustomLineChart';
+import type { DataPoint } from './charts/CustomLineChart';
 
 import { formatTo3SigFigs, formatTimeDuration, formatSCHorizon, yearsToMinutes, formatYearMonth, formatWorkTimeDuration, formatWorkTimeDurationDetailed, formatUplift, formatCompactNumberNode, formatAsPowerOfTenText } from '@/utils/formatting';
 import { DEFAULT_PARAMETERS, ParametersType, ParameterPrimitive, H100E_TPP_TO_FLOP_OOM_OFFSET } from '@/constants/parameters';
@@ -17,7 +17,7 @@ import { ParameterSlider } from './ui/ParameterSlider';
 import { AdvancedSections } from './sections/AdvancedSections';
 import { ChartType } from '@/types/chartConfig';
 import { CHART_CONFIGS } from '@/utils/chartConfigs';
-import { ChartSyncProvider } from '@/components/ChartSyncContext';
+import { ChartSyncProvider } from './charts/ChartSyncContext';
 import { ChartLoadingOverlay } from './charts/ChartLoadingOverlay';
 import { encodeFullStateToParams, decodeFullStateFromParams, DEFAULT_CHECKBOX_STATES } from '@/utils/urlState';
 import { AIRnDProgressMultiplierChart } from './charts/AIRnDProgressMultiplierChart';
@@ -25,12 +25,12 @@ import type { MilestoneMap } from '@/types/milestones';
 import { SmallChartMetricTooltip } from './charts/SmallChartMetricTooltip';
 import { MILESTONE_EXPLANATIONS, MILESTONE_FULL_NAMES } from '@/constants/chartExplanations';
 import { ParameterHoverProvider } from '@/components/ParameterHoverContext';
-import { HeaderContent } from '@/components/HeaderContent';
-import { WithChartTooltip } from '@/components/ChartTitleTooltip';
-import ModelArchitecture from '@/components/ModelArchitecture';
-import { SharePredictionModal } from '@/components/SharePredictionModal';
+import { HeaderContent } from './sections/HeaderContent';
+import { WithChartTooltip } from './charts/ChartTitleTooltip';
+import ModelArchitecture from './sections/ModelArchitecture';
+import { SharePredictionModal } from './ui/SharePredictionModal';
 import { SamplingConfig, generateParameterSample, generateParameterSampleWithFixedParams, generateParameterSampleWithUserValues, getDistributionMedian, initializeCorrelationSampling, extractSamplingConfigBounds, flattenMonteCarloConfig } from '@/utils/sampling';
-import type { ComputeApiResponse } from '@/lib/serverApi';
+import type { ComputeApiResponse } from '@/app/types';
 
 interface ModelDefaults {
   optimal_ces_eta_init?: number;
@@ -967,19 +967,27 @@ export default function ProgressChart({
     // Key conversion: ac_time_horizon_minutes needs to go from actual minutes to log10
     const uiFormatParams = { ...DEFAULT_PARAMETERS };
 
+    const acTimeHorizonKey = 'software_r_and_d.ac_time_horizon_minutes';
+    const includeGapKey = 'software_r_and_d.include_gap';
+    const bgmKey = 'software_r_and_d.benchmarks_and_gaps_mode';
+    const ppKey = 'software_r_and_d.parallel_penalty';
+    const cleKey = 'software_r_and_d.coding_labor_exponent';
+    const preGapKey = 'software_r_and_d.pre_gap_ac_time_horizon';
+    const satHorizonKey = 'software_r_and_d.saturation_horizon_minutes';
+
     for (const [key, value] of Object.entries(params)) {
-      if (key === 'ac_time_horizon_minutes' && typeof value === 'number') {
+      if (key === acTimeHorizonKey && typeof value === 'number') {
         // Convert from actual minutes to log10 for UI slider
         uiFormatParams[key] = Math.log10(value);
-      } else if (key === 'include_gap') {
+      } else if (key === includeGapKey) {
         // Convert include_gap back to benchmarks_and_gaps_mode
-        uiFormatParams.benchmarks_and_gaps_mode = value === 'gap';
-      } else if (key === 'parallel_penalty' && typeof value === 'number') {
+        uiFormatParams[bgmKey] = value === 'gap';
+      } else if (key === ppKey && typeof value === 'number') {
         // Convert parallel_penalty back to coding_labor_exponent
-        uiFormatParams.coding_labor_exponent = value;
-      } else if (key === 'pre_gap_ac_time_horizon' && typeof value === 'number') {
+        uiFormatParams[cleKey] = value;
+      } else if (key === preGapKey && typeof value === 'number') {
         // Convert pre_gap_ac_time_horizon back to saturation_horizon_minutes
-        uiFormatParams.saturation_horizon_minutes = value;
+        uiFormatParams[satHorizonKey] = value;
       } else if (key in uiFormatParams) {
         (uiFormatParams as Record<string, ParameterPrimitive>)[key] = value as ParameterPrimitive;
       }
@@ -1155,7 +1163,7 @@ export default function ProgressChart({
     async (params: ParametersType, signal: AbortSignal, requestId: number) => {
       try {
         const apiParameters = convertParametersToAPIFormat(params as unknown as ParameterRecord);
-        const response = await fetch('/api/run-sw-progress-simulation', {
+        const response = await fetch('/api/get-data-for-ai-timelines-and-takeoff-page', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1289,7 +1297,7 @@ export default function ProgressChart({
         // Use convertSampledParametersToAPIFormat because sampled params already have
         // ac_time_horizon_minutes in actual minutes (not log scale like UI params)
         const apiParameters = convertSampledParametersToAPIFormat(sampleParams as unknown as ParameterRecord);
-        const response = await fetch('/api/run-sw-progress-simulation', {
+        const response = await fetch('/api/get-data-for-ai-timelines-and-takeoff-page', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1362,26 +1370,34 @@ export default function ProgressChart({
       // Convert UI parameter format to sampling config format:
       // - ac_time_horizon_minutes: UI stores as log10(minutes), sampling expects actual minutes
       // - saturation_horizon_minutes → pre_gap_ac_time_horizon
-      // - benchmarks_and_gaps_mode → include_gap  
+      // - benchmarks_and_gaps_mode → include_gap
       // - coding_labor_exponent → parallel_penalty
       const rawParams = parameters as unknown as Record<string, number | string | boolean>;
       const userParams: Record<string, number | string | boolean> = { ...rawParams };
 
+      const acTimeHorizonKey = 'software_r_and_d.ac_time_horizon_minutes';
+      const satHorizonKey = 'software_r_and_d.saturation_horizon_minutes';
+      const preGapKey = 'software_r_and_d.pre_gap_ac_time_horizon';
+      const bgmKey = 'software_r_and_d.benchmarks_and_gaps_mode';
+      const includeGapKey = 'software_r_and_d.include_gap';
+      const cleKey = 'software_r_and_d.coding_labor_exponent';
+      const ppKey = 'software_r_and_d.parallel_penalty';
+
       // Convert ac_time_horizon_minutes from log10 to actual minutes
-      if (typeof rawParams.ac_time_horizon_minutes === 'number') {
-        userParams.ac_time_horizon_minutes = Math.pow(10, rawParams.ac_time_horizon_minutes);
+      if (typeof rawParams[acTimeHorizonKey] === 'number') {
+        userParams[acTimeHorizonKey] = Math.pow(10, rawParams[acTimeHorizonKey] as number);
       }
 
       // Map UI parameter names to sampling config names
-      if ('saturation_horizon_minutes' in rawParams) {
-        userParams.pre_gap_ac_time_horizon = rawParams.saturation_horizon_minutes;
+      if (satHorizonKey in rawParams) {
+        userParams[preGapKey] = rawParams[satHorizonKey];
       }
-      if ('benchmarks_and_gaps_mode' in rawParams) {
-        const includeGap = rawParams.benchmarks_and_gaps_mode === true || rawParams.benchmarks_and_gaps_mode === 'gap';
-        userParams.include_gap = includeGap ? 'gap' : 'no gap';
+      if (bgmKey in rawParams) {
+        const includeGap = rawParams[bgmKey] === true || rawParams[bgmKey] === 'gap';
+        userParams[includeGapKey] = includeGap ? 'gap' : 'no gap';
       }
-      if ('coding_labor_exponent' in rawParams && typeof rawParams.coding_labor_exponent === 'number') {
-        userParams.parallel_penalty = rawParams.coding_labor_exponent;
+      if (cleKey in rawParams && typeof rawParams[cleKey] === 'number') {
+        userParams[ppKey] = rawParams[cleKey];
       }
 
       // Clear debug log when starting fresh
@@ -1477,9 +1493,9 @@ export default function ProgressChart({
 
   // Update the SC horizon line immediately while the slider moves
   useEffect(() => {
-    const instantHorizon = Math.pow(10, uiParameters.ac_time_horizon_minutes);
+    const instantHorizon = Math.pow(10, uiParameters['software_r_and_d.ac_time_horizon_minutes'] as number);
     setScHorizonMinutes(instantHorizon);
-  }, [uiParameters.ac_time_horizon_minutes]);
+  }, [uiParameters['software_r_and_d.ac_time_horizon_minutes'] as number]);
 
   // Load dynamic Monte Carlo trajectories with streaming based on current slider values
   const loadDynamicMonteCarloTrajectories = useCallback(async (allParams: typeof parameters) => {
@@ -2486,7 +2502,7 @@ export default function ProgressChart({
                                 step={0.01}
                                 decimalPlaces={2}
                                 customFormatValue={(years) => formatTimeDuration(yearsToMinutes(years))}
-                                value={uiParameters.present_doubling_time}
+                                value={uiParameters['software_r_and_d.present_doubling_time'] as number}
                                 uiParameters={uiParameters}
                                 setUiParameters={setUiParameters}
                                 allParameters={allParameters}
@@ -2515,7 +2531,7 @@ export default function ProgressChart({
                                 customMax={scHorizonLogBounds.max}
                                 step={0.1}
                                 customFormatValue={formatSCHorizon}
-                                value={uiParameters.ac_time_horizon_minutes}
+                                value={uiParameters['software_r_and_d.ac_time_horizon_minutes'] as number}
                                 uiParameters={uiParameters}
                                 setUiParameters={setUiParameters}
                                 allParameters={allParameters}
@@ -2546,7 +2562,7 @@ export default function ProgressChart({
                                 fallbackMax={1.5}
                                 step={0.01}
                                 customFormatValue={(val) => `${val.toFixed(2)}x/doubling`}
-                                value={uiParameters.doubling_difficulty_growth_factor}
+                                value={uiParameters['software_r_and_d.doubling_difficulty_growth_factor'] as number}
                                 uiParameters={uiParameters}
                                 setUiParameters={setUiParameters}
                                 allParameters={allParameters}
@@ -2577,7 +2593,7 @@ export default function ProgressChart({
                                 fallbackMax={20.0}
                                 step={0.1}
                                 customFormatValue={(val) => `${val.toFixed(2)}x`}
-                                value={uiParameters.median_to_top_taste_multiplier}
+                                value={uiParameters['software_r_and_d.median_to_top_taste_multiplier'] as number}
                                 uiParameters={uiParameters}
                                 setUiParameters={setUiParameters}
                                 allParameters={allParameters}
@@ -2609,7 +2625,7 @@ export default function ProgressChart({
                                 fallbackMin={0.1}
                                 fallbackMax={10.0}
                                 decimalPlaces={1}
-                                value={uiParameters.ai_research_taste_slope}
+                                value={uiParameters['software_r_and_d.ai_research_taste_slope'] as number}
                                 uiParameters={uiParameters}
                                 setUiParameters={setUiParameters}
                                 allParameters={allParameters}
@@ -2709,7 +2725,7 @@ export default function ProgressChart({
                                   step={0.01}
                                   decimalPlaces={2}
                                   customFormatValue={(years) => formatTimeDuration(yearsToMinutes(years))}
-                                  value={uiParameters.present_doubling_time}
+                                  value={uiParameters['software_r_and_d.present_doubling_time'] as number}
                                   uiParameters={uiParameters}
                                   setUiParameters={setUiParameters}
                                   allParameters={allParameters}
@@ -2746,7 +2762,7 @@ export default function ProgressChart({
                                   customMax={scHorizonLogBounds.max}
                                   step={0.1}
                                   customFormatValue={formatSCHorizon}
-                                  value={uiParameters.ac_time_horizon_minutes}
+                                  value={uiParameters['software_r_and_d.ac_time_horizon_minutes'] as number}
                                   uiParameters={uiParameters}
                                   setUiParameters={setUiParameters}
                                   allParameters={allParameters}
@@ -2783,7 +2799,7 @@ export default function ProgressChart({
                                   fallbackMax={1.5}
                                   step={0.01}
                                   customFormatValue={(val) => `${val.toFixed(2)}x/doubling`}
-                                  value={uiParameters.doubling_difficulty_growth_factor}
+                                  value={uiParameters['software_r_and_d.doubling_difficulty_growth_factor'] as number}
                                   uiParameters={uiParameters}
                                   setUiParameters={setUiParameters}
                                   allParameters={allParameters}
@@ -2822,7 +2838,7 @@ export default function ProgressChart({
                                   fallbackMax={20.0}
                                   step={0.1}
                                   customFormatValue={(val) => `${val.toFixed(2)}x`}
-                                  value={uiParameters.median_to_top_taste_multiplier}
+                                  value={uiParameters['software_r_and_d.median_to_top_taste_multiplier'] as number}
                                   uiParameters={uiParameters}
                                   setUiParameters={setUiParameters}
                                   allParameters={allParameters}
@@ -2854,7 +2870,7 @@ export default function ProgressChart({
                                   fallbackMin={0.1}
                                   fallbackMax={10.0}
                                   customFormatValue={(val) => `${val.toFixed(1)} SDs/2025-effective-FLOP-growth`}
-                                  value={uiParameters.ai_research_taste_slope}
+                                  value={uiParameters['software_r_and_d.ai_research_taste_slope'] as number}
                                   uiParameters={uiParameters}
                                   setUiParameters={setUiParameters}
                                   allParameters={allParameters}
