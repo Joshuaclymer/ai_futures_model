@@ -4,18 +4,20 @@ Software R&D world updater.
 Updates AI software progress for all AI developers in the world.
 """
 
-from pathlib import Path
 import numpy as np
-import pandas as pd
 
 import torch
 from torch import Tensor
+
+from typing import TYPE_CHECKING
 
 from classes.world.world import World
 from classes.world.entities import AISoftwareDeveloper
 from classes.simulation_primitives import StateDerivative, WorldUpdater
 from parameters.classes import SimulationParameters
-from parameters.calibrate import CalibratedParameters
+
+if TYPE_CHECKING:
+    from parameters.calibrate import CalibratedParameters
 
 # Import from local modules (same directory)
 from .ces_functions import compute_coding_labor_deprecated as compute_coding_labor
@@ -28,27 +30,7 @@ from .progress_rate import (
 )
 from .automation_model import AutomationModel
 from .taste_distribution import TasteDistribution
-from .data_types import TimeSeriesData
 from . import model_config as cfg
-
-# Load historical time series data for interpolation
-# Path: world_updaters/software_r_and_d/update_software_r_and_d.py -> parameters/historical_calibration_data.csv
-_HISTORICAL_CSV_PATH = Path(__file__).parent.parent.parent / "parameters" / "historical_calibration_data.csv"
-_historical_time_series = None
-
-def _load_historical_time_series() -> TimeSeriesData:
-    """Load the historical time series data for compute interpolation."""
-    global _historical_time_series
-    if _historical_time_series is None:
-        df = pd.read_csv(_HISTORICAL_CSV_PATH)
-        _historical_time_series = TimeSeriesData(
-            time=df['time'].values,
-            L_HUMAN=df['L_HUMAN'].values,
-            inference_compute=df['inference_compute'].values,
-            experiment_compute=df['experiment_compute'].values,
-            training_compute=df['training_compute'].values,
-        )
-    return _historical_time_series
 
 
 class SoftwareRAndD(WorldUpdater):
@@ -100,89 +82,144 @@ class SoftwareRAndD(WorldUpdater):
             taste_limit_smoothing=self.r_and_d.taste_limit_smoothing or 0.51,
         )
 
+        # Store present_day values for computing ai_sw_progress_mult_ref_present_day
+        # These are fixed at present_day and used to isolate the effect of automation improvements
+        self._init_present_day_values()
+
+    def _init_present_day_values(self):
+        """
+        Initialize present_day values used for computing ai_sw_progress_mult_ref_present_day.
+
+        These values are fixed at present_day and represent the baseline resources.
+        The multiplier isolates the effect of automation/taste improvements by using
+        present_day resources with the current progress level.
+
+        Values are read from calibrated parameters (computed during calibration from time series).
+        """
+        r = self.r_and_d
+        cal = self._calibrated
+        present_day = r.present_day
+
+        # Read present_day baseline values from calibrated parameters
+        # These were computed during calibration by interpolating from time series
+        self._present_day_human_labor = cal.present_day_human_labor
+        self._present_day_inference_compute = cal.present_day_inference_compute
+        self._present_day_experiment_compute = cal.present_day_experiment_compute
+
+        # Compute present_day serial_coding_labor (human-only, no AI automation)
+        # At present_day, we use the base coding labor without AI amplification
+        self._present_day_serial_coding_labor = (
+            (self._present_day_human_labor ** r.parallel_penalty) * r.coding_labor_normalization
+        )
+
+        # Get present_day research_stock from calibration (this was computed during trajectory calibration)
+        # We need to interpolate from the trajectory if available
+        if cal.trajectory_years is not None and cal.trajectory_progress is not None:
+            # Get present_day progress from trajectory
+            present_day_progress = float(np.interp(present_day, cal.trajectory_years, cal.trajectory_progress))
+        else:
+            present_day_progress = cal.initial_progress
+
+        # For research_stock, we use the calibrated initial_research_stock scaled by progress
+        # Actually, we need to compute present_day sw_rate to get the baseline
+        # Use a simple approximation: present_day research_stock ≈ initial_research_stock
+        self._present_day_research_stock = cal.initial_research_stock
+
+        # Compute present_day software progress rate (human-only baseline)
+        # This is the baseline that the multiplier is relative to
+        present_day_ai_taste = compute_ai_research_taste(
+            present_day_progress,
+            self._taste_distribution,
+            cal.ai_research_taste_slope,
+            cal.progress_at_aa,
+            r.ai_research_taste_at_coding_automation_anchor_sd,
+        )
+        present_day_agg_taste = compute_aggregate_research_taste(present_day_ai_taste, self._taste_distribution)
+
+        present_day_research_effort = compute_research_effort(
+            self._present_day_experiment_compute,
+            self._present_day_serial_coding_labor,
+            cal.alpha_experiment_capacity,
+            cal.rho_experiment_capacity,
+            cal.experiment_compute_exponent,
+            present_day_agg_taste
+        )
+
+        self._present_day_sw_progress_rate = compute_software_progress_rate(
+            self._present_day_research_stock, present_day_research_effort, cal.r_software
+        )
+
+    def _compute_ai_sw_progress_mult_ref_present_day(self, progress: float) -> float:
+        """
+        Compute ai_sw_progress_mult_ref_present_day dynamically based on current progress.
+
+        This metric shows how much faster software progress would be at the current
+        automation/taste level compared to present_day, holding resources constant.
+
+        The computation uses:
+        - Present_day resources (human_labor, inference_compute, experiment_compute, research_stock)
+        - Current progress level (which determines automation fraction and taste)
+
+        Returns:
+            sw_rate_with_current_automation / present_day_sw_rate
+        """
+        r = self.r_and_d
+        cal = self._calibrated
+
+        # Compute current automation fraction and taste at current progress
+        ai_research_taste = compute_ai_research_taste(
+            progress,
+            self._taste_distribution,
+            cal.ai_research_taste_slope,
+            cal.progress_at_aa,
+            r.ai_research_taste_at_coding_automation_anchor_sd,
+        )
+        aggregate_research_taste = compute_aggregate_research_taste(ai_research_taste, self._taste_distribution)
+
+        # Compute serial_coding_labor with present_day resources but current automation level
+        serial_coding_labor_with_present_resources = self._compute_coding_labor(
+            progress,
+            self._present_day_human_labor,
+            self._present_day_inference_compute
+        )
+
+        # Compute research effort with present_day experiment_compute and current coding labor
+        research_effort_present_resources = compute_research_effort(
+            self._present_day_experiment_compute,
+            serial_coding_labor_with_present_resources,
+            cal.alpha_experiment_capacity,
+            cal.rho_experiment_capacity,
+            cal.experiment_compute_exponent,
+            aggregate_research_taste
+        )
+
+        # Compute software progress rate with present_day research_stock
+        sw_rate_present_resources = compute_software_progress_rate(
+            self._present_day_research_stock, research_effort_present_resources, cal.r_software
+        )
+
+        # Return the multiplier relative to present_day
+        if self._present_day_sw_progress_rate > 0:
+            return sw_rate_present_resources / self._present_day_sw_progress_rate
+        return 1.0
+
     def _get_inputs_from_developer(self, dev: AISoftwareDeveloper, current_time: float = None) -> tuple:
         """
-        Get R&D inputs from the AISoftwareDeveloper entity.
+        Get R&D inputs from the developer entity's properties.
 
         Returns (human_labor, inference_compute, experiment_compute, training_compute_growth_rate).
 
-        If current_time is provided:
-        - For years in the historical range (up to 2026): interpolate from the historical
-          time series CSV (same as reference ProgressModel)
-        - For years after 2026: apply growth from 2026 base values using slowdown logic
+        Uses values that were set by the compute and researcher updaters:
+        - human_labor from human_ai_capability_researchers (set by AISoftwareDeveloperResearcherUpdater)
+        - inference_compute from ai_r_and_d_inference_compute_tpp_h100e (set by AISoftwareDeveloperComputeUpdater)
+        - experiment_compute from ai_r_and_d_training_compute_tpp_h100e (set by AISoftwareDeveloperComputeUpdater)
+        - training_compute_growth_rate from training_compute_growth_rate (set by AISoftwareDeveloperComputeUpdater)
         """
-        import math
-
-        # Load historical time series for interpolation
-        ts = _load_historical_time_series()
-
-        # Default values from developer entity (for fallback)
-        human_labor_default = float(dev.human_ai_capability_researchers)
-        inference_compute_default = float(dev.ai_r_and_d_inference_compute_tpp_h100e)
-        experiment_compute_default = float(dev.ai_r_and_d_training_compute_tpp_h100e)
-        training_compute_growth_rate_default = float(dev.training_compute_growth_rate)
-
-        if current_time is None:
-            return (human_labor_default, inference_compute_default,
-                    experiment_compute_default, training_compute_growth_rate_default)
-
-        # Get time bounds from historical data
-        time_min = float(ts.time.min())  # ~2012
-        time_max = float(ts.time.max())  # ~2026
-
-        # Use log-space interpolation for exponentially growing compute values
-        # (matches reference model's approach)
-        if ts.can_use_log_inference_compute:
-            inference_compute = float(np.exp(np.interp(
-                min(current_time, time_max), ts.time, ts.log_inference_compute
-            )))
-        else:
-            inference_compute = float(np.interp(
-                min(current_time, time_max), ts.time, ts.inference_compute
-            ))
-
-        if ts.can_use_log_experiment_compute:
-            experiment_compute = float(np.exp(np.interp(
-                min(current_time, time_max), ts.time, ts.log_experiment_compute
-            )))
-        else:
-            experiment_compute = float(np.interp(
-                min(current_time, time_max), ts.time, ts.experiment_compute
-            ))
-
-        # Interpolate human labor and training_compute_growth_rate as well
-        if ts.can_use_log_L_HUMAN:
-            human_labor = float(np.exp(np.interp(
-                min(current_time, time_max), ts.time, ts.log_L_HUMAN
-            )))
-        else:
-            human_labor = float(np.interp(
-                min(current_time, time_max), ts.time, ts.L_HUMAN
-            ))
-
-        # Get training compute growth rate using the TimeSeriesData method
-        training_compute_growth_rate = float(ts.get_training_compute_growth_rate(
-            min(current_time, time_max)
-        ))
-
-        # For years after the historical data range, apply growth from the end point
-        if current_time > time_max:
-            elapsed_time = current_time - time_max
-
-            # Get growth rate from compute config
-            growth_rate = math.log10(4.0)  # Default ~0.602 OOMs/year (4x/year)
-
-            # Try to get from parameters
-            if self.params.compute is not None:
-                us_params = getattr(self.params.compute, 'USComputeParameters', None)
-                if us_params is not None:
-                    annual_growth = getattr(us_params, 'total_us_compute_annual_growth_rate', 4.0)
-                    growth_rate = math.log10(annual_growth)
-
-            growth_factor = 10 ** (growth_rate * elapsed_time)
-
-            inference_compute *= growth_factor
-            experiment_compute *= growth_factor
+        # Get values from developer entity (set by other updaters)
+        human_labor = float(dev.human_ai_capability_researchers)
+        inference_compute = float(dev.ai_r_and_d_inference_compute_tpp_h100e)
+        experiment_compute = float(dev.ai_r_and_d_training_compute_tpp_h100e)
+        training_compute_growth_rate = float(dev.training_compute_growth_rate)
 
         return human_labor, inference_compute, experiment_compute, training_compute_growth_rate
 
@@ -265,7 +302,7 @@ class SoftwareRAndD(WorldUpdater):
         return base_multiplier
 
     @property
-    def calibrated(self) -> CalibratedParameters:
+    def calibrated(self) -> "CalibratedParameters":
         """Get the calibrated parameters."""
         return self._calibrated
 
@@ -457,21 +494,8 @@ class SoftwareRAndD(WorldUpdater):
         cal = self._calibrated
 
         for dev_id, dev in world.ai_software_developers.items():
-            # Get inputs from developer entity (with time-varying compute scaling)
+            # Get inputs from developer entity (values are set by compute and researcher updaters)
             human_labor, inference_compute, experiment_compute, training_compute_growth_rate = self._get_inputs_from_developer(dev, current_time)
-
-            # Update the developer entity with interpolated values so they show in frontend charts
-            # Use plain floats (not tensors) since these fields are typed as float in the dataclass
-            dev.human_ai_capability_researchers = float(human_labor)
-            dev.training_compute_growth_rate = float(training_compute_growth_rate)
-            # Update the compute properties directly - these are what the frontend reads
-            dev.ai_r_and_d_inference_compute_tpp_h100e = float(inference_compute)
-            dev.ai_r_and_d_training_compute_tpp_h100e = float(experiment_compute)
-            # Also update operating_compute for consistency
-            if dev.operating_compute:
-                total_compute = inference_compute + experiment_compute
-                dev.operating_compute[0].functional_tpp_h100e = torch.tensor(total_compute)
-                dev.operating_compute[0].tpp_h100e_including_attrition = torch.tensor(total_compute)
 
             progress = self._tensor_to_float(dev.ai_software_progress.progress)
             research_stock = self._tensor_to_float(dev.ai_software_progress.research_stock)
@@ -548,8 +572,10 @@ class SoftwareRAndD(WorldUpdater):
             if np.isfinite(horizon_length) and horizon_length > 0:
                 dev.ai_software_progress.horizon_length = torch.tensor(horizon_length)
 
-            # AI software progress multiplier (ref present day) using year-based interpolation
-            ai_sw_mult = self._interpolate_ai_sw_progress_mult_by_year(current_time)
+            # AI software progress multiplier (ref present day) - computed dynamically
+            # This shows how much faster sw progress would be with current automation/taste
+            # but using present_day resources (isolates the effect of AI improvements)
+            ai_sw_mult = self._compute_ai_sw_progress_mult_ref_present_day(progress)
             dev.ai_software_progress.ai_sw_progress_mult_ref_present_day = torch.tensor(ai_sw_mult)
 
             # Compute software_efficiency = progress - initial_progress
@@ -559,7 +585,7 @@ class SoftwareRAndD(WorldUpdater):
             dev.ai_software_progress.software_efficiency = torch.tensor(software_efficiency)
 
             # Compute ai_research_taste_sd from ai_research_taste
-            ai_research_taste_sd = params.taste_distribution.get_sd_of_taste(ai_research_taste)
+            ai_research_taste_sd = self._taste_distribution.get_sd_of_taste(ai_research_taste)
             if not np.isfinite(ai_research_taste_sd):
                 ai_research_taste_sd = 0.0
             dev.ai_software_progress.ai_research_taste_sd = torch.tensor(ai_research_taste_sd)

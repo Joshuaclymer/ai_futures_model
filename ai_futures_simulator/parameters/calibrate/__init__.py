@@ -124,6 +124,12 @@ class CalibratedParameters:
     initial_progress: float
     initial_research_stock: float
 
+    # Present-day baseline values for ai_sw_progress_mult calculation
+    # These are interpolated from time series at present_day during calibration
+    present_day_human_labor: float = 0.0
+    present_day_inference_compute: float = 0.0
+    present_day_experiment_compute: float = 0.0
+
     # Horizon trajectory function: progress -> horizon_length (minutes)
     # This is a callable that maps progress to horizon length
     horizon_trajectory: Optional[callable] = None
@@ -142,8 +148,12 @@ _calibration_cache: Dict[str, CalibratedParameters] = {}
 
 
 def _load_historical_time_series() -> TimeSeriesData:
-    """Load the historical time series data used for calibration."""
-    csv_path = Path(__file__).parent.parent / "historical_calibration_data.csv"
+    """Load the time series data used for calibration.
+
+    Uses input_data.csv which contains both historical data and projections
+    out to 2100, matching the original ai-futures-calculator.
+    """
+    csv_path = Path(__file__).parent.parent / "input_data.csv"
     df = pd.read_csv(csv_path)
     return TimeSeriesData(
         time=df['time'].values,
@@ -219,9 +229,10 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     params = CalibrationParams(**calib_kwargs)
 
     # Run calibration trajectory
-    # Start from 2012 to ensure we have data before present_day
-    calibration_start_year = min(2012.0, inputs.start_year)
-    time_range = [calibration_start_year, 2050.0]
+    # Start from first time point in data (2017.0) to match original ProgressModel
+    # The integration should not extrapolate before the data starts
+    data_start_year = float(time_series.time[0])
+    time_range = [data_start_year, 2100.0]
 
     trajectory_result = compute_calibration_trajectory(
         params, time_series, time_range, initial_progress=0.0
@@ -237,6 +248,23 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
     initial_progress = float(np.interp(inputs.start_year, times_arr, progress_arr))
     initial_research_stock = float(np.interp(inputs.start_year, times_arr, research_stock_arr))
 
+    # Compute present_day baseline values from time series for ai_sw_progress_mult calculation
+    present_day = inputs.present_day
+    if time_series.can_use_log_L_HUMAN:
+        present_day_human_labor = float(np.exp(np.interp(present_day, time_series.time, time_series.log_L_HUMAN)))
+    else:
+        present_day_human_labor = float(np.interp(present_day, time_series.time, time_series.L_HUMAN))
+
+    if time_series.can_use_log_inference_compute:
+        present_day_inference_compute = float(np.exp(np.interp(present_day, time_series.time, time_series.log_inference_compute)))
+    else:
+        present_day_inference_compute = float(np.interp(present_day, time_series.time, time_series.inference_compute))
+
+    if time_series.can_use_log_experiment_compute:
+        present_day_experiment_compute = float(np.exp(np.interp(present_day, time_series.time, time_series.log_experiment_compute)))
+    else:
+        present_day_experiment_compute = float(np.interp(present_day, time_series.time, time_series.experiment_compute))
+
     result = CalibratedParameters(
         r_software=calibrated_params.r_software,
         rho_experiment_capacity=calibrated_params.rho_experiment_capacity,
@@ -248,6 +276,9 @@ def calibrate(inputs: CalibrationInputs) -> CalibratedParameters:
         progress_at_aa=trajectory_result.progress_at_aa,
         initial_progress=initial_progress,
         initial_research_stock=initial_research_stock,
+        present_day_human_labor=present_day_human_labor,
+        present_day_inference_compute=present_day_inference_compute,
+        present_day_experiment_compute=present_day_experiment_compute,
         horizon_trajectory=trajectory_result.horizon_trajectory,
         trajectory_years=times_arr,
         trajectory_progress=progress_arr,
