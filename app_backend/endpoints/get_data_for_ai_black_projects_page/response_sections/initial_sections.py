@@ -46,17 +46,19 @@ def build_initial_stock_section(
     years: List[float],
     detection_times: List[float],
     num_sims: int,
-    ai_slowdown_start_year: float,
-    prc_capacity_years: List[int],
+    black_project_start_year: float,
+    years_to_black_project_start: List[int],
 ) -> Dict[str, Any]:
     """
     Build the initial_stock section of the response.
 
     This section contains 13 keys including initial compute samples and PRC projections.
+    Uses black_project_start_year for energy efficiency calculations since that's when
+    compute is diverted to the black project.
     """
-    # Extract lr_prc_accounting samples for detection probability calculation
-    lr_prc_accounting_samples = [
-        d['black_project']['lr_prc_accounting'] if d['black_project'] else 1.0
+    # Extract lr_compute_accounting samples for detection probability calculation
+    lr_compute_accounting_samples = [
+        d['black_project']['lr_compute_accounting'] if d['black_project'] else 1.0
         for d in all_data
     ]
 
@@ -75,15 +77,15 @@ def build_initial_stock_section(
             else 0
             for d in all_data
         ],
-        # Energy samples computed from compute stock and efficiency
+        # Energy samples computed from compute stock and efficiency at black project start year
         "initial_energy_samples": [
             (d['black_project']['initial_diverted_compute_h100e'] * 0.7) /
-            ((1.26 ** (ai_slowdown_start_year - 2022)) * 0.2 * 1e6)
+            ((1.26 ** (black_project_start_year - 2022)) * 0.2 * 1e6)
             if d['black_project'] and d['black_project'].get('initial_diverted_compute_h100e')
             else 0
             for d in all_data
         ],
-        "lr_prc_accounting_samples": lr_prc_accounting_samples,
+        "lr_compute_accounting_samples": lr_compute_accounting_samples,
         "lr_sme_inventory_samples": [
             d['black_project']['lr_sme_inventory'] if d['black_project'] else 1.0
             for d in all_data
@@ -92,20 +94,20 @@ def build_initial_stock_section(
             d['black_project']['lr_satellite_datacenter'] if d['black_project'] else 1.0
             for d in all_data
         ],
-        # Detection probabilities based on lr_prc_accounting likelihood ratio thresholds
+        # Detection probabilities based on lr_compute_accounting likelihood ratio thresholds
         "initial_black_project_detection_probs": {
-            "1x": sum(1 for lr in lr_prc_accounting_samples if lr >= 1) / max(1, num_sims),
-            "2x": sum(1 for lr in lr_prc_accounting_samples if lr >= 2) / max(1, num_sims),
-            "4x": sum(1 for lr in lr_prc_accounting_samples if lr >= 4) / max(1, num_sims),
+            "1x": sum(1 for lr in lr_compute_accounting_samples if lr >= 1) / max(1, num_sims),
+            "2x": sum(1 for lr in lr_compute_accounting_samples if lr >= 2) / max(1, num_sims),
+            "4x": sum(1 for lr in lr_compute_accounting_samples if lr >= 4) / max(1, num_sims),
         },
-        "prc_compute_years": prc_capacity_years,
+        "prc_compute_years": years_to_black_project_start,
         # Compute PRC stock for each year using sampled growth rate
         "prc_compute_over_time": get_percentiles_with_individual(
             all_data,
             lambda d: [
                 d['prc_params']['total_prc_compute_tpp_h100e_in_2025'] * (d['prc_params']['annual_growth_rate'] ** (year - 2025))
                 if d.get('prc_params') else 100000.0 * (2.2 ** (year - 2025))
-                for year in prc_capacity_years
+                for year in years_to_black_project_start
             ]
         ),
         # Compute domestic production proportion for each year
@@ -114,19 +116,20 @@ def build_initial_stock_section(
             lambda d: [
                 (d['prc_params']['total_prc_compute_tpp_h100e_in_2025'] * (d['prc_params']['annual_growth_rate'] ** (year - 2025))
                  if d.get('prc_params') else 100000.0 * (2.2 ** (year - 2025)))
-                * (0.0 if year < 2027 else 0.175 * (year - 2026) if year <= int(ai_slowdown_start_year) else 0.7)
-                for year in prc_capacity_years
+                * (0.0 if year < 2027 else 0.175 * (year - 2026) if year <= int(black_project_start_year) else 0.7)
+                for year in years_to_black_project_start
             ]
         ),
         # Proportion domestic by year
         "proportion_domestic_by_year": [
-            0.0 if year < 2027 else 0.175 * (year - 2026) if year <= int(ai_slowdown_start_year) else 0.7
-            for year in prc_capacity_years
+            0.0 if year < 2027 else 0.175 * (year - 2026) if year <= int(black_project_start_year) else 0.7
+            for year in years_to_black_project_start
         ],
         # Largest company compute
         "largest_company_compute_over_time": [
             120000.0 * (2.91 ** (year - 2025))
-            for year in prc_capacity_years
+            for year in years_to_black_project_start
         ],
-        "state_of_the_art_energy_efficiency_relative_to_h100": 1.26 ** (ai_slowdown_start_year - 2022),
+        # Energy efficiency at black project start year (when compute is diverted)
+        "state_of_the_art_energy_efficiency_relative_to_h100": 1.26 ** (black_project_start_year - 2022),
     }

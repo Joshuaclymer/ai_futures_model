@@ -524,7 +524,7 @@ export const TOOLTIP_DOCS = {
   mean_detection_time_for_1000_workers: 'perceptions_parameters/mean_detection_time_for_1000_workers/mean_detection_time_for_1000_workers',
 
   // UI aliases (short names used in component code that map to full parameter names)
-  prc_capacity: 'compute_parameters/total_prc_compute_tpp_h100e_in_2025/total_prc_compute_tpp_h100e_in_2025',
+  prc_datacenter_capacity: 'compute_parameters/total_prc_compute_tpp_h100e_in_2025/total_prc_compute_tpp_h100e_in_2025',
   fraction_diverted: 'black_project_parameters/fraction_of_initial_compute_stock_to_divert_at_black_project_start/fraction_of_initial_compute_stock_to_divert_at_black_project_start',
   retrofitted_capacity: 'black_project_parameters/fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start/fraction_of_datacenter_capacity_not_built_for_concealment_to_divert_at_black_project_start',
   prc_energy: 'data_center_and_energy_parameters/total_prc_energy_consumption_gw/total_prc_energy_consumption_gw',

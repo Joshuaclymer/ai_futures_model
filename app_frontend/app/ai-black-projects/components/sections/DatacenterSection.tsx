@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { COLOR_PALETTE } from '@/types/blackProject';
+import { COLOR_PALETTE } from '../../types';
 import { CCDFChart, TimeSeriesChart, PlotlyChart } from '../charts';
 import { hexToRgba } from '../colors';
 import { CHART_FONT_SIZES, CHART_MARGINS } from '../chartConfig';
@@ -329,10 +329,10 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
           <div className="breakdown-item">
             <div className="breakdown-plot">
               <TimeSeriesChart
-                years={data.black_datacenters.prc_capacity_years}
-                median={data.black_datacenters.prc_capacity_gw?.median}
-                p25={data.black_datacenters.prc_capacity_gw?.p25}
-                p75={data.black_datacenters.prc_capacity_gw?.p75}
+                years={data.black_datacenters.prc_datacenter_capacity_years}
+                median={data.black_datacenters.prc_datacenter_capacity_gw?.median}
+                p25={data.black_datacenters.prc_datacenter_capacity_gw?.p25}
+                p75={data.black_datacenters.prc_datacenter_capacity_gw?.p75}
                 color={COLOR_PALETTE.datacenters_and_energy}
                 yLabel="GW"
                 isLoading={isLoading}
@@ -354,12 +354,12 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
           <div
             className="breakdown-box-item has-tooltip"
             style={{ cursor: 'pointer' }}
-            {...createTooltipHandlers('prc_capacity')}
+            {...createTooltipHandlers('prc_datacenter_capacity')}
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
-                {data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw
-                  ? formatCapacity(data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw)
+                {data.black_datacenters.prc_datacenter_capacity_at_black_project_start_year_gw
+                  ? formatCapacity(data.black_datacenters.prc_datacenter_capacity_at_black_project_start_year_gw)
                   : '--'}
               </div>
             </div>
@@ -392,8 +392,8 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy }}>
-                {data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw
-                  ? formatCapacity(data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw * fractionDiverted)
+                {data.black_datacenters.prc_datacenter_capacity_at_black_project_start_year_gw
+                  ? formatCapacity(data.black_datacenters.prc_datacenter_capacity_at_black_project_start_year_gw * fractionDiverted)
                   : '--'}
               </div>
             </div>
@@ -458,8 +458,8 @@ export function DatacenterSection({ data, isLoading, parameters }: DatacenterSec
           >
             <div className="breakdown-box">
               <div className="breakdown-box-inner" style={{ color: COLOR_PALETTE.datacenters_and_energy, fontSize: '20px' }}>
-                {data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw
-                  ? formatCapacity(data.black_datacenters.prc_capacity_at_ai_slowdown_start_year_gw * fractionDiverted)
+                {data.black_datacenters.prc_datacenter_capacity_at_black_project_start_year_gw
+                  ? formatCapacity(data.black_datacenters.prc_datacenter_capacity_at_black_project_start_year_gw * fractionDiverted)
                   : '--'}
               </div>
             </div>

@@ -19,18 +19,17 @@ def build_black_datacenters_section(
     all_data: List[Dict],
     years: List[float],
     dt: float,
-    ai_slowdown_start_year: float,
     energy_by_source: List[List[float]],
     source_labels: List[str],
-    prc_capacity_years: List[int],
-    prc_capacity_gw: Dict[str, List[float]],
-    prc_capacity_at_agreement: float,
-    prc_capacity_at_agreement_samples: List[float],
+    years_to_black_project_start: List[int],
+    prc_datacenter_capacity_gw: Dict[str, List[float]],
+    prc_datacenter_capacity_at_start: float,
+    prc_datacenter_capacity_at_start_samples: List[float],
 ) -> Dict[str, Any]:
     """
     Build the black_datacenters section of the response.
 
-    This section contains 16 keys including datacenter metrics and PRC capacity.
+    This section contains 16 keys including datacenter metrics and PRC datacenter capacity.
     """
     # Compute combined datacenter LR for each simulation
     lr_datacenters_by_sim = []
@@ -58,7 +57,7 @@ def build_black_datacenters_section(
 
     # Compute datacenter-specific detection times
     datacenter_detection_times = _compute_datacenter_detection_times(
-        all_data, years, ai_slowdown_start_year, lr_datacenters_by_sim
+        all_data, years, lr_datacenters_by_sim
     )
 
     # Fraction diverted (fixed from parameters)
@@ -98,28 +97,35 @@ def build_black_datacenters_section(
         ],
         "individual_time_before_detection": datacenter_detection_times,
         "likelihood_ratios": LIKELIHOOD_RATIO_THRESHOLDS,
-        "prc_capacity_years": prc_capacity_years,
-        "prc_capacity_gw": prc_capacity_gw,
-        "prc_capacity_at_ai_slowdown_start_year_gw": prc_capacity_at_agreement,
-        "prc_capacity_at_ai_slowdown_start_year_samples": prc_capacity_at_agreement_samples,
+        "prc_datacenter_capacity_years": years_to_black_project_start,
+        "prc_datacenter_capacity_gw": prc_datacenter_capacity_gw,
+        "prc_datacenter_capacity_at_black_project_start_year_gw": prc_datacenter_capacity_at_start,
+        "prc_datacenter_capacity_at_black_project_start_year_samples": prc_datacenter_capacity_at_start_samples,
     }
 
 
 def _compute_datacenter_detection_times(
     all_data: List[Dict],
     years: List[float],
-    ai_slowdown_start_year: float,
     lr_datacenters_by_sim: List[List[float]],
 ) -> List[float]:
-    """Compute datacenter-specific detection times using combined datacenter LR."""
+    """Compute datacenter-specific detection times using combined datacenter LR.
+
+    Returns time from black_project_start_year to detection for each simulation.
+    """
     datacenter_detection_times = []
     for i, d in enumerate(all_data):
         bp = d.get('black_project')
         sim_years = d.get('years', years)
 
         if not bp or not sim_years:
-            datacenter_detection_times.append(sim_years[-1] - ai_slowdown_start_year if sim_years else 7.0)
+            datacenter_detection_times.append(7.0)  # Default for missing data
             continue
+
+        # Get black_project_start_year for this simulation (required)
+        black_project_start_year = bp.get('black_project_start_year')
+        if black_project_start_year is None:
+            raise ValueError("black_project_start_year is required but not found in simulation data")
 
         lr_datacenters = lr_datacenters_by_sim[i]
 
@@ -131,8 +137,8 @@ def _compute_datacenter_detection_times(
                 break
 
         if detection_year is not None:
-            datacenter_detection_times.append(detection_year - ai_slowdown_start_year)
+            datacenter_detection_times.append(detection_year - black_project_start_year)
         else:
-            datacenter_detection_times.append(sim_years[-1] - ai_slowdown_start_year if sim_years else 7.0)
+            datacenter_detection_times.append(sim_years[-1] - black_project_start_year if sim_years else 7.0)
 
     return datacenter_detection_times

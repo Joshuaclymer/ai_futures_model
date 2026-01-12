@@ -373,7 +373,7 @@ function PRCComputeSection({ parameters, onChange }: SectionProps) {
         max={500000}
         step={10000}
         formatValue={(v) => v.toLocaleString()}
-        tooltipDoc="prc_capacity"
+        tooltipDoc="prc_datacenter_capacity"
       />
       <Slider
         label="Annual growth rate of PRC compute stock"

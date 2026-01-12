@@ -39,7 +39,7 @@ def extract_black_project_plot_data(
     frontend_params: dict,
 ) -> Dict[str, Any]:
     """
-    Extract plot data from SimulationResult trajectories.
+    Extract plot data from SimulationTrajectory trajectories.
     Returns data formatted for the frontend (reference format).
 
     This function delegates to extract_reference_format() to produce
@@ -53,7 +53,7 @@ def extract_reference_format(
     frontend_params: dict,
 ) -> Dict[str, Any]:
     """
-    Extract plot data from SimulationResult trajectories.
+    Extract plot data from SimulationTrajectory trajectories.
     Returns data formatted to match the reference API.
 
     This format includes:
@@ -66,12 +66,6 @@ def extract_reference_format(
     """
     results = simulation_results.get('simulation_results', [])
     model_params = simulation_results.get('model_params')
-    # Use black_project_start_year from simulation params, as this is when the black project
-    # actually begins and when detection timing is calculated from
-    if model_params and hasattr(model_params, 'black_project') and 'black_project_start_year' in model_params.black_project:
-        ai_slowdown_start_year = model_params.black_project['black_project_start_year']
-    else:
-        ai_slowdown_start_year = simulation_results.get('ai_slowdown_start_year', 2029)
 
     if not results:
         return {"error": "No simulation results"}
@@ -81,10 +75,22 @@ def extract_reference_format(
 
     # Use first simulation as reference for years
     raw_years = all_data[0]['years'] if all_data else []
+
+    # Use black_project_start_year from extracted simulation data as this is when the black project
+    # actually begins. This is the year plots should start from, not the agreement year.
+    black_project_start_year = None
+    if all_data and all_data[0].get('black_project'):
+        black_project_start_year = all_data[0]['black_project'].get('black_project_start_year')
+
+    # black_project_start_year is required - fail explicitly if not available
+    if black_project_start_year is None:
+        raise ValueError("black_project_start_year is required but not found in simulation data")
+
     num_sims = len(all_data)
 
-    # Filter data to only include time points >= ai_slowdown_start_year
-    years, all_data = _filter_data_to_ai_slowdown_start_year(all_data, raw_years, ai_slowdown_start_year)
+    # Filter data to only include time points >= black_project_start_year
+    # This ensures plots start at the year the black project begins (not the agreement year)
+    years, all_data = _filter_data_to_black_project_start_year(all_data, raw_years, black_project_start_year)
 
     dt = years[1] - years[0] if len(years) > 1 else 0.1
 
@@ -102,20 +108,20 @@ def extract_reference_format(
     # Detection metrics
     # Use use_final_year_for_never_detected=True for dashboard individual values
     # Reference model uses final_year for individual values, but 1000 for CCDFs
-    detection_times = compute_detection_times(all_data, years, ai_slowdown_start_year, use_final_year_for_never_detected=True)
-    h100_years_before_detection = compute_h100_years_before_detection(all_data, years, ai_slowdown_start_year)
-    h100e_before_detection = compute_h100e_before_detection(all_data, years, ai_slowdown_start_year)
+    detection_times = compute_detection_times(all_data, years, use_final_year_for_never_detected=True)
+    h100_years_before_detection = compute_h100_years_before_detection(all_data, years)
+    h100e_before_detection = compute_h100e_before_detection(all_data, years)
 
     # Fab-specific detection data
     fab_individual_h100e, fab_individual_time, fab_individual_process_nodes, fab_individual_energy = \
-        compute_fab_detection_data(all_data, years, ai_slowdown_start_year)
+        compute_fab_detection_data(all_data, years)
 
     # Energy before detection
-    energy_before_detection = _compute_energy_before_detection(all_data, ai_slowdown_start_year, detection_times)
+    energy_before_detection = _compute_energy_before_detection(all_data, detection_times)
 
-    # PRC capacity data
-    prc_capacity_years, prc_capacity_gw, prc_capacity_at_agreement, prc_capacity_samples = \
-        _compute_prc_capacity_data(all_data, ai_slowdown_start_year)
+    # PRC datacenter capacity data (uses black_project_start_year for energy efficiency calculation)
+    years_to_black_project_start, prc_datacenter_capacity_gw, prc_datacenter_capacity_at_start, prc_datacenter_capacity_at_start_samples = \
+        _compute_prc_datacenter_capacity_data(all_data, black_project_start_year)
 
     # Build response by assembling sections
     return {
@@ -127,7 +133,7 @@ def extract_reference_format(
 
         # Sections
         "black_project_model": build_black_project_model_section(
-            all_data, years, dt, ai_slowdown_start_year,
+            all_data, years, dt,
             energy_by_source, source_labels,
             detection_times, h100_years_before_detection,
             h100e_before_detection, energy_before_detection,
@@ -135,14 +141,14 @@ def extract_reference_format(
         ),
 
         "black_datacenters": build_black_datacenters_section(
-            all_data, years, dt, ai_slowdown_start_year,
+            all_data, years, dt,
             energy_by_source, source_labels,
-            prc_capacity_years, prc_capacity_gw,
-            prc_capacity_at_agreement, prc_capacity_samples
+            years_to_black_project_start, prc_datacenter_capacity_gw,
+            prc_datacenter_capacity_at_start, prc_datacenter_capacity_at_start_samples
         ),
 
         "black_fab": build_black_fab_section(
-            all_data, fab_built_sims, years, dt, ai_slowdown_start_year,
+            all_data, fab_built_sims, years, dt,
             detection_times, num_sims,
             fab_individual_h100e, fab_individual_time,
             fab_individual_process_nodes, fab_individual_energy
@@ -154,24 +160,24 @@ def extract_reference_format(
 
         "initial_stock": build_initial_stock_section(
             all_data, years, detection_times, num_sims,
-            ai_slowdown_start_year, prc_capacity_years
+            black_project_start_year, years_to_black_project_start
         ),
     }
 
 
-def _filter_data_to_ai_slowdown_start_year(
+def _filter_data_to_black_project_start_year(
     all_data: List[Dict],
     raw_years: List[float],
-    ai_slowdown_start_year: float
+    black_project_start_year: float
 ) -> tuple:
-    """Filter simulation data to only include time points >= ai_slowdown_start_year."""
+    """Filter simulation data to only include time points >= black_project_start_year."""
     if not raw_years:
         return raw_years, all_data
 
     # Find start index
     start_idx = 0
     for i, y in enumerate(raw_years):
-        if y >= ai_slowdown_start_year:
+        if y >= black_project_start_year:
             start_idx = i
             break
     years = raw_years[start_idx:]
@@ -236,7 +242,6 @@ def _compute_energy_data(all_data: List[Dict], years: List[float]) -> tuple:
 
 def _compute_energy_before_detection(
     all_data: List[Dict],
-    ai_slowdown_start_year: float,
     detection_times: List[float]
 ) -> List[float]:
     """Compute energy at detection time for each simulation."""
@@ -256,8 +261,13 @@ def _compute_energy_before_detection(
             energy_before_detection.append(0.0)
             continue
 
-        # Get detection year
-        det_year = ai_slowdown_start_year + detection_times[i]
+        # Get black_project_start_year for this simulation (required)
+        black_project_start_year = bp.get('black_project_start_year')
+        if black_project_start_year is None:
+            raise ValueError("black_project_start_year is required but not found in simulation data")
+
+        # Get detection year (detection_times is relative to black_project_start_year)
+        det_year = black_project_start_year + detection_times[i]
 
         # Find index at detection time
         det_idx = 0
@@ -279,40 +289,45 @@ def _compute_energy_before_detection(
     return energy_before_detection
 
 
-def _compute_prc_capacity_data(
+def _compute_prc_datacenter_capacity_data(
     all_data: List[Dict],
-    ai_slowdown_start_year: float
+    black_project_start_year: float
 ) -> tuple:
-    """Compute PRC capacity data from simulation parameters."""
-    # Compute state-of-the-art efficiency at agreement year
-    years_since_h100 = ai_slowdown_start_year - H100_RELEASE_YEAR
-    sota_efficiency_at_agreement = SOTA_IMPROVEMENT_PER_YEAR ** years_since_h100
-    combined_efficiency_at_agreement = ENERGY_EFFICIENCY_RELATIVE_TO_SOTA * sota_efficiency_at_agreement
+    """Compute PRC datacenter energy capacity data from simulation parameters.
 
-    # Compute PRC energy capacity for each simulation
-    prc_capacity_at_agreement_samples = []
+    Converts PRC compute stock (H100e) to datacenter energy consumption (GW).
+    Uses black_project_start_year for energy efficiency calculations since
+    that's when compute is diverted to the black project.
+    """
+    # Compute state-of-the-art efficiency at black project start year
+    years_since_h100 = black_project_start_year - H100_RELEASE_YEAR
+    sota_efficiency_at_start = SOTA_IMPROVEMENT_PER_YEAR ** years_since_h100
+    combined_efficiency_at_start = ENERGY_EFFICIENCY_RELATIVE_TO_SOTA * sota_efficiency_at_start
+
+    # Compute PRC datacenter energy capacity for each simulation at black project start
+    prc_datacenter_capacity_at_start_samples = []
     for d in all_data:
         if d.get('prc_params'):
             base_compute = d['prc_params']['total_prc_compute_tpp_h100e_in_2025']
             growth_rate = d['prc_params']['annual_growth_rate']
-            years_since_2025 = ai_slowdown_start_year - 2025
+            years_since_2025 = black_project_start_year - 2025
             compute_stock = base_compute * (growth_rate ** years_since_2025)
-            energy_watts = compute_stock * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / combined_efficiency_at_agreement
+            energy_watts = compute_stock * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / combined_efficiency_at_start
             energy_gw = energy_watts / 1e9
-            prc_capacity_at_agreement_samples.append(energy_gw)
+            prc_datacenter_capacity_at_start_samples.append(energy_gw)
         else:
-            prc_capacity_at_agreement_samples.append(0.175 * (1.74 ** (ai_slowdown_start_year - 2025)))
+            prc_datacenter_capacity_at_start_samples.append(0.175 * (1.74 ** (black_project_start_year - 2025)))
 
-    # PRC capacity years and trajectories
-    prc_capacity_years = list(range(2025, int(ai_slowdown_start_year) + 1))
+    # Years from 2025 to black_project_start_year (used for multiple time series)
+    years_to_black_project_start = list(range(2025, int(black_project_start_year) + 1))
 
-    prc_capacity_by_sim = []
+    prc_datacenter_capacity_by_sim = []
     for d in all_data:
         if d.get('prc_params'):
             base_compute = d['prc_params']['total_prc_compute_tpp_h100e_in_2025']
             growth_rate = d['prc_params']['annual_growth_rate']
             capacity_trajectory = []
-            for year in prc_capacity_years:
+            for year in years_to_black_project_start:
                 years_since_2025 = year - 2025
                 compute_stock = base_compute * (growth_rate ** years_since_2025)
                 years_since_h100 = year - H100_RELEASE_YEAR
@@ -320,17 +335,17 @@ def _compute_prc_capacity_data(
                 combined_eff = ENERGY_EFFICIENCY_RELATIVE_TO_SOTA * sota_eff
                 energy_gw = (compute_stock * H100_TPP_PER_CHIP * H100_WATTS_PER_TPP / combined_eff) / 1e9
                 capacity_trajectory.append(energy_gw)
-            prc_capacity_by_sim.append(capacity_trajectory)
+            prc_datacenter_capacity_by_sim.append(capacity_trajectory)
         else:
-            prc_capacity_by_sim.append([0.175 * (1.74 ** (y - 2025)) for y in prc_capacity_years])
+            prc_datacenter_capacity_by_sim.append([0.175 * (1.74 ** (y - 2025)) for y in years_to_black_project_start])
 
     # Compute percentiles
-    prc_capacity_array = np.array(prc_capacity_by_sim)
-    prc_capacity_gw = {
-        "median": np.percentile(prc_capacity_array, 50, axis=0).tolist(),
-        "p25": np.percentile(prc_capacity_array, 25, axis=0).tolist(),
-        "p75": np.percentile(prc_capacity_array, 75, axis=0).tolist(),
+    prc_datacenter_capacity_array = np.array(prc_datacenter_capacity_by_sim)
+    prc_datacenter_capacity_gw = {
+        "median": np.percentile(prc_datacenter_capacity_array, 50, axis=0).tolist(),
+        "p25": np.percentile(prc_datacenter_capacity_array, 25, axis=0).tolist(),
+        "p75": np.percentile(prc_datacenter_capacity_array, 75, axis=0).tolist(),
     }
-    prc_capacity_at_agreement = float(np.median(prc_capacity_at_agreement_samples))
+    prc_datacenter_capacity_at_start = float(np.median(prc_datacenter_capacity_at_start_samples))
 
-    return prc_capacity_years, prc_capacity_gw, prc_capacity_at_agreement, prc_capacity_at_agreement_samples
+    return years_to_black_project_start, prc_datacenter_capacity_gw, prc_datacenter_capacity_at_start, prc_datacenter_capacity_at_start_samples
