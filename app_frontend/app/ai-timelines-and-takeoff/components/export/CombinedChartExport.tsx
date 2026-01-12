@@ -2,9 +2,9 @@
 
 import { forwardRef, useMemo } from 'react';
 import type { ChartDataPoint, BenchmarkPoint } from '@/app/types';
-import type { MilestoneMap } from '@/types/milestones';
-import { EXPORT_COLORS } from '@/utils/chartExport';
-import { MILESTONE_EXPLANATIONS } from '@/constants/chartExplanations';
+import type { MilestoneMap } from '../../types/milestones';
+import { EXPORT_COLORS } from '../../utils/chartExport';
+import { MILESTONE_EXPLANATIONS } from '../../constants/chartExplanations';
 import { StaticHorizonChart } from './StaticHorizonChart';
 import { StaticUpliftChart } from './StaticUpliftChart';
 

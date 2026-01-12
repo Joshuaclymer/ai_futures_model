@@ -12,6 +12,3 @@ export const CHART_LAYOUT = {
     width: 300,
   },
 } as const;
-
-export type ChartLayout = typeof CHART_LAYOUT;
-

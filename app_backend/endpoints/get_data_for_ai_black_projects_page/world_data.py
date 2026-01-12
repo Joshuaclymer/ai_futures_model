@@ -1,7 +1,7 @@
 """
 World data extraction functions for black project simulation.
 
-Extracts time series data from SimulationResult trajectories.
+Extracts time series data from SimulationTrajectory trajectories.
 """
 
 import sys
@@ -11,13 +11,13 @@ from typing import Dict, Any
 # Add ai_futures_simulator subdirectory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent / "ai_futures_simulator"))
 
-from classes.simulation_primitives import SimulationResult
+from classes.simulation_primitives import SimulationTrajectory
 from classes.world.entities import NamedNations
 from .utils import to_float
 
 
-def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
-    """Extract time series data from a single SimulationResult."""
+def extract_world_data(result: SimulationTrajectory) -> Dict[str, Any]:
+    """Extract time series data from a single SimulationTrajectory."""
     trajectory = result.trajectory
     times = result.times.tolist()
 
@@ -105,10 +105,9 @@ def extract_world_data(result: SimulationResult) -> Dict[str, Any]:
             'total_compute_energy_gw': [],  # Total energy consumption
             # Static values (from first/last world state)
             'sampled_detection_time': to_float(first_bp.sampled_detection_time) if first_bp and hasattr(first_bp, 'sampled_detection_time') else None,
-            'lr_prc_accounting': to_float(first_bp.lr_prc_accounting) if first_bp and hasattr(first_bp, 'lr_prc_accounting') else 1.0,
+            'lr_compute_accounting': to_float(first_bp.lr_compute_accounting) if first_bp and hasattr(first_bp, 'lr_compute_accounting') else 1.0,
             'lr_sme_inventory': to_float(first_bp.lr_sme_inventory) if first_bp and hasattr(first_bp, 'lr_sme_inventory') else 1.0,
             'lr_satellite_datacenter': to_float(first_bp.lr_satellite_datacenter) if first_bp and hasattr(first_bp, 'lr_satellite_datacenter') else 1.0,
-            'lr_fab_procurement': to_float(first_bp.lr_fab_procurement) if first_bp and hasattr(first_bp, 'lr_fab_procurement') else 1.0,
             # Initial diverted compute (constant, set at black project start, never changes)
             'initial_diverted_compute_h100e': to_float(first_bp.initial_diverted_compute_h100e) if first_bp and hasattr(first_bp, 'initial_diverted_compute_h100e') else 0.0,
             # Fab static properties (from final world state for accurate values)

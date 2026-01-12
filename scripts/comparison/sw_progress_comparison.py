@@ -155,6 +155,90 @@ def run_current_progress_model(time_range: tuple = (2017.0, 2100.0), quiet: bool
     }
 
 
+def run_full_simulator(time_range: tuple = (2026.0, 2050.0), quiet: bool = True):
+    """
+    Run the full AIFuturesSimulator and extract sw_progress metrics.
+
+    This tests what the actual simulation produces, not just the ProgressModel.
+
+    Returns:
+        dict with keys: 'times', 'progress', 'sw_progress_rates', etc.
+    """
+    if quiet:
+        suppress_logging()
+
+    # Add current repo paths
+    if str(REPO_ROOT / "ai_futures_simulator") not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT / "ai_futures_simulator"))
+
+    from ai_futures_simulator import AIFuturesSimulator
+    from parameters.model_parameters import ModelParameters
+
+    # Load default parameters
+    config_path = REPO_ROOT / "ai_futures_simulator" / "parameters" / "default_parameters.yaml"
+    model_params = ModelParameters.from_yaml(config_path)
+
+    # Override time range
+    model_params.params.settings.simulation_start_year = int(time_range[0])
+    model_params.params.settings.simulation_end_year = float(time_range[1])
+    n_years = time_range[1] - time_range[0]
+    model_params.params.settings.n_eval_points = int(n_years * 10) + 1
+
+    # Create simulator and run
+    simulator = AIFuturesSimulator(model_parameters=model_params)
+    result = simulator.run_modal_simulation()
+
+    # Extract sw_progress data from trajectory
+    times = []
+    progress_values = []
+    sw_progress_rates = []
+    ai_sw_progress_mult = []
+    horizon_lengths = []
+
+    for i, world in enumerate(result.trajectory):
+        t = result.times[i].item()
+        times.append(t)
+
+        # Get AI software developer data
+        for dev_name, dev in world.ai_software_developers.items():
+            if hasattr(dev, 'ai_software_progress') and dev.ai_software_progress is not None:
+                sp = dev.ai_software_progress
+
+                # Extract progress
+                if hasattr(sp, 'progress') and sp.progress is not None:
+                    progress_values.append(float(sp.progress.item() if hasattr(sp.progress, 'item') else sp.progress))
+                else:
+                    progress_values.append(np.nan)
+
+                # Extract sw_progress_rate
+                if hasattr(sp, 'sw_progress_rate') and sp.sw_progress_rate is not None:
+                    sw_progress_rates.append(float(sp.sw_progress_rate.item() if hasattr(sp.sw_progress_rate, 'item') else sp.sw_progress_rate))
+                else:
+                    sw_progress_rates.append(np.nan)
+
+                # Extract ai_sw_progress_mult_ref_present_day (the uplift)
+                if hasattr(sp, 'ai_sw_progress_mult_ref_present_day') and sp.ai_sw_progress_mult_ref_present_day is not None:
+                    ai_sw_progress_mult.append(float(sp.ai_sw_progress_mult_ref_present_day.item() if hasattr(sp.ai_sw_progress_mult_ref_present_day, 'item') else sp.ai_sw_progress_mult_ref_present_day))
+                else:
+                    ai_sw_progress_mult.append(np.nan)
+
+                # Extract horizon_length
+                if hasattr(sp, 'horizon_length') and sp.horizon_length is not None:
+                    horizon_lengths.append(float(sp.horizon_length.item() if hasattr(sp.horizon_length, 'item') else sp.horizon_length))
+                else:
+                    horizon_lengths.append(np.nan)
+
+                break  # Only get first developer
+
+    return {
+        'times': np.array(times),
+        'progress': np.array(progress_values),
+        'sw_progress_rates': np.array(sw_progress_rates),
+        'ai_sw_progress_mult': np.array(ai_sw_progress_mult),
+        'horizon_lengths': np.array(horizon_lengths),
+    }
+
+
 def compare_trajectories(original: dict, current: dict) -> dict:
     """
     Compare two trajectory results and compute differences.
@@ -300,6 +384,48 @@ def plot_comparison(original: dict, current: dict, save_path: str = None):
         plt.show()
 
 
+def print_full_simulator_summary(simulator_result: dict, progress_model_result: dict):
+    """Print comparison of full simulator vs ProgressModel."""
+    print("\n" + "=" * 70)
+    print("Full Simulator vs ProgressModel Comparison")
+    print("=" * 70)
+
+    sim_times = simulator_result['times']
+    sim_progress = simulator_result['progress']
+    sim_uplift = simulator_result['ai_sw_progress_mult']
+
+    pm_times = progress_model_result['times']
+    pm_progress = progress_model_result['progress']
+
+    # Compare progress values at key years
+    years_to_check = [2026, 2030, 2035, 2040, 2050]
+    print("\nProgress comparison (Full Sim vs ProgressModel):")
+    print("-" * 70)
+    print(f"{'Year':>8} {'Full Sim':>15} {'ProgressModel':>15} {'Diff (%)':>15}")
+    print("-" * 70)
+
+    for year in years_to_check:
+        if year > sim_times.max() or year > pm_times.max():
+            continue
+        sim_val = np.interp(year, sim_times, sim_progress)
+        pm_val = np.interp(year, pm_times, pm_progress)
+        pct_diff = 100 * (sim_val - pm_val) / pm_val if abs(pm_val) > 1e-10 else np.nan
+        print(f"{year:>8} {sim_val:>15.4f} {pm_val:>15.4f} {pct_diff:>14.2f}%")
+
+    # Show AI SW Progress Mult values
+    print("\n" + "-" * 70)
+    print("AI Software R&D Uplift (ai_sw_progress_mult_ref_present_day):")
+    print("-" * 70)
+    print(f"{'Year':>8} {'Full Sim Uplift':>20}")
+    print("-" * 70)
+
+    for year in years_to_check:
+        if year > sim_times.max():
+            continue
+        uplift_val = np.interp(year, sim_times, sim_uplift)
+        print(f"{year:>8} {uplift_val:>20.4f}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Compare software progress trajectories between repos'
@@ -322,6 +448,11 @@ def main():
         default=[2017.0, 2100.0],
         metavar=('START', 'END'),
         help='Time range for simulation (default: 2017 2100)'
+    )
+    parser.add_argument(
+        '--full-sim',
+        action='store_true',
+        help='Also run full AIFuturesSimulator and compare'
     )
     parser.add_argument(
         '--verbose', '-v',
@@ -349,6 +480,17 @@ def main():
     metrics = compare_trajectories(original, current)
 
     print_comparison_summary(metrics, original, current)
+
+    # Also run full simulator if requested
+    if args.full_sim:
+        print("\n" + "=" * 70)
+        print("Running full AIFuturesSimulator...")
+        print("=" * 70)
+        # Full simulator starts from 2026
+        sim_result = run_full_simulator(time_range=(2026.0, min(2100.0, time_range[1])), quiet=quiet)
+        print(f"  Computed {len(sim_result['times'])} time points")
+
+        print_full_simulator_summary(sim_result, original)
 
     if args.plot or args.save_plot:
         plot_comparison(original, current, save_path=args.save_plot)

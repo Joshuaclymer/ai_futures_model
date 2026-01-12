@@ -25,7 +25,6 @@ def build_black_project_model_section(
     all_data: List[Dict],
     years: List[float],
     dt: float,
-    ai_slowdown_start_year: float,
     energy_by_source: List[List[float]],
     source_labels: List[str],
     detection_times: List[float],
@@ -100,15 +99,15 @@ def build_black_project_model_section(
         # LR components
         "lr_initial_stock": get_percentiles_with_individual(
             all_data,
-            lambda d: [d['black_project']['lr_prc_accounting']] * len(years) if d['black_project'] else [1.0] * len(years)
+            lambda d: [d['black_project']['lr_compute_accounting']] * len(years) if d['black_project'] else [1.0] * len(years)
         ),
         "lr_diverted_sme": get_percentiles_with_individual(
             all_data,
             lambda d: [d['black_project']['lr_sme_inventory']] * len(years) if d['black_project'] else [1.0] * len(years)
         ),
-        "lr_prc_accounting": get_percentiles_with_individual(
+        "lr_compute_accounting": get_percentiles_with_individual(
             all_data,
-            lambda d: [d['black_project']['lr_prc_accounting']] * len(years) if d['black_project'] else [1.0] * len(years)
+            lambda d: [d['black_project']['lr_compute_accounting']] * len(years) if d['black_project'] else [1.0] * len(years)
         ),
         "lr_sme_inventory": get_percentiles_with_individual(
             all_data,
@@ -128,7 +127,7 @@ def build_black_project_model_section(
         "lr_combined_reported_assets": get_percentiles_with_individual(
             all_data,
             lambda d: [
-                d['black_project']['lr_prc_accounting'] * d['black_project']['lr_sme_inventory'] *
+                d['black_project']['lr_compute_accounting'] * d['black_project']['lr_sme_inventory'] *
                 d['black_project']['lr_satellite_datacenter'] * (d['black_project']['lr_reported_energy'][i] if i < len(d['black_project'].get('lr_reported_energy', [])) else 1.0)
                 if d['black_project'] else 1.0
                 for i in range(len(years))
@@ -150,29 +149,29 @@ def build_black_project_model_section(
 
         # CCDFs - compute for each threshold separately
         "time_to_detection_ccdf": {
-            str(lr): compute_ccdf(compute_detection_times(all_data, years, ai_slowdown_start_year, lr))
+            str(lr): compute_ccdf(compute_detection_times(all_data, years, lr))
             for lr in LIKELIHOOD_RATIO_THRESHOLDS
         },
         "h100_years_ccdf": {
-            str(lr): compute_ccdf(compute_h100_years_before_detection(all_data, years, ai_slowdown_start_year, lr))
+            str(lr): compute_ccdf(compute_h100_years_before_detection(all_data, years, lr))
             for lr in LIKELIHOOD_RATIO_THRESHOLDS
         },
         "average_covert_compute_ccdf": {
-            str(lr): compute_ccdf(compute_average_covert_compute(all_data, years, ai_slowdown_start_year, lr))
+            str(lr): compute_ccdf(compute_average_covert_compute(all_data, years, lr))
             for lr in LIKELIHOOD_RATIO_THRESHOLDS
         },
         # Chip production reduction CCDFs - nested by threshold for reference model compatibility
         "chip_production_reduction_ccdf": {
             "global": {
-                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, ai_slowdown_start_year, dt, lr, model_params)['chip_global'])
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, dt, lr, model_params)['chip_global'])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             "prc": {
-                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, ai_slowdown_start_year, dt, lr, model_params)['chip_prc'])
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, dt, lr, model_params)['chip_prc'])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             "largest_company": {
-                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, ai_slowdown_start_year, dt, lr, model_params)['chip_prc'])
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, dt, lr, model_params)['chip_prc'])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
         },
@@ -180,18 +179,18 @@ def build_black_project_model_section(
         # Frontend chart shows global vs prc (two entities) at default threshold 4
         "ai_rd_reduction_ccdf": {
             "global": {
-                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, ai_slowdown_start_year, dt, lr, model_params)['ai_global'])
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, dt, lr, model_params)['ai_global'])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
             "prc": {
-                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, ai_slowdown_start_year, dt, lr, model_params)['ai_prc'])
+                str(lr): compute_ccdf(compute_reduction_ratios(all_data, years, dt, lr, model_params)['ai_prc'])
                 for lr in LIKELIHOOD_RATIO_THRESHOLDS
             },
         },
         # Flat versions for frontend charts (uses threshold 4)
         # Frontend expects covert/counterfactual fractions, so invert the ratios (1/x)
-        "ai_rd_reduction_ccdf_flat": _compute_inverted_ccdf_flat(all_data, years, ai_slowdown_start_year, dt, ['ai_global', 'ai_prc'], ['global', 'prc'], model_params),
-        "chip_production_reduction_ccdf_flat": _compute_inverted_ccdf_flat(all_data, years, ai_slowdown_start_year, dt, ['chip_global', 'chip_prc'], ['global', 'prc'], model_params),
+        "ai_rd_reduction_ccdf_flat": _compute_inverted_ccdf_flat(all_data, years, dt, ['ai_global', 'ai_prc'], ['global', 'prc'], model_params),
+        "chip_production_reduction_ccdf_flat": _compute_inverted_ccdf_flat(all_data, years, dt, ['chip_global', 'chip_prc'], ['global', 'prc'], model_params),
 
         "likelihood_ratios": LIKELIHOOD_RATIO_THRESHOLDS,
     }
@@ -200,7 +199,6 @@ def build_black_project_model_section(
 def _compute_inverted_ccdf_flat(
     all_data: List[Dict],
     years: List[float],
-    ai_slowdown_start_year: float,
     dt: float,
     ratio_keys: List[str],
     output_keys: List[str],
@@ -213,7 +211,7 @@ def _compute_inverted_ccdf_flat(
     Frontend expects covert/counterfactual fractions (small numbers like 0.001).
     This function inverts the ratios (1/x) before computing the CCDF.
     """
-    ratios = compute_reduction_ratios(all_data, years, ai_slowdown_start_year, dt, 4, model_params)
+    ratios = compute_reduction_ratios(all_data, years, dt, 4, model_params)
     result = {}
     for ratio_key, output_key in zip(ratio_keys, output_keys):
         # Invert ratios: counterfactual/covert -> covert/counterfactual

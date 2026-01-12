@@ -2,8 +2,8 @@ import {
   ParametersType,
   TRAINING_COMPUTE_REFERENCE_OOMS,
   TRAINING_COMPUTE_REFERENCE_YEAR
-} from '@/constants/parameters';
-import { MODEL_CONSTANTS } from '@/constants/parameters';
+} from '../constants/parameters';
+import { MODEL_CONSTANTS } from '../constants/parameters';
 
 /**
  * Configuration for SC horizon calculations containing all model constants
@@ -281,10 +281,10 @@ function getAutomationFraction(
 
 /**
  * Create a default SCHorizonConfig from UI parameters
- * Uses model constants synced from Python via JSON config
+ * Uses model constants from default_parameters.yaml
  */
 export function createDefaultSCHorizonConfig(uiParameters: ParametersType): SCHorizonConfig {
-  // Model constants are synced from Python model_config.py via python-parameter-config.json
+  // Model constants are synced from default_parameters.yaml software_r_and_d section
   const progress_at_aa = 4.0; // Fallback value, will be recalculated
 
   return {

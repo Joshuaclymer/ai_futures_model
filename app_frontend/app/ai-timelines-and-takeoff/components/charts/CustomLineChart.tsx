@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, ReactNode, useEffect, useMemo } from 'react';
-import { createScale, generateLinePath, calculateTicks, ChartMargin, clamp } from '@/utils/chartUtils';
+import { createScale, generateLinePath, calculateTicks, ChartMargin, clamp } from '../../utils/chartUtils';
 import { useChartSync } from './ChartSyncContext';
 
 const DEFAULT_X_DOMAIN_ANIMATION_DURATION_MS = 450;

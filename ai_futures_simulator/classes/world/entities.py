@@ -153,7 +153,7 @@ class AIBlackProject(AISoftwareDeveloper):
     total_compute_energy_gw: float = field(init=False)  # Total energy consumption (GW)
 
     ## LR components (for detection breakdown) - all point-in-time metrics
-    lr_prc_accounting: float = field(init=False)  # From chip stock discrepancy (static)
+    lr_compute_accounting: float = field(init=False)  # From chip stock discrepancy (static)
     lr_sme_inventory: float = field(init=False)  # From SME diversion (static)
     lr_satellite_datacenter: float = field(init=False)  # From satellite imagery (static)
     lr_reported_energy: float = field(init=False)  # Energy consumption LR (dynamic)
@@ -163,8 +163,7 @@ class AIBlackProject(AISoftwareDeveloper):
 
     ## Fab-specific LR components (for black_fab section - uses fab labor and time from construction)
     lr_fab_other: float = field(init=False)  # Fab worker detection LR (based on fab labor)
-    lr_fab_procurement: float = field(init=False)  # Fab procurement LR (1.0 if localized, 10.0 if foreign imports needed)
-    lr_fab_combined: float = field(init=False)  # Fab's combined LR = lr_sme_inventory × lr_fab_procurement × lr_fab_other
+    lr_fab_combined: float = field(init=False)  # Fab's combined LR = lr_sme_inventory × lr_fab_other
 
     ## Precomputed LR lookup tables (for simulation use)
     lr_datacenters_by_year: Dict[float, float] = field(init=False)  # Datacenter worker LR by year (since agreement)

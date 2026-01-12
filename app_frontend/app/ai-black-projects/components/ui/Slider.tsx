@@ -153,10 +153,10 @@ export function Slider({
             type="range"
             id={id}
             className="bp-slider"
-            min={min}
-            max={max}
+            min={safeMin}
+            max={safeMax}
             step={step}
-            value={value}
+            value={safeValue}
             onChange={(e) => onChange(parseFloat(e.target.value))}
           />
           {/* Value label positioned below thumb */}

@@ -393,7 +393,7 @@ def initialize_black_project(
     )
 
     reported_compute = initial_prc_compute_stock * (1 - props.fraction_of_initial_compute_stock_to_divert_at_black_project_start)
-    lr_prc_accounting = compute_lr_from_prc_compute_accounting(
+    lr_compute_accounting = compute_lr_from_prc_compute_accounting(
         reported_compute_stock=reported_compute,
         diversion_proportion=props.fraction_of_initial_compute_stock_to_divert_at_black_project_start,
         us_estimate_compute=us_estimate_compute,
@@ -423,21 +423,18 @@ def initialize_black_project(
     else:
         lr_sme_inventory = 1.0
 
-    project._set_frozen_field('lr_prc_accounting', lr_prc_accounting)
+    project._set_frozen_field('lr_compute_accounting', lr_compute_accounting)
     project._set_frozen_field('lr_sme_inventory', lr_sme_inventory)
     project._set_frozen_field('lr_satellite_datacenter', lr_satellite)
 
-    lr_fab_procurement = 1.0 if localization_year <= fab_construction_start_year else 10.0
-    project._set_frozen_field('lr_fab_procurement', lr_fab_procurement)
-
     project._set_frozen_field('lr_reported_energy', 1.0)
     project._set_frozen_field('lr_other_intel', 1.0)
-    lr_sme_for_cumulative = lr_sme_inventory * lr_fab_procurement if num_scanners > 0 else 1.0
-    initial_cumulative_lr = lr_prc_accounting * lr_sme_for_cumulative * lr_satellite
+    lr_sme_for_cumulative = lr_sme_inventory if num_scanners > 0 else 1.0
+    initial_cumulative_lr = lr_compute_accounting * lr_sme_for_cumulative * lr_satellite
     project._set_frozen_field('cumulative_lr', initial_cumulative_lr)
 
     project._set_frozen_field('lr_fab_other', 1.0)
-    initial_lr_fab_combined = lr_sme_inventory * lr_fab_procurement
+    initial_lr_fab_combined = lr_sme_inventory
     project._set_frozen_field('lr_fab_combined', initial_lr_fab_combined)
 
     project._set_frozen_field('us_estimate_energy', us_estimate_energy)

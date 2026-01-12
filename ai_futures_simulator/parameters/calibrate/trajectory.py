@@ -67,17 +67,18 @@ class CalibrationParams:
     software_progress_rate_at_reference_year: float = 1.0
 
     # Experiment capacity anchors (for calibration)
+    # Default values match reference model (model_config.py DEFAULT_PARAMETERS)
     direct_input_exp_cap_ces_params: bool = False
-    inf_labor_asymptote: float = 1e6
-    inf_compute_asymptote: float = 1e6
-    labor_anchor_exp_cap: float = 1.0
+    inf_labor_asymptote: float = 15.0
+    inf_compute_asymptote: float = 1000.0
+    labor_anchor_exp_cap: float = 1.6
     compute_anchor_exp_cap: float = 1.0
-    inv_compute_anchor_exp_cap: float = 1.0
+    inv_compute_anchor_exp_cap: float = 2.8
 
     # Automation
     automation_interp_type: str = "linear"
     automation_logistic_asymptote: float = 1.0
-    automation_fraction_at_coding_automation_anchor: float = 0.9
+    automation_fraction_at_coding_automation_anchor: float = 1.0  # Match original model (full automation at AC)
     automation_anchors: Dict[float, float] = field(default_factory=dict)
     automation_model: Optional[AutomationModel] = None
     swe_multiplier_at_present_day: float = 1.8
@@ -89,19 +90,19 @@ class CalibrationParams:
     optimal_ces_frontier_cap: Optional[float] = 1e12
     max_serial_coding_labor_multiplier: Optional[float] = None
 
-    # Taste parameters
-    median_to_top_taste_multiplier: float = 10.0
-    top_percentile: float = 0.99
+    # Taste parameters (match reference model model_config.py DEFAULT_PARAMETERS)
+    median_to_top_taste_multiplier: float = 3.7  # MEDIAN_TO_TOP_TASTE_MULTIPLIER
+    top_percentile: float = 0.999  # TOP_PERCENTILE
     taste_limit: float = 8.0  # taste_limit_m2b exponent factor
-    taste_limit_smoothing: float = 0.51
+    taste_limit_smoothing: float = 0.5  # Match reference model
     taste_distribution: Optional[TasteDistribution] = None
-    ai_research_taste_slope: float = 2.2
-    ai_research_taste_at_coding_automation_anchor_sd: float = 1.0
+    ai_research_taste_slope: float = 2.1  # Match reference model (model_config.py DEFAULT_PARAMETERS)
+    ai_research_taste_at_coding_automation_anchor_sd: float = 0.5  # Match reference model
     coding_automation_efficiency_slope: float = 3.0
 
     # Horizon parameters
     progress_at_aa: float = 100.0
-    present_day: float = 2026.0
+    present_day: float = 2025.9  # Match reference model (model_config.py DEFAULT_PARAMETERS)
     present_horizon: Optional[float] = None
     present_doubling_time: Optional[float] = None
     doubling_difficulty_growth_factor: Optional[float] = None
@@ -113,6 +114,11 @@ class CalibrationParams:
 
     def __post_init__(self):
         """Create runtime objects if not provided."""
+        # Convert inv_compute_anchor_exp_cap to compute_anchor_exp_cap
+        # (matching original model's Parameters.__post_init__)
+        if self.inv_compute_anchor_exp_cap is not None and self.inv_compute_anchor_exp_cap > 0:
+            self.compute_anchor_exp_cap = 1.0 / self.inv_compute_anchor_exp_cap
+
         if self.taste_distribution is None:
             self.taste_distribution = TasteDistribution(
                 top_percentile=self.top_percentile,
@@ -496,24 +502,36 @@ def _build_decaying_horizon_trajectory(
 
     H_0 = params.present_horizon if params.present_horizon is not None else 60.0
     doubling_time = params.present_doubling_time if params.present_doubling_time is not None else 1.0
-    A_0 = params.doubling_difficulty_growth_factor if params.doubling_difficulty_growth_factor is not None else 0.5
+
+    # A_0 is the decay parameter = 1 - doubling_difficulty_growth_factor
+    # (matching original model: A_0 = 1 - doubling_difficulty_growth_factor)
+    if params.doubling_difficulty_growth_factor is not None:
+        A_0 = 1.0 - params.doubling_difficulty_growth_factor
+    else:
+        A_0 = 0.08  # Default for growth factor = 0.92
 
     # Convert doubling time to progress units
     T_0 = doubling_time * anchor_progress_rate if anchor_progress_rate > 0 else doubling_time
 
     def horizon_func(progress):
         delta = progress - present_day_progress
-        if A_0 == 0:
-            return H_0 * np.exp(delta / T_0) if T_0 > 0 else H_0
+        if abs(A_0) < 1e-10:
+            # No decay case: exponential growth
+            return H_0 * np.exp(np.log(2) * delta / T_0) if T_0 > 0 else H_0
 
-        # Decaying doubling time formula
+        # Decaying doubling time formula (matching frontend's computeHorizonFromProgress):
+        # H(p) = H_0 * (1 - A_0 * (p - p_0) / T_0)^(ln(2) / ln(1-A_0))
         factor = 1 - A_0 * delta / T_0
         if isinstance(factor, np.ndarray):
-            factor = np.maximum(factor, 1e-10)
+            factor = np.maximum(factor, 1e-12)
         else:
-            factor = max(factor, 1e-10)
+            factor = max(factor, 1e-12)
 
-        return H_0 * np.power(factor, -1/A_0)
+        # Exponent = ln(2) / ln(1 - A_0)
+        log_denominator = np.log(1 - A_0) if abs(1 - A_0) > 1e-10 else -1e-10
+        exponent = np.log(2) / log_denominator
+
+        return H_0 * np.power(factor, exponent)
 
     return horizon_func
 
@@ -623,6 +641,28 @@ def compute_calibration_trajectory(
     horizon_trajectory = _estimate_horizon_trajectory(
         params, times_h, progress_h, anchor_progress_rate
     )
+
+    # Step 5b: Compute progress_at_aa from horizon trajectory (where horizon reaches AC threshold)
+    # This must happen BEFORE setting automation anchors
+    if horizon_trajectory is not None and params.ac_time_horizon_minutes is not None:
+        target_horizon = params.ac_time_horizon_minutes
+        # Search for progress level where horizon reaches target
+        # Start from present_day_progress and search upward
+        progress_search = np.linspace(present_day_progress, present_day_progress + 50, 1000)
+        horizons = np.array([horizon_trajectory(p) for p in progress_search])
+        logger.debug(f"Step 5b: present_day_progress={present_day_progress:.4f}, anchor_progress_rate={anchor_progress_rate:.4f}")
+        logger.debug(f"Step 5b: horizon at present_day_progress={horizon_trajectory(present_day_progress):.2f}, at +7 progress={horizon_trajectory(present_day_progress+7):.2e}")
+        # Find first progress where horizon >= target_horizon
+        above_threshold = horizons >= target_horizon
+        if np.any(above_threshold):
+            idx = np.argmax(above_threshold)
+            computed_progress_at_aa = float(progress_search[idx])
+            params.progress_at_aa = computed_progress_at_aa
+            logger.debug(f"Computed progress_at_aa from horizon: {computed_progress_at_aa:.4f} (target horizon: {target_horizon} min)")
+        else:
+            # Horizon doesn't reach threshold in search range; use last value
+            params.progress_at_aa = float(progress_search[-1])
+            logger.debug(f"Horizon never reaches {target_horizon} min in search range; using {params.progress_at_aa:.4f}")
 
     # Step 6: Convert slopes from per-progress-year to per-progress-unit
     if anchor_progress_rate > 0:

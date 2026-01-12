@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple
 
 from classes.world.world import World
 from classes.flat_world import FlatWorld
-from classes.simulation_primitives import SimulationResult
+from classes.simulation_primitives import SimulationTrajectory
 from parameters.classes import SimulationParameters
 from parameters.model_parameters import ModelParameters
 from initialize_world_history import initialize_world
@@ -108,7 +108,7 @@ class AIFuturesSimulator(nn.Module):
         world_history: Dict[int, World] = None,
         params: SimulationParameters = None,
         use_flat_mode: bool = True,
-    ) -> SimulationResult:
+    ) -> SimulationTrajectory:
         """
         Run a single simulation trajectory.
 
@@ -123,7 +123,7 @@ class AIFuturesSimulator(nn.Module):
             use_flat_mode: If True (default), use flat tensor optimization for ~5x speedup.
 
         Returns:
-            SimulationResult containing trajectory and metadata.
+            SimulationTrajectory containing trajectory and metadata.
         """
         if params is None:
             params = self._default_params
@@ -199,7 +199,7 @@ class AIFuturesSimulator(nn.Module):
             world = combined.set_metric_attributes(t, world)
             trajectory.append(world)
 
-        return SimulationResult(
+        return SimulationTrajectory(
             times=eval_times,
             trajectory=trajectory,
             params=params,
@@ -209,7 +209,7 @@ class AIFuturesSimulator(nn.Module):
         self,
         world_history: Dict[int, World] = None,
         use_flat_mode: bool = True,
-    ) -> SimulationResult:
+    ) -> SimulationTrajectory:
         """
         Run a single simulation using the modal (most likely) parameter values.
 
@@ -221,7 +221,7 @@ class AIFuturesSimulator(nn.Module):
             use_flat_mode: If True (default), use flat tensor optimization for ~5x speedup.
 
         Returns:
-            SimulationResult containing the modal trajectory and metadata.
+            SimulationTrajectory containing the modal trajectory and metadata.
         """
         modal_params = self.model_parameters.sample_modal()
         return self.run_simulation(
@@ -234,7 +234,7 @@ class AIFuturesSimulator(nn.Module):
         self,
         num_simulations: int = 1,
         model_parameters: ModelParameters = None,
-    ) -> List[SimulationResult]:
+    ) -> List[SimulationTrajectory]:
         """
         Run multiple simulation trajectories.
 
@@ -243,7 +243,7 @@ class AIFuturesSimulator(nn.Module):
             model_parameters: Parameters to use. If None, uses instance defaults.
 
         Returns:
-            List of SimulationResult objects.
+            List of SimulationTrajectory objects.
         """
         import numpy as np
 
@@ -264,7 +264,7 @@ class AIFuturesSimulator(nn.Module):
     def forward(
         self,
         world_history: Dict[int, World] = None,
-    ) -> SimulationResult:
+    ) -> SimulationTrajectory:
         """
         Forward pass for gradient computation.
 

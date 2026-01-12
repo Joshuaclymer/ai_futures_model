@@ -8,11 +8,11 @@ import {
   createStarShape,
   createCircleShape
 } from './ChartShapes';
-import { createScale, calculateTimeLogTicks, clamp } from '@/utils/chartUtils';
-import { formatLogWorkTick, formatWorkTimeDurationDetailed } from '@/utils/formatting';
+import { createScale, calculateTimeLogTicks, clamp } from '../../utils/chartUtils';
+import { formatLogWorkTick, formatWorkTimeDurationDetailed } from '../../utils/formatting';
 import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from './chartTooltipStyle';
-import { CHART_LAYOUT } from '@/constants/chartLayout';
-import { HORIZON_LENGTH_EXPLANATION } from '@/constants/chartExplanations';
+import { CHART_LAYOUT } from '../../constants/chartLayout';
+import { HORIZON_LENGTH_EXPLANATION } from '../../constants/chartExplanations';
 import { WithChartTooltip } from './ChartTitleTooltip';
 
 const CODING_AUTOMATION_MARKER_COLOR = '#6b7280';
@@ -75,7 +75,9 @@ const CustomHorizonChart = memo(({
   }, [chartData, scHorizonMinutes]);
 
   // Calculate X-axis domain from main trajectory
-  // Show from present year to 1 year after the "100 year" threshold is achieved
+  // Show from present year to 1 year after the horizon reaches 100 work years
+  const WORK_YEAR_MINUTES = 2000 * 60; // 120,000 minutes per work year
+  const HORIZON_X_LIMIT_THRESHOLD = 100 * WORK_YEAR_MINUTES; // Stop chart when horizon reaches 100 work years
   const xDomain = useMemo((): [number, number] => {
     const years = chartData
       .filter(d => d.horizonLength != null && !isNaN(d.horizonLength))
@@ -87,11 +89,11 @@ const CustomHorizonChart = memo(({
     // Start from the first year in the data (present)
     const startYear = Math.min(...years);
 
-    // Find intersection year where horizon crosses SC threshold (100 work years)
+    // Find intersection year where horizon crosses 100 minutes threshold
     const intersectionPoint = chartData.find(d =>
       d.horizonLength != null &&
       typeof d.horizonLength === 'number' &&
-      d.horizonLength >= scHorizonMinutes
+      d.horizonLength >= HORIZON_X_LIMIT_THRESHOLD
     );
 
     // End at 1 year after the intersection, or use displayEndYear as fallback
@@ -103,7 +105,7 @@ const CustomHorizonChart = memo(({
     // Add small padding for visual clarity
     const padding = (endYear - startYear) * 0.05;
     return [startYear - padding, endYear + padding];
-  }, [chartData, scHorizonMinutes, displayEndYear]);
+  }, [chartData, displayEndYear]);
 
   // Generate x-axis ticks at whole year boundaries, limited to ~4 ticks
   const xTicks = useMemo(() => {

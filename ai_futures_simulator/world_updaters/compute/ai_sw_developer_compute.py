@@ -100,14 +100,11 @@ class AISoftwareDeveloperComputeUpdater(WorldUpdater):
         Update AI software developer compute.
 
         For each developer:
-        1. Apply growth to operating_compute based on growth rate
-        2. Calculate frontier_training_compute from operating_compute * allocation
+        1. Derive operating_compute from nation's compute stock (which grows via ODE)
+        2. Calculate compute allocations from operating_compute
         3. Update training_compute_growth_rate for the current time
         """
         current_time = t.item() if isinstance(t, Tensor) else float(t)
-        dt = world.dt if hasattr(world, 'dt') else 0.0
-        if isinstance(dt, Tensor):
-            dt = dt.item()
 
         for dev_id, dev in world.ai_software_developers.items():
             # Get nation for this developer
@@ -115,34 +112,34 @@ class AISoftwareDeveloperComputeUpdater(WorldUpdater):
             if nation_id is None or nation_id not in world.nations:
                 continue
 
+            nation = world.nations[nation_id]
+
             # Get the operating compute growth rate (OOMs/year)
             growth_rate_ooms_per_year = self._get_training_compute_growth_rate(nation_id, current_time)
             dev._set_frozen_field('training_compute_growth_rate', growth_rate_ooms_per_year)
 
-            # Apply growth to operating_compute if we have a timestep
-            if dt > 0 and dev.operating_compute:
-                # Growth factor = 10^(growth_rate * dt)
-                growth_factor = 10 ** (growth_rate_ooms_per_year * dt)
+            # Derive AI developer's operating_compute from nation's compute stock
+            # The nation's compute_stock.functional_tpp_h100e grows via ODE integration
+            nation_functional_compute = nation.compute_stock.functional_tpp_h100e
+            if isinstance(nation_functional_compute, Tensor):
+                nation_functional_compute = nation_functional_compute.item()
 
-                # Get current operating compute
+            # Get the fraction of nation compute for this developer
+            fraction = self._get_fraction_of_nation_compute(dev, nation_id)
+            developer_compute = nation_functional_compute * fraction
+
+            # Update operating_compute to reflect the derived value
+            if dev.operating_compute:
                 current_compute = dev.operating_compute[0]
-                current_functional = current_compute.functional_tpp_h100e
-                if isinstance(current_functional, Tensor):
-                    current_functional = current_functional.item()
-
-                # Apply growth
-                new_functional = current_functional * growth_factor
-
-                # Update operating compute
                 new_compute = Compute(
-                    tpp_h100e_including_attrition=new_functional,
-                    functional_tpp_h100e=new_functional,
+                    tpp_h100e_including_attrition=developer_compute,
+                    functional_tpp_h100e=developer_compute,
                     watts_per_h100e=current_compute.watts_per_h100e,
                     average_functional_chip_age_years=current_compute.average_functional_chip_age_years,
                 )
                 dev.operating_compute[0] = new_compute
 
-            # Always calculate allocation metrics from current operating_compute
+            # Calculate allocation metrics from operating_compute
             total_compute = sum(
                 c.functional_tpp_h100e.item() if isinstance(c.functional_tpp_h100e, Tensor) else c.functional_tpp_h100e
                 for c in dev.operating_compute

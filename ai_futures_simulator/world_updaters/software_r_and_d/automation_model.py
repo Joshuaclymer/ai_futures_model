@@ -517,7 +517,9 @@ class AutomationModel:
             # Interpolate i_E for all points
             i0, i1 = pc.grid_i[j], pc.grid_i[j + 1]
             le0, le1 = pc.log_Eaut[j], pc.log_Eaut[j + 1]
-            tE = np.where(le1 != le0, np.clip((logE_arr - le0) / (le1 - le0), 0.0, 1.0), 0.0)
+            # Suppress divide-by-zero warning; np.where handles le1==le0 case correctly
+            with np.errstate(divide='ignore', invalid='ignore'):
+                tE = np.where(le1 != le0, np.clip((logE_arr - le0) / (le1 - le0), 0.0, 1.0), 0.0)
             i_E = (1.0 - tE) * i0 + tE * i1
 
             # Compute kappa and logS for all points

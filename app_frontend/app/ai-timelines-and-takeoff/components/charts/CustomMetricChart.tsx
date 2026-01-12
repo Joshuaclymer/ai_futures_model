@@ -2,9 +2,9 @@
 import { ChartDataPoint } from '@/app/types';
 import { memo, useMemo, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
 import { CustomLineChart, DataPoint, CustomElementsContext } from './CustomLineChart';
-import { formatTo3SigFigs, formatAsPowerOfTenText, formatCompactNumberNode } from '@/utils/formatting';
-import { calculateDynamicXDomain, clamp, ChartMargin } from '@/utils/chartUtils';
-import { CHART_LAYOUT } from '@/constants/chartLayout';
+import { formatTo3SigFigs, formatAsPowerOfTenText, formatCompactNumberNode } from '../../utils/formatting';
+import { calculateDynamicXDomain, clamp, ChartMargin } from '../../utils/chartUtils';
+import { CHART_LAYOUT } from '../../constants/chartLayout';
 import {
   XYPoint,
   PixelSegment,
@@ -15,7 +15,7 @@ import {
   pointsToPixelSegments,
   LABEL_HEIGHT,
   SEGMENTS_TO_CHECK,
-} from '@/utils/chartLabelUtils';
+} from '../../utils/chartLabelUtils';
 
 export interface CustomMetricChartProps {
   chartData: ChartDataPoint[];

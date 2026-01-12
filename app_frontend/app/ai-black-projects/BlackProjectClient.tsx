@@ -103,7 +103,7 @@ function mapToDetectionLikelihoodData(data: SimulationData | null): DetectionLik
   return {
     years,
     // LR samples from initial_stock
-    chip_evidence_samples: initialStock?.lr_prc_accounting_samples || [],
+    chip_evidence_samples: initialStock?.lr_compute_accounting_samples || [],
     sme_evidence_samples: initialStock?.lr_sme_inventory_samples || [],
     dc_evidence_samples: initialStock?.lr_satellite_datacenter_samples || [],
     // Energy evidence (time series)

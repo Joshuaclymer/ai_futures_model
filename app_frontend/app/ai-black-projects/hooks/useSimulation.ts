@@ -7,7 +7,8 @@ import {
   encodeBlackProjectParamsToUrl,
   decodeBlackProjectParamsFromUrl,
   hasBlackProjectParamsInUrl,
-} from '@/utils/blackProjectUrlState';
+} from '../utils/blackProjectUrlState';
+import { useParameterConfig } from '@/components/ParameterConfigProvider';
 
 // Flask backend URL
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5329';
@@ -66,6 +67,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { blackProjectDefaults, isLoading: configLoading } = useParameterConfig();
 
   const [data, setData] = useState<SimulationData | null>(initialData);
   const [isLoading, setIsLoading] = useState(!initialData);
@@ -107,9 +109,10 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
     return result;
   };
 
-  // Load defaults from YAML, check URL params, and run initial simulation
+  // Load defaults from context, check URL params, and run initial simulation
   useEffect(() => {
-    if (initialData || initialLoadDone.current) return;
+    // Wait for config to load before initializing
+    if (configLoading || initialData || initialLoadDone.current) return;
     initialLoadDone.current = true;
 
     const loadDefaultsAndSimulation = async () => {
@@ -127,27 +130,15 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
           initialParams = decodeBlackProjectParamsFromUrl(searchParams);
           setParameters(initialParams);
           console.log('[useSimulation] URL parameters loaded:', initialParams);
+        } else if (blackProjectDefaults) {
+          // Step 2: Use defaults from context (loaded from /api/parameter-config)
+          console.log('[useSimulation] Using defaults from context...');
+          const mapped = mapBackendDefaults(blackProjectDefaults as unknown as Record<string, unknown>);
+          initialParams = { ...defaultParameters, ...mapped };
+          setParameters(initialParams);
+          console.log('[useSimulation] Context defaults loaded:', initialParams);
         } else {
-          // Step 2: Fetch defaults from backend YAML
-          console.log('[useSimulation] Fetching defaults from YAML...');
-          const defaultsResponse = await fetch(`${BACKEND_URL}/api/black-project-defaults`, {
-            signal: controller.signal,
-            cache: 'no-store',
-          });
-
-          if (defaultsResponse.ok) {
-            const defaultsResult = await defaultsResponse.json();
-            if (defaultsResult.success && defaultsResult.defaults) {
-              const mapped = mapBackendDefaults(defaultsResult.defaults);
-              initialParams = { ...defaultParameters, ...mapped };
-              setParameters(initialParams);
-              console.log('[useSimulation] YAML defaults loaded:', initialParams);
-            } else {
-              console.warn('[useSimulation] Defaults response missing success or defaults, using hardcoded defaults');
-            }
-          } else {
-            console.warn('[useSimulation] Failed to fetch YAML defaults, using hardcoded defaults');
-          }
+          console.warn('[useSimulation] No defaults available, using hardcoded defaults');
         }
 
         // Always mark defaults as loaded after the attempt, so parameter changes trigger simulations
@@ -174,7 +165,7 @@ export function useSimulation(initialData: SimulationData | null): UseSimulation
     };
 
     loadDefaultsAndSimulation();
-  }, [initialData, searchParams]);
+  }, [initialData, searchParams, configLoading, blackProjectDefaults]);
 
   // Sync parameters to URL when they change
   useEffect(() => {

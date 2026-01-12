@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { COLOR_PALETTE } from '@/types/blackProject';
+import { COLOR_PALETTE } from '../../../types';
 import { PlotlyChart } from '../../charts';
 import { hexToRgba, DETECTION_THRESHOLD_COLORS } from '../../colors';
 import { CHART_FONT_SIZES } from '../../chartConfig';

@@ -80,10 +80,10 @@ export const SliderWithThumbValue: React.FC<SliderWithThumbValueProps> = ({
     return min * Math.pow(max / min, pos / 100);
   };
 
-  // Guard against undefined/NaN values
-  const safeValue = typeof value === 'number' && !isNaN(value) ? value : min;
+  // Guard against undefined/NaN values - compute safeMin/safeMax first since safeValue depends on them
   const safeMin = typeof min === 'number' && !isNaN(min) ? min : 0;
   const safeMax = typeof max === 'number' && !isNaN(max) ? max : 100;
+  const safeValue = typeof value === 'number' && !isNaN(value) ? value : safeMin;
 
   const sliderMin = useStepCount ? 0 : (effectiveUseLogScale ? 0 : safeMin);
   const sliderMax = useStepCount ? stepCount : (effectiveUseLogScale ? 100 : safeMax);

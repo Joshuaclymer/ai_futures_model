@@ -9,27 +9,28 @@ import { ChartDataPoint, BenchmarkPoint } from '@/app/types';
 import { CustomMetricChart } from './charts/CustomMetricChart';
 import type { DataPoint } from './charts/CustomLineChart';
 
-import { formatTo3SigFigs, formatTimeDuration, formatSCHorizon, yearsToMinutes, formatYearMonth, formatWorkTimeDuration, formatWorkTimeDurationDetailed, formatUplift, formatCompactNumberNode, formatAsPowerOfTenText } from '@/utils/formatting';
-import { DEFAULT_PARAMETERS, ParametersType, ParameterPrimitive, H100E_TPP_TO_FLOP_OOM_OFFSET } from '@/constants/parameters';
-import { CHART_LAYOUT } from '@/constants/chartLayout';
-import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, ParameterRecord } from '@/utils/monteCarlo';
+import { formatTo3SigFigs, formatTimeDuration, formatSCHorizon, yearsToMinutes, formatYearMonth, formatWorkTimeDuration, formatWorkTimeDurationDetailed, formatUplift, formatCompactNumberNode, formatAsPowerOfTenText } from '../utils/formatting';
+import { ParametersType, ParameterPrimitive, H100E_TPP_TO_FLOP_OOM_OFFSET } from '../constants/parameters';
+import { useParameterConfig } from '@/components/ParameterConfigProvider';
+import { CHART_LAYOUT } from '../constants/chartLayout';
+import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, ParameterRecord } from '../utils/monteCarlo';
 import { ParameterSlider } from './ui/ParameterSlider';
 import { AdvancedSections } from './sections/AdvancedSections';
-import { ChartType } from '@/types/chartConfig';
-import { CHART_CONFIGS } from '@/utils/chartConfigs';
+import { ChartType } from '../types/chartConfig';
+import { CHART_CONFIGS } from '../utils/chartConfigs';
 import { ChartSyncProvider } from './charts/ChartSyncContext';
 import { ChartLoadingOverlay } from './charts/ChartLoadingOverlay';
-import { encodeFullStateToParams, decodeFullStateFromParams, DEFAULT_CHECKBOX_STATES } from '@/utils/urlState';
+import { encodeFullStateToParams, decodeFullStateFromParams, DEFAULT_CHECKBOX_STATES } from '../utils/urlState';
 import { AIRnDProgressMultiplierChart } from './charts/AIRnDProgressMultiplierChart';
-import type { MilestoneMap } from '@/types/milestones';
+import type { MilestoneMap } from '../types/milestones';
 import { SmallChartMetricTooltip } from './charts/SmallChartMetricTooltip';
-import { MILESTONE_EXPLANATIONS, MILESTONE_FULL_NAMES } from '@/constants/chartExplanations';
+import { MILESTONE_EXPLANATIONS, MILESTONE_FULL_NAMES } from '../constants/chartExplanations';
 import { ParameterHoverProvider } from '@/components/ParameterHoverContext';
 import { HeaderContent } from './sections/HeaderContent';
 import { WithChartTooltip } from './charts/ChartTitleTooltip';
 import ModelArchitecture from './sections/ModelArchitecture';
 import { SharePredictionModal } from './ui/SharePredictionModal';
-import { SamplingConfig, generateParameterSample, generateParameterSampleWithFixedParams, generateParameterSampleWithUserValues, getDistributionMedian, initializeCorrelationSampling, extractSamplingConfigBounds, flattenMonteCarloConfig } from '@/utils/sampling';
+import { SamplingConfig, generateParameterSample, generateParameterSampleWithFixedParams, generateParameterSampleWithUserValues, getDistributionMedian, initializeCorrelationSampling, extractSamplingConfigBounds, flattenMonteCarloConfig } from '../utils/sampling';
 import type { ComputeApiResponse } from '@/app/types';
 
 interface ModelDefaults {
@@ -471,6 +472,7 @@ interface CheckboxParameterSyncConfig {
   setParameters: React.Dispatch<React.SetStateAction<ParametersType>>;
   setUiParameters: React.Dispatch<React.SetStateAction<ParametersType>>;
   isHydratingFromUrlRef: React.MutableRefObject<boolean>;
+  defaults: ParametersType;
 }
 
 function useCheckboxParameterSync({
@@ -480,6 +482,7 @@ function useCheckboxParameterSync({
   setParameters,
   setUiParameters,
   isHydratingFromUrlRef,
+  defaults,
 }: CheckboxParameterSyncConfig) {
   useEffect(() => {
     if (isHydratingFromUrlRef.current) {
@@ -507,7 +510,7 @@ function useCheckboxParameterSync({
       const parameterKeys = Object.keys(nonDefaultParameterValues) as Array<keyof ParametersType>;
       const defaultValues: Partial<ParametersType> = {};
       parameterKeys.forEach(key => {
-        defaultValues[key] = DEFAULT_PARAMETERS[key];
+        defaultValues[key] = defaults[key];
       });
 
       const defaultUpdaterFn = (prev: ParametersType) => ({
@@ -519,7 +522,7 @@ function useCheckboxParameterSync({
       setParameters(defaultUpdaterFn);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkboxValue]);
+  }, [checkboxValue, defaults]);
 }
 
 // Types
@@ -552,31 +555,37 @@ function processInitialData(data: ComputeApiResponse | undefined): ChartDataPoin
   return data.time_series
     .filter((point) => point.year >= VISIBLE_CHART_START_YEAR)
     .sort((a, b) => a.year - b.year)
-    .map((point) => ({
-      year: point.year,
-      horizonLength: point.horizonLength,
-      horizonFormatted: formatWorkTimeDuration(point.horizonLength),
-      effectiveCompute: point.effectiveCompute,
-      automationFraction: point.automationFraction,
-      // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
-      trainingCompute: point.frontierTrainingCompute && point.frontierTrainingCompute > 0
-        ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
-        : null,
-      experimentCapacity: point.experimentCapacity,
-      aiResearchTaste: point.aiResearchTaste,
-      aiSoftwareProgressMultiplier: point.aiSoftwareProgressMultiplier,
-      aiSwProgressMultRefPresentDay: point.aiSwProgressMultRefPresentDay,
-      serialCodingLaborMultiplier: point.serialCodingLaborMultiplier,
-      humanLabor: point.humanLabor ?? null,
-      inferenceCompute: point.inferenceCompute ?? null,
-      experimentCompute: point.experimentCompute ?? null,
-      researchEffort: point.researchEffort ?? null,
-      researchStock: point.researchStock ?? null,
-      softwareProgressRate: point.softwareProgressRate ?? null,
-      softwareEfficiency: point.softwareEfficiency ?? null,
-      aiCodingLaborMultiplier: point.aiCodingLaborMultiplier ?? null,
-      aiCodingLaborMultRefPresentDay: point.aiCodingLaborMultRefPresentDay ?? null,
-    }));
+    .map((point) => {
+      // Helper to safely convert API values to number | null
+      const toNumberOrNull = (val: unknown): number | null =>
+        typeof val === 'number' ? val : null;
+
+      return {
+        year: point.year,
+        horizonLength: point.horizonLength,
+        horizonFormatted: formatWorkTimeDuration(point.horizonLength),
+        effectiveCompute: point.effectiveCompute,
+        automationFraction: point.automationFraction,
+        // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
+        trainingCompute: typeof point.frontierTrainingCompute === 'number' && point.frontierTrainingCompute > 0
+          ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
+          : null,
+        experimentCapacity: toNumberOrNull(point.experimentCapacity),
+        aiResearchTaste: toNumberOrNull(point.aiResearchTaste),
+        aiSoftwareProgressMultiplier: toNumberOrNull(point.aiSoftwareProgressMultiplier),
+        aiSwProgressMultRefPresentDay: toNumberOrNull(point.aiSwProgressMultRefPresentDay),
+        serialCodingLaborMultiplier: toNumberOrNull(point.serialCodingLaborMultiplier),
+        humanLabor: toNumberOrNull(point.humanLabor),
+        inferenceCompute: toNumberOrNull(point.inferenceCompute),
+        experimentCompute: toNumberOrNull(point.experimentCompute),
+        researchEffort: toNumberOrNull(point.researchEffort),
+        researchStock: toNumberOrNull(point.researchStock),
+        softwareProgressRate: toNumberOrNull(point.softwareProgressRate),
+        softwareEfficiency: toNumberOrNull(point.softwareEfficiency),
+        aiCodingLaborMultiplier: toNumberOrNull(point.aiCodingLaborMultiplier),
+        aiCodingLaborMultRefPresentDay: toNumberOrNull(point.aiCodingLaborMultRefPresentDay),
+      };
+    });
 }
 
 export default function ProgressChart({
@@ -587,9 +596,11 @@ export default function ProgressChart({
   initialSampleTrajectories = [],
   initialSeed = 12345
 }: ProgressChartProps) {
+  const { defaults: contextDefaults, config: contextConfig } = useParameterConfig();
+
   // Initialize state directly from server-provided data
   const initialChartData = useMemo(() => processInitialData(initialComputeData), [initialComputeData]);
-  const resolvedInitialParameters = useMemo(() => initialParameters ?? { ...DEFAULT_PARAMETERS }, [initialParameters]);
+  const resolvedInitialParameters = useMemo(() => initialParameters ?? { ...contextDefaults }, [initialParameters, contextDefaults]);
 
   // Convert server sample trajectories to client format
   const convertedInitialSamples = useMemo(() => {
@@ -612,7 +623,7 @@ export default function ProgressChart({
   const [chartData, setChartData] = useState<ChartDataPoint[]>(initialChartData);
   const [animatedChartData, setAnimatedChartData] = useState<ChartDataPoint[]>(initialChartData);
   const [scHorizonMinutes, setScHorizonMinutes] = useState<number>(
-    Math.pow(10, DEFAULT_PARAMETERS.ac_time_horizon_minutes)
+    Math.pow(10, contextDefaults['software_r_and_d.ac_time_horizon_minutes'] as number || 7.08)
   );
   const [activePopover, setActivePopover] = useState<ChartType | null>(null);
   const [parameters, setParameters] = useState<ParametersType>(resolvedInitialParameters);
@@ -945,7 +956,7 @@ export default function ProgressChart({
     if (presetId && PRESET_PARAMETERS[presetId]) {
       const presetParams = PRESET_PARAMETERS[presetId];
       const newParams: ParametersType = {
-        ...DEFAULT_PARAMETERS,
+        ...contextDefaults,
         ...presetParams,
       } as ParametersType;
       setUiParameters(newParams);
@@ -965,7 +976,7 @@ export default function ProgressChart({
 
     // Convert sampled parameters to UI format
     // Key conversion: ac_time_horizon_minutes needs to go from actual minutes to log10
-    const uiFormatParams = { ...DEFAULT_PARAMETERS };
+    const uiFormatParams = { ...contextDefaults };
 
     const acTimeHorizonKey = 'software_r_and_d.ac_time_horizon_minutes';
     const includeGapKey = 'software_r_and_d.include_gap';
@@ -1011,12 +1022,12 @@ export default function ProgressChart({
   }, [parameters, isDragging]);
 
   useEffect(() => {
-    if (!searchParams || isUrlSyncReady) {
+    if (!searchParams || isUrlSyncReady || Object.keys(contextDefaults).length === 0) {
       return;
     }
 
     const urlParams = new URLSearchParams(searchParams.toString());
-    const state = decodeFullStateFromParams(urlParams);
+    const state = decodeFullStateFromParams(urlParams, contextDefaults);
 
     isHydratingFromUrlRef.current = true;
     setParameters(state.parameters);
@@ -1034,10 +1045,10 @@ export default function ProgressChart({
     }, 0);
 
     setIsUrlSyncReady(true);
-  }, [searchParams, isUrlSyncReady]);
+  }, [searchParams, isUrlSyncReady, contextDefaults]);
 
   useEffect(() => {
-    if (!isUrlSyncReady) {
+    if (!isUrlSyncReady || Object.keys(contextDefaults).length === 0) {
       return;
     }
 
@@ -1049,7 +1060,7 @@ export default function ProgressChart({
       enableSoftwareProgress,
       useComputeLaborGrowthSlowdown,
       useVariableHorizonDifficulty,
-    });
+    }, contextDefaults);
 
     const nextSearch = nextParams.toString();
     const currentSearch = searchParams?.toString() ?? '';
@@ -1058,7 +1069,7 @@ export default function ProgressChart({
     if (nextSearch !== currentSearch) {
       router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname, { scroll: false });
     }
-  }, [parameters, enableCodingAutomation, enableExperimentAutomation, useExperimentThroughputCES, enableSoftwareProgress, useComputeLaborGrowthSlowdown, useVariableHorizonDifficulty, isUrlSyncReady, router, pathname, searchParams]);
+  }, [parameters, enableCodingAutomation, enableExperimentAutomation, useExperimentThroughputCES, enableSoftwareProgress, useComputeLaborGrowthSlowdown, useVariableHorizonDifficulty, isUrlSyncReady, router, pathname, searchParams, contextDefaults]);
 
   // Load full parameter configuration on mount
   useEffect(() => {
@@ -1093,37 +1104,16 @@ export default function ProgressChart({
     };
   }, []);
 
-  // Load sampling configuration on mount
+  // Initialize sampling config from context
   useEffect(() => {
-    let isCancelled = false;
+    if (!contextConfig) return;
 
-    const loadSamplingConfig = async () => {
-      try {
-        const response = await fetch('/api/sampling-config');
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
-        if (!isCancelled && data.success) {
-          // Flatten nested default_parameters.yaml structure into flat SamplingConfig
-          const flatConfig = flattenMonteCarloConfig(data.config);
-          // Initialize correlation sampling with the loaded config
-          initializeCorrelationSampling(flatConfig.correlation_matrix);
-          setSamplingConfig(flatConfig);
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          console.error('Failed to load sampling configuration:', error);
-        }
-      }
-    };
-
-    loadSamplingConfig();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
+    // Flatten nested default_parameters.yaml structure into flat SamplingConfig
+    const flatConfig = flattenMonteCarloConfig(contextConfig as Record<string, unknown>);
+    // Initialize correlation sampling with the loaded config
+    initializeCorrelationSampling(flatConfig.correlation_matrix);
+    setSamplingConfig(flatConfig);
+  }, [contextConfig]);
 
   // API now returns values already in log form (OOMs), so no conversion needed
   const toEffectiveComputeOOM = useCallback((value?: number | null): number | null => {
@@ -1703,7 +1693,7 @@ export default function ProgressChart({
   }, [cancelMonteCarloUpdate]);
 
   // Sync checkbox states with parameter values
-  // When checked (default): uses DEFAULT_PARAMETERS
+  // When checked (default): uses contextDefaults
   // When unchecked: applies nonDefaultParameterValues and locks parameters
   useCheckboxParameterSync({
     checkboxValue: enableCodingAutomation,
@@ -1716,6 +1706,7 @@ export default function ProgressChart({
     setParameters,
     setUiParameters,
     isHydratingFromUrlRef,
+    defaults: contextDefaults,
   });
 
   useCheckboxParameterSync({
@@ -1727,6 +1718,7 @@ export default function ProgressChart({
     setParameters,
     setUiParameters,
     isHydratingFromUrlRef,
+    defaults: contextDefaults,
   });
 
   useCheckboxParameterSync({
@@ -1745,6 +1737,7 @@ export default function ProgressChart({
     setParameters,
     setUiParameters,
     isHydratingFromUrlRef,
+    defaults: contextDefaults,
   });
 
   useCheckboxParameterSync({
@@ -1756,6 +1749,7 @@ export default function ProgressChart({
     setParameters,
     setUiParameters,
     isHydratingFromUrlRef,
+    defaults: contextDefaults,
   });
 
   useCheckboxParameterSync({
@@ -1767,6 +1761,7 @@ export default function ProgressChart({
     setParameters,
     setUiParameters,
     isHydratingFromUrlRef,
+    defaults: contextDefaults,
   });
 
 
@@ -1852,7 +1847,7 @@ export default function ProgressChart({
 
   // Compute share URL from current state (not window.location.href which may be stale)
   const shareUrl = useMemo(() => {
-    if (typeof window === 'undefined') return '';
+    if (typeof window === 'undefined' || Object.keys(contextDefaults).length === 0) return '';
     const params = encodeFullStateToParams({
       parameters,
       enableCodingAutomation,
@@ -1861,11 +1856,11 @@ export default function ProgressChart({
       enableSoftwareProgress,
       useComputeLaborGrowthSlowdown,
       useVariableHorizonDifficulty,
-    });
+    }, contextDefaults);
     const queryString = params.toString();
     const base = `${window.location.origin}${pathname}`;
     return queryString ? `${base}?${queryString}` : base;
-  }, [parameters, enableCodingAutomation, enableExperimentAutomation, useExperimentThroughputCES, enableSoftwareProgress, useComputeLaborGrowthSlowdown, useVariableHorizonDifficulty, pathname]);
+  }, [parameters, enableCodingAutomation, enableExperimentAutomation, useExperimentThroughputCES, enableSoftwareProgress, useComputeLaborGrowthSlowdown, useVariableHorizonDifficulty, pathname, contextDefaults]);
 
   const automationReferenceLine = useMemo(() => {
     if (codingAutomationHorizonYear == null) {
@@ -2463,8 +2458,8 @@ export default function ProgressChart({
                             <div className="border-t border-gray-500/30 flex-1" />
                             <button
                               onClick={() => {
-                                setParameters({ ...DEFAULT_PARAMETERS });
-                                setUiParameters({ ...DEFAULT_PARAMETERS });
+                                setParameters({ ...contextDefaults });
+                                setUiParameters({ ...contextDefaults });
                               }}
                               className="text-[10px] text-gray-400 hover:text-gray-600 font-system-mono font-bold uppercase tracking-wider"
                             >
@@ -2686,8 +2681,8 @@ export default function ProgressChart({
                               <div className="border-t border-gray-500/30 flex-1" />
                               <button
                                 onClick={() => {
-                                  setParameters({ ...DEFAULT_PARAMETERS });
-                                  setUiParameters({ ...DEFAULT_PARAMETERS });
+                                  setParameters({ ...contextDefaults });
+                                  setUiParameters({ ...contextDefaults });
                                 }}
                                 className="text-[10px] text-gray-400 hover:text-gray-600 font-system-mono uppercase tracking-wider"
                               >

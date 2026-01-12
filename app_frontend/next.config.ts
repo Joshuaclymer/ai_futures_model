@@ -5,8 +5,8 @@ const nextConfig: NextConfig = {
   rewrites: async () => {
     // Only proxy specific backend API routes, not local Next.js API routes
     const backendRoutes = [
-      'run-sw-progress-simulation',
-      'sampling-config',
+      'get-data-for-ai-timelines-and-takeoff-page',
+      'parameter-config',
     ];
 
     if (process.env.NODE_ENV !== 'development') {

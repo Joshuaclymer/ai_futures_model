@@ -756,15 +756,12 @@ class BlackProjectPerceptionsUpdater(WorldUpdater):
                 lr_energy = 1.0
 
             # --- Compute static LR components ---
-            # lr_sme = lr_inventory * lr_procurement IF fab exists, else 1.0
+            # lr_sme = lr_inventory IF fab exists, else 1.0
             has_fab = project.fab_number_of_lithography_scanners > 0
-            lr_sme_log = (
-                math.log(max(1e-10, project.lr_sme_inventory)) +
-                math.log(max(1e-10, project.lr_fab_procurement))
-            ) if has_fab else 0.0
+            lr_sme_log = math.log(max(1e-10, project.lr_sme_inventory)) if has_fab else 0.0
 
             static_log_lr = (
-                math.log(max(1e-10, project.lr_prc_accounting)) +
+                math.log(max(1e-10, project.lr_compute_accounting)) +
                 lr_sme_log +
                 math.log(max(1e-10, project.lr_satellite_datacenter)) +
                 math.log(max(1e-10, lr_energy))
@@ -813,13 +810,13 @@ class BlackProjectPerceptionsUpdater(WorldUpdater):
                 lr_fab_other_dict = getattr(project, 'lr_fab_other_by_year', {})
                 fab_lr_other = lr_fab_other_dict.get(years_since_fab_construction, 1.0)
 
-                # Fab combined LR = lr_sme_inventory x lr_fab_procurement x lr_fab_other
-                fab_lr_combined = project.lr_sme_inventory * project.lr_fab_procurement * fab_lr_other
+                # Fab combined LR = lr_sme_inventory x lr_fab_other
+                fab_lr_combined = project.lr_sme_inventory * fab_lr_other
 
                 project._set_frozen_field('lr_fab_other', fab_lr_other)
                 project._set_frozen_field('lr_fab_combined', fab_lr_combined)
             else:
                 project._set_frozen_field('lr_fab_other', 1.0)
-                project._set_frozen_field('lr_fab_combined', project.lr_sme_inventory * project.lr_fab_procurement)
+                project._set_frozen_field('lr_fab_combined', project.lr_sme_inventory)
 
         return world

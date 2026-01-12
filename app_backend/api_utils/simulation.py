@@ -23,7 +23,7 @@ def run_simulation_internal(frontend_params: dict, time_range: list) -> dict:
     Internal function to run simulation and return serialized raw result.
 
     This is the single source of truth for running simulations.
-    Both /api/run-simulation and /api/run-sw-progress-simulation use this.
+    Both /api/run-simulation and /api/get-data-for-ai-timelines-and-takeoff-page use this.
 
     Returns:
         dict with keys: success, times, trajectory, params, generation_time_seconds

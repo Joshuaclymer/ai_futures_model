@@ -19,7 +19,6 @@ def build_black_fab_section(
     fab_built_sims: List[Dict],
     years: List[float],
     dt: float,
-    ai_slowdown_start_year: float,
     detection_times: List[float],
     num_sims: int,
     fab_individual_h100e: List[float],
@@ -84,10 +83,6 @@ def build_black_fab_section(
             fab_built_sims,
             lambda d: [d['black_project']['lr_sme_inventory']] * len(years) if d['black_project'] else [1.0] * len(years)
         ),
-        "lr_procurement": get_fab_percentiles_with_individual(
-            fab_built_sims,
-            lambda d: [d['black_project']['lr_fab_procurement']] * len(years) if d['black_project'] else [1.0] * len(years)
-        ),
         "lr_other": get_fab_percentiles_with_individual(
             fab_built_sims,
             lambda d: d['black_project']['lr_fab_other'] if d['black_project'] else [1.0] * len(years)
@@ -104,12 +99,12 @@ def build_black_fab_section(
         "compute_ccdf": [],
         # Use extract_fab_ccdf_values_at_threshold for values at detection
         "compute_ccdfs": {
-            str(lr): compute_ccdf(extract_fab_ccdf_values_at_threshold(fab_built_sims, years, ai_slowdown_start_year, lr)[0])
+            str(lr): compute_ccdf(extract_fab_ccdf_values_at_threshold(fab_built_sims, years, lr)[0])
             for lr in LIKELIHOOD_RATIO_THRESHOLDS
         },
         "op_time_ccdf": [],
         "op_time_ccdfs": {
-            str(lr): compute_ccdf(extract_fab_ccdf_values_at_threshold(fab_built_sims, years, ai_slowdown_start_year, lr)[1])
+            str(lr): compute_ccdf(extract_fab_ccdf_values_at_threshold(fab_built_sims, years, lr)[1])
             for lr in LIKELIHOOD_RATIO_THRESHOLDS
         },
         "likelihood_ratios": LIKELIHOOD_RATIO_THRESHOLDS,

@@ -1,10 +1,10 @@
-import { ChartConfig, ChartConfigMap, ChartDataPoint } from '@/types/chartConfig';
+import { ChartConfig, ChartConfigMap, ChartDataPoint } from '../types/chartConfig';
 import {
   generateHorizonData,
   generateSCHorizonData
-} from '@/utils/chartCalculations';
-import { calculateLogTicksWithSubdivisions, calculateTimeLogTicks } from '@/utils/chartUtils';
-import { formatTo3SigFigs, formatWorkTimeDuration } from '@/utils/formatting';
+} from './chartCalculations';
+import { calculateLogTicksWithSubdivisions, calculateTimeLogTicks } from './chartUtils';
+import { formatTo3SigFigs, formatWorkTimeDuration } from './formatting';
 
 const tenMillenniaInMinutes = 5.256e9;
 
@@ -18,7 +18,7 @@ const horizonLengthConfig: ChartConfig = {
     // Calculate y domain
     const dataMin = Math.min(...yValues);
     const dataMax = Math.max(...yValues);
-    const scHorizonMinutes = Math.pow(10, params.ac_time_horizon_minutes);
+    const scHorizonMinutes = Math.pow(10, (params.ac_time_horizon_minutes as number) ?? 0);
 
     const yDomainMin = Math.max(0.1, Math.min(dataMin, scHorizonMinutes * 0.1));
     const yDomainMax = Math.min(tenMillenniaInMinutes, Math.max(scHorizonMinutes * 10, dataMax)) * 1e1;

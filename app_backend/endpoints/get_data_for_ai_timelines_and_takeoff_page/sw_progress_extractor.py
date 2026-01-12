@@ -243,7 +243,9 @@ def _build_milestones(sw_params: dict, time_series: list = None) -> dict:
 
     # If not set (None), compute from time series using horizon threshold
     if progress_at_aa is None and time_series:
-        ac_time_horizon_minutes = sw_params.get('ac_time_horizon_minutes', 12000000.0)
+        ac_time_horizon_minutes = sw_params.get('ac_time_horizon_minutes')
+        if ac_time_horizon_minutes is None:
+            ac_time_horizon_minutes = 12000000.0  # Default fallback
         progress_at_aa = _compute_progress_at_aa(time_series, ac_time_horizon_minutes)
         logger.debug(f"Computed progress_at_aa from horizon: {progress_at_aa:.2f} (threshold: {ac_time_horizon_minutes})")
     elif progress_at_aa is None:
@@ -283,6 +285,15 @@ def _build_milestones(sw_params: dict, time_series: list = None) -> dict:
     }
 
 
+def _log_interp(x: float, xp: np.ndarray, fp: np.ndarray) -> float:
+    """Interpolate in log space for exponentially growing values."""
+    # Ensure positive values for log
+    fp_safe = np.maximum(fp, 1e-10)
+    log_fp = np.log(fp_safe)
+    log_result = np.interp(x, xp, log_fp)
+    return float(np.exp(log_result))
+
+
 def _compute_milestone_times(milestones: dict, time_series: list) -> None:
     """
     Compute milestone times and progress_multiplier by interpolation.
@@ -320,7 +331,8 @@ def _compute_milestone_times(milestones: dict, time_series: list) -> None:
             if milestone_time is not None:
                 milestone['time'] = milestone_time
                 try:
-                    milestone['progress_multiplier'] = float(np.interp(milestone_time, years_arr, ai_sw_mult_arr))
+                    # Use log-space interpolation for exponentially growing values
+                    milestone['progress_multiplier'] = _log_interp(milestone_time, years_arr, ai_sw_mult_arr)
                 except Exception:
                     pass
 

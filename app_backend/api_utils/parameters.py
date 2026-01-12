@@ -16,6 +16,7 @@ from parameters.classes import (
     SimulationParameters,
     SimulationSettings,
 )
+from parameters.calibrate import calibrate_from_params
 
 # Default YAML config path
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "ai_futures_simulator" / "parameters" / "default_parameters.yaml"
@@ -117,9 +118,9 @@ def frontend_params_to_simulation_params(frontend_params: dict, time_range: list
     import logging
     logger = logging.getLogger(__name__)
 
-    # Load defaults from YAML
+    # Load defaults from YAML using modal (most likely) values, not random sampling
     default_model_params = ModelParameters.from_yaml(DEFAULT_CONFIG_PATH)
-    default_sim_params = default_model_params.sample()
+    default_sim_params = default_model_params.sample_modal()
 
     # Build settings from time_range (handled separately since it comes from time_range, not frontend_params)
     start_year = int(time_range[0]) if time_range else 2024
@@ -164,10 +165,19 @@ def frontend_params_to_simulation_params(frontend_params: dict, time_range: list
         default_sim_params.policy, normalized_params, 'policy'
     )
 
+    # Re-run calibration if start_year differs from default, since calibration
+    # depends on start_year for initial_progress and initial_research_stock
+    default_start_year = default_sim_params.settings.simulation_start_year if default_sim_params.settings else 2026
+    if start_year != default_start_year:
+        calibrated = calibrate_from_params(software_r_and_d, start_year=float(start_year))
+    else:
+        calibrated = default_sim_params.software_r_and_d_calibrated
+
     return SimulationParameters(
         settings=settings,
         software_r_and_d=software_r_and_d,
         compute=compute,
         datacenter_and_energy=datacenter_and_energy,
         policy=policy,
+        software_r_and_d_calibrated=calibrated,
     )

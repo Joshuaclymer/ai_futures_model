@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { cacheLife } from 'next/cache';
-import { googleDocToMarkdown } from '@/utils/googleDocToMarkdown';
+import { googleDocToMarkdown } from '../../utils/googleDocToMarkdown';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 
 const GOOGLE_DOC_ID = '1aMgKau-Wmq2dCMEIHDanDqUnAI4_2R12yZw2WJ58_-M';

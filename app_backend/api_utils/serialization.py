@@ -8,10 +8,26 @@ def tensor_to_value(t):
     if t is None:
         return None
     if hasattr(t, 'item'):
-        val = t.item()
-        if not math.isfinite(val):
-            return None
-        return val
+        # Check if it's a single-element tensor
+        if hasattr(t, 'numel') and t.numel() == 1:
+            val = t.item()
+            if not math.isfinite(val):
+                return None
+            return val
+        # Multi-element tensor - convert to list
+        if hasattr(t, 'tolist'):
+            return t.tolist()
+        # Fallback for numpy arrays
+        if hasattr(t, '__len__') and len(t) > 1:
+            return [tensor_to_value(x) for x in t]
+        # Single element without numel (numpy scalar)
+        try:
+            val = t.item()
+            if not math.isfinite(val):
+                return None
+            return val
+        except (ValueError, TypeError):
+            return float(t) if isinstance(t, (int, float)) else str(t)
     return float(t) if isinstance(t, (int, float)) else t
 
 
@@ -62,7 +78,7 @@ def serialize_world(world) -> dict:
 
 def serialize_simulation_result(result) -> dict:
     """
-    Serialize a SimulationResult to a JSON-serializable dict.
+    Serialize a SimulationTrajectory to a JSON-serializable dict.
     Returns the raw trajectory of World objects.
     """
     return {

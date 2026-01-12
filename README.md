@@ -4,7 +4,7 @@ This is a model of AI futures. The model is designed to incorporate many compone
 
 ## To use
 
-The core model is in `./ai_futures_simulator`. Run the following command to simulate a single trajectory with parameters sampled from the default monte carlo distribution:
+The core model is in `./ai_futures_simulator`. Run the following command to simulate a single trajectory with default sampled parameters:
 
 `python ai_futures_simulator/ai_futures_simulator.py --params ai_futures_simulator/parameters/default_parameters.yaml --output simulation_output.json`
 
@@ -14,23 +14,32 @@ You can also visualize the outputs of the model with the app in `app_frontend` a
 
 `scripts/restart_app.sh`
 
-
 ## Status of Components
 
 ✅ AI software R&D
-- `world_updaters/software_r_and_d.py`
+- `world_updaters/software_r_and_d/update_software_r_and_d.py`
 
-✅ Dark compute: I need to copy this over from another repo
-- `world_updaters/covert_compute.py`
+✅ Black project (covert compute)
+- `world_updaters/black_project/update_black_project.py`
+- `world_updaters/compute/black_compute.py`
 
-⏳ Phases of AI slowdown agreements and export controls: need to test code
-- `world_updaters/policy_effects.py`
+✅ Compute infrastructure
+- `world_updaters/compute/update_compute.py`
 
+✅ AI researchers
+- `world_updaters/ai_researchers/update_ai_researchers.py`
 
-⏳ Human power grab and AI takeover risk: I need to copy this over from another repo
-- `world_updaters/takeover_risks.py`
+✅ Perceptions
+- `world_updaters/perceptions/update_perceptions.py`
+
+✅ Datacenters and energy
+- `world_updaters/datacenters_and_energy/update_datacenters_and_energy.py`
 
 ⏳ AI infrastructure, AI hardware R&D, construction R&D, and economic output: I sketched a model here: https://docs.google.com/document/d/1RFDA30q1N21aKPH4aKZcDm2H44joTMWWppryQV053Kk/edit?usp=sharing. But I haven't written any code yet.
+
+❌ Phases of AI slowdown agreements and export controls: not yet implemented
+
+❌ Human power grab and AI takeover risk: not yet implemented (data class exists at `classes/world/takeover_risks.py`)
 
 ❌ Attacks (cyber / kinetic / bio): I haven't worked on this yet.
 
@@ -59,17 +68,42 @@ The rest of this document explains the high level structure of the model.
 
 ## Model Primitives
 
-The model accepts `SimulationParameters` (an `nn.Module` containing differentiable parameters) and an initial `World`. It produces a trajectory by integrating the ODE system:
+The model accepts as input `ModelParameters` and outputs a `SimulationTrajectory.`
+- A `SimulationTrajectory` is a list of `World` objects that represents a prediction about how the future might unfold.
+- `ModelParameters` specifies a *distribution* over configurations that affect the model's behavior. You can see an example of `ModelParameters` in `ai_futures_simulator/parameters/default_parameters.yaml`
 
+Here's an excerpt of default model parameters:
 ```
-d(state)/dt = f(world, t, params)
+  # US compute parameters
+  us_compute:
+    total_us_compute_tpp_h100e_in_2025: 400000
+    total_us_compute_annual_growth_rate: 3.4 
+    proportion_of_compute_in_largest_ai_sw_developer: 0.3
+
+  # PRC compute parameters (with uncertainty for Monte Carlo)
+  prc_compute:
+    total_prc_compute_tpp_h100e_in_2025: 100000
+    annual_growth_rate_of_prc_compute_stock:
+      dist: metalog
+      p10: 1.4
+      p50: 3.4
+      p90: 3.4
+      modal: 3.4
+      min: 1.0  
+    proportion_of_compute_in_largest_ai_sw_developer: 0.3
 ```
 
-Each `WorldUpdater` module can contribute to this derivative. The ODE solver integrates state variables over time. Metrics are recomputed from state after integration.
+The YAML format accepts point estimates and distributions.
 
-For discrete changes to state (e.g., policy enacted), the simulation breaks into segments with event handling between them.
+To generate a `SimulationTrajectory`, three things happen:
+1. First, `ModelParameters` are used to sample a single instance of `SimulationParameters`.
+2. Then, a single `World` object is initialized to represent the world at the start of 2026 (`ai_futures_simulator/initialize_world_history`)
+2. Finally, world updaters specify how the next state evolves from the previous state (`ai_futures_simulator/world_updaters`)
 
-For Monte Carlo runs, `ModelParameters` defines distributions over `SimulationParameters`. Each sampled `SimulationParameters` produces one trajectory.
+The `WorldUpdater` class has three methods:
+- `contribute_state_derivatives`. This method outputs a derivative with respect to an attribute of the `World` object. These derivatives are added together and then integrated to generate a `SimulationTrajectory`. The reason we use derivatives is that it keeps updates *differentiable,* so we can optimize parameter values with gradient descent.
+- `set_state_attributes`. This method allows for discrete state setting. It should generally not be used since it's NOT differentiable, but sometimes it's necessary to represent when, for example, fabs become operational, or a black project comes into existence. Under the hood, the simulation integrates the derivatives until it detects that `set_state_attributes` have been called, then terminates the integration, and begins a new integration over the next discrete segment.
+- `set_metric_attributes`. Metrics are values that can be computed from state. Metrics are calculated after a trajectory of World states is already generated. So metrics do NOT affect core simulation dynamics. They are just meant to help you *interpret* simulation results.
 
 ## Directory Structure
 
@@ -77,18 +111,21 @@ For Monte Carlo runs, `ModelParameters` defines distributions over `SimulationPa
 ai_futures_simulator/
 ├── classes/
 │   ├── simulation_primitives.py  # WorldUpdater base class, StateDerivative
+│   ├── flat_world.py             # FlatWorld for fast ODE integration
+│   ├── tensor_dataclass.py       # TensorDataclass base class
+│   ├── state_schema.py           # State schema definitions
 │   └── world/
 │       ├── world.py              # World dataclass (state + metrics)
 │       ├── entities.py           # Entity classes (Nation, AISoftwareDeveloper, etc.)
-│       ├── flat_world.py         # FlatWorld for fast ODE integration
-│       ├── tensor_dataclass.py   # TensorDataclass base class
 │       └── ...                   # Other data structures (assets, policies, etc.)
 │
 ├── parameters/
-│   ├── simulation_parameters.py  # SimulationParameters and ModelParameters
-│   ├── compute_parameters.py     # Compute growth parameters
-│   ├── black_project_parameters.py  # Covert compute parameters
-│   └── ...                       # Other parameter files
+│   ├── classes/
+│   │   ├── simulation_parameters.py  # SimulationParameters and ModelParameters
+│   │   ├── compute_parameters.py     # Compute growth parameters
+│   │   ├── black_project_parameters.py  # Covert compute parameters
+│   │   └── ...                       # Other parameter files
+│   └── default_parameters.yaml       # Default parameter values
 │
 ├── initialize_world_history/
 │   ├── initialize_world_history.py  # Main initialization function
@@ -96,20 +133,28 @@ ai_futures_simulator/
 │   └── ...                          # Other initializers
 │
 ├── world_updaters/
-│   ├── combined_updater.py       # CombinedUpdater orchestrates all updaters
-│   ├── software_r_and_d.py       # AI software R&D
-│   ├── black_project.py          # Covert compute infrastructure
-│   ├── compute/                  # Compute-related updaters
-│   └── ai_researchers/           # AI researcher updaters
+│   ├── combined_updater.py          # CombinedUpdater orchestrates all updaters
+│   ├── software_r_and_d/            # AI software R&D
+│   │   └── update_software_r_and_d.py
+│   ├── black_project/               # Covert compute infrastructure
+│   │   └── update_black_project.py
+│   ├── compute/                     # Compute-related updaters
+│   │   └── update_compute.py
+│   ├── ai_researchers/              # AI researcher updaters
+│   │   └── update_ai_researchers.py
+│   ├── perceptions/                 # Perceptions updaters
+│   │   └── update_perceptions.py
+│   └── datacenters_and_energy/      # Datacenter and energy updaters
+│       └── update_datacenters_and_energy.py
 │
-├── ai_futures_simulator.py       # AIFuturesSimulator main class
+├── ai_futures_simulator.py          # AIFuturesSimulator main class
 ```
 
 ## Core Classes
 
 ### World
 
-`World` is a dataclass containing nested entities (coalitions, nations, AI software developers, etc.) along with global state and metrics. State fields are marked with `metadata={'is_state': True}`:
+`World` represents the entire state of the world.
 
 ```python
 @dataclass
@@ -123,217 +168,58 @@ class World(TensorDataclass):
     ai_policies: Dict[str, AIPolicy]
     black_projects: Dict[str, AIBlackProject] = field(default_factory=dict)
     perceptions: Dict[str, Perceptions] = field(default_factory=dict)
+```
+
+### Entities
+
+Entities are actors in the simulation (nations, organizations, etc.) that can have assets and be subject to policies. They are defined in `classes/world/entities.py`.
+
+```python
+@dataclass
+class Nation(Entity):
+    """A nation with compute stock tracking."""
+    fabs: Fabs = field(metadata={'is_state': True})
+    compute_stock: Compute = field(metadata={'is_state': True})
+    datacenters: Datacenters = field(metadata={'is_state': True})
+    total_energy_consumption_gw: float = field(metadata={'is_state': True})
+
+    # Metrics
+    operating_compute_tpp_h100e: float
 
 @dataclass
 class AISoftwareDeveloper(Entity):
-    # State variables (integrated by ODE solver)
+    """An AI software development organization."""
     operating_compute: List[Compute] = field(metadata={'is_state': True})
     compute_allocation: ComputeAllocation = field(metadata={'is_state': True})
     human_ai_capability_researchers: float = field(metadata={'is_state': True})
     ai_software_progress: AISoftwareProgress = field(metadata={'is_state': True})
-    training_compute_growth_rate: float = field(metadata={'is_state': True})
 
-    # Metrics (derived from state, recomputed after integration)
-    ai_r_and_d_inference_compute_tpp_h100e: float = field(init=False, default=0.0)
-    ai_r_and_d_training_compute_tpp_h100e: float = field(init=False, default=0.0)
+@dataclass
+class AIBlackProject(AISoftwareDeveloper):
+    """A covert AI compute project (extends AISoftwareDeveloper)."""
+    parent_nation: Nation = field(metadata={'is_state': True})
+    black_project_start_year: float = field(metadata={'is_state': True})
+    # ... fab, datacenter, and detection-related fields
 ```
 
-The `TensorDataclass` base class provides:
-- `to_state_tensor()` — recursively pack all `is_state=True` fields (including nested) into a tensor for the ODE solver
-- `from_state_tensor(tensor)` — unpack tensor back into state fields
-- `zeros()` — create zero-initialized instance
-- `__add__` — element-wise addition (for combining derivative contributions)
+### Assets
 
-### StateDerivative
-
-A thin wrapper around `World` that marks it as containing derivative values rather than state values:
+Assets represent physical and compute resources owned by entities. Defined in `classes/world/assets.py`.
 
 ```python
 @dataclass
-class StateDerivative:
-    """Wrapper indicating the World object contains d(state)/dt values."""
-    world: World
+class Compute(Assets, TensorDataclass):
+    """Represents the stock of a single type of chip."""
+    functional_tpp_h100e: float = field(metadata={'is_state': True})
+    tpp_h100e_including_attrition: float = field(metadata={'is_state': True})
+    watts_per_h100e: float = field(metadata={'is_state': True})
+    average_functional_chip_age_years: float = field(metadata={'is_state': True})
 
-    def to_state_tensor(self) -> Tensor:
-        return self.world.to_state_tensor()
-
-    def __add__(self, other: 'StateDerivative') -> 'StateDerivative':
-        return StateDerivative(self.world + other.world)
-
-    @classmethod
-    def zeros(cls) -> 'StateDerivative':
-        return cls(World.zeros())
-```
-
-This avoids duplicating the `World` class for derivatives.
-
-### Adding New State Variables
-
-Add fields to `World` or nested entity classes with the appropriate metadata:
-
-```python
 @dataclass
-class AISoftwareDeveloper(Entity):
-    # Existing fields...
+class Datacenters(TensorDataclass):
+    data_center_capacity_gw: float = field(metadata={'is_state': True})
 
-    # New state variable
-    alignment_tax: Tensor = field(metadata={'is_state': True})
-
-    # New metric
-    effective_compute: Tensor = field(init=False, default=0.0)
-```
-
-The `TensorDataclass` base class recursively traverses nested entities to collect all `is_state=True` fields. No separate derivative class to update.
-
-## WorldUpdater
-
-Each module extends `WorldUpdater` (in `classes/simulation_primitives.py`) and can implement three methods:
-
-```python
-class WorldUpdater(nn.Module):
-    def contribute_state_derivatives(self, t: Tensor, world: World) -> StateDerivative:
-        """Continuous contribution to d(state)/dt. Differentiable."""
-        return StateDerivative.zeros(world)
-
-    def set_state_attributes(self, t: Tensor, world: World) -> World | None:
-        """Discrete changes to state. Return None if no changes, or updated World.
-        NOT differentiable through the change."""
-        return None  # Default: no changes
-
-    def set_metric_attributes(self, t: Tensor, world: World) -> World:
-        """Compute derived metrics from state. Can be called anytime."""
-        return world  # Default: no changes
-```
-
-### Example: SoftwareRAndD
-
-```python
-class SoftwareRAndD(WorldUpdater):
-    def __init__(self, params: SimulationParameters):
-        super().__init__()
-        self.params = params
-
-    def contribute_state_derivatives(self, t: Tensor, world: World) -> StateDerivative:
-        automation = torch.sigmoid(self.params.slope * world.progress)
-        sw_rate = self.params.base_rate * (1 + automation * self.params.mult)
-
-        d_world = World.zeros()
-        d_world.progress = sw_rate
-        d_world.research_stock = sw_rate
-        d_world.log_compute = 0.0
-
-        return StateDerivative(d_world)
-
-    def set_metric_attributes(self, t: Tensor, world: World) -> World:
-        world.automation_fraction = torch.sigmoid(self.params.slope * world.progress)
-        world.time_horizon = compute_horizon(world.progress, self.params)
-        return world
-```
-
-### CombinedUpdater
-
-Orchestrates all world updaters (in `world_updaters/combined_updater.py`):
-
-```python
-class CombinedUpdater(WorldUpdater):
-    def __init__(self, params: SimulationParameters, updaters: List[WorldUpdater] = None):
-        super().__init__()
-        self.params = params
-
-        # If no updaters provided, create default set based on params
-        if updaters is None:
-            updaters = [ComputeUpdater(params)]
-            if params.software_r_and_d.update_software_progress:
-                updaters.append(SoftwareRAndD(params))
-            if params.black_project and params.black_project.run_a_black_project:
-                updaters.append(BlackProjectUpdater(params, ...))
-
-        self.updaters = nn.ModuleList(updaters)
-
-    def forward(self, t: Tensor, state_tensor: Tensor) -> Tensor:
-        """Called by ODE solver."""
-        world = World.from_state_tensor(state_tensor, self._world_template)
-
-        total_derivative = self.contribute_state_derivatives(t, world)
-        return total_derivative.to_state_tensor()
-
-    def contribute_state_derivatives(self, t: Tensor, world: World) -> StateDerivative:
-        """Combine state derivative contributions from all updaters."""
-        total_derivative = StateDerivative.zeros(world)
-        for updater in self.updaters:
-            total_derivative = total_derivative + updater.contribute_state_derivatives(t, world)
-        return total_derivative
-
-    def set_metric_attributes(self, t: Tensor, world: World) -> World:
-        """Compute metrics from all updaters."""
-        for updater in self.updaters:
-            world = updater.set_metric_attributes(t, world)
-        return world
-```
-
-## Event Handling for Discrete Changes
-
-When state variables need to change discretely (e.g., policy enacted), the simulation breaks into segments:
-
-```python
-def simulate(y0, times, event_times):
-    trajectory = []
-
-    for segment_start, segment_end in get_segments(times, event_times):
-        segment_times = times[(times >= segment_start) & (times <= segment_end)]
-
-        # Integrate continuous dynamics
-        segment_traj = odeint(combined.forward, y0, segment_times)
-        trajectory.append(segment_traj)
-
-        # Apply discrete changes at segment boundary
-        y0 = combined.apply_discrete_changes(segment_end, segment_traj[-1])
-
-    # Compute metrics for full trajectory
-    full_traj = torch.cat(trajectory)
-    return combined.compute_metrics(times, full_traj)
-```
-
-Gradients flow through the continuous segments but not through discrete changes.
-
-## Parameters
-
-Differentiable parameters as an nn.Module:
-
-```python
-class SimulationParameters(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.log_compute_growth_rate = nn.Parameter(torch.tensor(0.693))
-        self.training_compute_growth = nn.Parameter(torch.tensor(0.5))
-        self.base_sw_rate = nn.Parameter(torch.tensor(0.5))
-        self.ai_sw_multiplier = nn.Parameter(torch.tensor(5.0))
-        self.automation_midpoint = nn.Parameter(torch.tensor(8.0))
-        self.automation_slope = nn.Parameter(torch.tensor(0.3))
-```
-
-## Running the Simulation
-
-The main entry point is the `AIFuturesSimulator` class:
-
-```python
-from ai_futures_simulator import AIFuturesSimulator
-from parameters.simulation_parameters import ModelParameters
-
-# Load parameters from YAML
-model_params = ModelParameters.from_yaml("parameters/default_parameters.yaml")
-
-# Create simulator
-simulator = AIFuturesSimulator(model_params)
-
-# Run a single simulation
-result = simulator.run_simulation()
-
-# Or run Monte Carlo simulations
-results = simulator.run_simulations(num_samples=100)
-```
-
-Or run directly:
-```bash
-python ai_futures_simulator.py
+@dataclass
+class Fabs(TensorDataclass):
+    monthly_compute_production: Compute = field(metadata={'is_state': True})
 ```

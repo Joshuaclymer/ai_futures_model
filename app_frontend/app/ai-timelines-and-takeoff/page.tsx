@@ -1,13 +1,11 @@
 import { Suspense } from 'react';
-import { loadBenchmarkData } from '@/utils/benchmarkLoader';
-import { DEFAULT_PARAMETERS } from '@/constants/parameters';
+import { loadBenchmarkData } from './utils/benchmarkLoader';
 import UnifiedAppClient from '@/components/UnifiedAppClient';
 
 const DEFAULT_SEED = 12345;
 
 export default function TimelinesPage() {
   const benchmarkData = loadBenchmarkData();
-  const parameters = { ...DEFAULT_PARAMETERS };
   const seed = DEFAULT_SEED;
 
   return (
@@ -16,7 +14,7 @@ export default function TimelinesPage() {
         initialTab="timelines"
         benchmarkData={benchmarkData}
         initialComputeData={null}
-        initialParameters={parameters}
+        initialParameters={null}
         initialSampleTrajectories={[]}
         initialSeed={seed}
       />

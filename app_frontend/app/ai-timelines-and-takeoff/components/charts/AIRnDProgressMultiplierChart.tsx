@@ -4,11 +4,11 @@ import { memo, useMemo, useCallback, useRef } from 'react';
 import { CustomLineChart } from './CustomLineChart';
 import type { ChartDataPoint } from '@/app/types';
 import type { DataPoint } from './CustomLineChart';
-import { formatAsPowerOfTenText } from '@/utils/formatting';
-import { CHART_LAYOUT } from '@/constants/chartLayout';
-import type { MilestoneMap } from '@/types/milestones';
-import { createScale, calculateDynamicXDomain, clamp } from '@/utils/chartUtils';
-import { AI_R_D_PROGRESS_MULTIPLIER_EXPLANATION } from '@/constants/chartExplanations';
+import { formatAsPowerOfTenText } from '../../utils/formatting';
+import { CHART_LAYOUT } from '../../constants/chartLayout';
+import type { MilestoneMap } from '../../types/milestones';
+import { createScale, calculateDynamicXDomain, clamp } from '../../utils/chartUtils';
+import { AI_R_D_PROGRESS_MULTIPLIER_EXPLANATION } from '../../constants/chartExplanations';
 import { WithChartTooltip } from './ChartTitleTooltip';
 
 const MINIMUM_VISIBLE_YEAR = 2019;

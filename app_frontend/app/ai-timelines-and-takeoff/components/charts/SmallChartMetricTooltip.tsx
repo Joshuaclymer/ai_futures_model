@@ -1,8 +1,8 @@
 import React from 'react';
 import { tooltipBoxStyle, tooltipHeaderStyle, tooltipValueStyle } from './chartTooltipStyle';
-import { formatYearMonth } from '@/utils/formatting';
+import { formatYearMonth } from '../../utils/formatting';
 import type { DataPoint } from './CustomLineChart';
-import { SMALL_CHART_EXPLANATIONS } from '@/constants/chartExplanations';
+import { SMALL_CHART_EXPLANATIONS } from '../../constants/chartExplanations';
 
 interface SmallChartMetricTooltipProps {
   point: DataPoint;

@@ -52,7 +52,7 @@ export interface InitialStockData {
   initial_compute_stock_samples: number[];
   initial_energy_samples: number[];
   diversion_proportion: number;
-  lr_prc_accounting_samples: number[];
+  lr_compute_accounting_samples: number[];
   initial_black_project_detection_probs: Record<string, number>;
   prc_compute_years: number[];
   prc_compute_over_time: TimeSeriesPercentiles;

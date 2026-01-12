@@ -18,7 +18,7 @@ import logging
 
 from endpoints import register_all_routes
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Create Flask app

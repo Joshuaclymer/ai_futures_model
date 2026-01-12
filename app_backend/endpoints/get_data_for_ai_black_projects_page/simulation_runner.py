@@ -36,7 +36,7 @@ def run_black_project_simulations(
         end_year: Year when simulation ends.
 
     Returns results dict with:
-    - simulation_results: List of SimulationResult objects
+    - simulation_results: List of SimulationTrajectory objects
     - ai_slowdown_start_year: When agreement takes effect
     - end_year: When simulation ends
     """
@@ -54,19 +54,19 @@ def run_black_project_simulations(
         raise
 
     # For black project page: disable software progress updates (only compute matters)
-    model_params.software_r_and_d['update_software_progress'] = False
+    model_params.params.software_r_and_d.update_software_progress = False
     logger.info("[black-project] Set update_software_progress=False for black project simulations")
 
     logger.info(f"[black-project] Agreement year: {ai_slowdown_start_year}, End year: {end_year}")
 
     # Override simulation_end_year from time_range (YAML default is 2040)
     # Keep simulation_start_year from YAML (needs historical data to initialize)
-    start_year = model_params.settings.get('simulation_start_year', 2026)
-    model_params.settings['simulation_end_year'] = end_year
+    start_year = getattr(model_params.params.settings, 'simulation_start_year', 2026)
+    model_params.params.settings.simulation_end_year = end_year
     # Calculate n_eval_points to maintain 0.1-year resolution for full simulation
     n_years = end_year - start_year
-    model_params.settings['n_eval_points'] = int(n_years * 10) + 1
-    logger.info(f"[black-project] Updated settings: start_year={start_year}, end_year={end_year}, n_eval_points={model_params.settings['n_eval_points']}")
+    model_params.params.settings.n_eval_points = int(n_years * 10) + 1
+    logger.info(f"[black-project] Updated settings: start_year={start_year}, end_year={end_year}, n_eval_points={model_params.params.settings.n_eval_points}")
 
     # Create simulator
     simulator = AIFuturesSimulator(model_parameters=model_params)

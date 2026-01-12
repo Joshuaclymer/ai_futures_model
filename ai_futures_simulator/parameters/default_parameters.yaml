@@ -3,6 +3,7 @@
 #
 # Each parameter can be:
 #   - A point estimate: r_software: 2.4
+#   - A point estimate with bounds: r_software: {value: 2.4, min: 0.1, max: 10}
 #   - A distribution: r_software: {dist: uniform, min: 2.0, max: 3.0}
 #
 # Supported distributions:
@@ -13,6 +14,8 @@
 #   - shifted_lognormal: {dist: shifted_lognormal, ci80: [low, high], shift: 1.0}
 #   - beta: {dist: beta, alpha: 2, beta: 3, min: 0, max: 1}
 #   - choice: {dist: choice, values: [-5, -2, -1], p: [0.25, 0.5, 0.25]}
+#
+# Parameter bounds (min/max) are used by the frontend for slider ranges.
 
 initial_progress: 0.0
 seed: 42
@@ -34,6 +37,14 @@ settings:
 # =============================================================================
 software_r_and_d:
   # =========================================================================
+  # MODEL CONSTANTS
+  # =========================================================================
+  training_compute_reference_year: 2025.13
+  training_compute_reference_ooms: 26.54
+  software_progress_scale_reference_year: 2024.0
+  base_for_software_lom: 10.0
+
+  # =========================================================================
   # MODE FLAGS
   # =========================================================================
   update_software_progress: true
@@ -42,101 +53,105 @@ software_r_and_d:
   # PRODUCTION FUNCTION PARAMETERS (CES)
   # =========================================================================
   # Coding labor elasticity - set to -2 to match reference model
-  rho_coding_labor: -2
+  rho_coding_labor: {value: -2, min: -10, max: -0.000001}
 
-  coding_labor_normalization: 1.0
+  coding_labor_normalization: {value: 1.0, min: 0.00001, max: 10}
 
   # Experiment capacity CES (calibrated from anchor params)
   direct_input_exp_cap_ces_params: false
-  rho_experiment_capacity: null
-  alpha_experiment_capacity: null
-  experiment_compute_exponent: null
+  rho_experiment_capacity: {value: null, min: -1, max: 1}
+  alpha_experiment_capacity: {value: null, min: 0.001, max: 0.999}
+  experiment_compute_exponent: {value: null, min: 0.001, max: 10.0}
 
   # Experiment capacity anchor parameters
   # Set to fixed values to match reference model (new_version_of_takeoff_model)
-  inf_compute_asymptote: 1000
-  inf_labor_asymptote: 15
+  inf_compute_asymptote: {value: 1000, min: 1, max: 10000000}
+  inf_labor_asymptote: {value: 15, min: 1, max: 100000}
 
   # Set to match reference model (new_version_of_takeoff_model)
-  labor_anchor_exp_cap: 1.6
-  compute_anchor_exp_cap: 0.35714285714285715
-  inv_compute_anchor_exp_cap: 2.8
+  labor_anchor_exp_cap: {value: 1.6, min: 1, max: 10}
+  compute_anchor_exp_cap: {value: 0.35714285714285715, min: 1, max: 10}
+  inv_compute_anchor_exp_cap: {value: 2.8, min: 1, max: 10}
 
   # Parallel penalty - set to 0.5 to match reference model
-  parallel_penalty: 0.5
+  parallel_penalty: {value: 0.5, min: 0.0, max: 1.0}
 
   # =========================================================================
   # SOFTWARE PROGRESS PARAMETERS
   # =========================================================================
-  r_software: null  # Calibrated based on software_progress_rate_at_reference_year
+  r_software: {value: null, min: 0.1, max: 10}  # Calibrated based on software_progress_rate_at_reference_year
 
   # Set to 1.0 to match reference model (new_version_of_takeoff_model)
-  software_progress_rate_at_reference_year: 1.0
+  software_progress_rate_at_reference_year: {value: 1.0, min: 0.05, max: 10}
 
   # =========================================================================
   # AUTOMATION SCHEDULE PARAMETERS
   # =========================================================================
-  automation_fraction_at_coding_automation_anchor: 1.0
+  automation_fraction_at_coding_automation_anchor: {value: 1.0, min: 0.1, max: 1.0}
   automation_anchors: null
   automation_interp_type: "logistic"
-  automation_logistic_asymptote: 1.1
+  automation_logistic_asymptote: {value: 1.1, min: 1.0001, max: 2.0}
 
   # Set to 1.8 to match reference model (ai-futures-calculator)
-  swe_multiplier_at_present_day: 1.8
+  swe_multiplier_at_present_day: {value: 1.8, min: 1.0, max: 10.0}
 
   coding_labor_mode: "optimal_ces"
 
   # Set to 3.0 to match reference model
-  coding_automation_efficiency_slope: 3.0
+  coding_automation_efficiency_slope: {value: 3.0, min: 0.01, max: 10.0}
 
   max_serial_coding_labor_multiplier:
     dist: lognormal
     ci80: [10000, 1000000000000]
     min: 1.0
+    max: 1.0e+30
     modal: 100000000.0
 
-  optimal_ces_eta_init: 0.05
-  optimal_ces_grid_size: 4096
-  optimal_ces_frontier_tail_eps: 0.000001
-  optimal_ces_frontier_cap: 1000000000000.0
+  optimal_ces_eta_init: {value: 0.05, min: 1.0e-12, max: 1000000000000.0}
+  optimal_ces_grid_size: {value: 4096, min: 256, max: 16384}
+  optimal_ces_frontier_tail_eps: {value: 0.000001, min: 1.0e-20, max: 0.1}
+  optimal_ces_frontier_cap: {value: 1000000000000.0, min: 1.0, max: 1.0e+30}
 
   # =========================================================================
   # AI RESEARCH TASTE PARAMETERS
   # =========================================================================
   # Set to 0.5 to match reference model
-  ai_research_taste_at_coding_automation_anchor_sd: 0.5
+  ai_research_taste_at_coding_automation_anchor_sd: {value: 0.5, min: -10, max: 10}
 
-  # Set to 2.2 to match reference model
-  ai_research_taste_slope: 2.2
+  # Set to 2.1 to match reference model (model_config.py DEFAULT_PARAMETERS)
+  ai_research_taste_slope: {value: 2.1, min: 0.1, max: 10.0}
 
   taste_schedule_type: "SDs per progress-year"
 
   # Set to 3.7 to match reference model
-  median_to_top_taste_multiplier: 3.7
+  median_to_top_taste_multiplier: {value: 3.7, min: 1.01, max: 100.0}
 
-  top_percentile: 0.999
+  top_percentile: {value: 0.999, min: 0.5, max: 0.99999}
 
   # Set to 8.0 to match reference model
-  taste_limit: 8.0
+  taste_limit: {value: 8.0, min: 0, max: 100}
 
   taste_limit_smoothing:
     dist: beta
     alpha: 2
     beta: 2
     clip_to_bounds: false
+    min: 0.001
+    max: 0.999
     modal: 0.51
 
   # =========================================================================
   # HORIZON / MILESTONE PARAMETERS
   # =========================================================================
-  progress_at_aa: null
+  progress_at_aa: {value: null, min: 1.0, max: 500}
 
   # Superhuman coder time horizon (minutes)
   # ci80: [0.1 work year, 225,000 work years]
   ac_time_horizon_minutes:
     dist: lognormal
     ci80: [12456, 28000000000]
-    min: 960  # At least 16 hours (longest METR tasks)
+    min: 60  # Minimum bound for slider
+    max: 100000000000  # Maximum bound for slider
     modal: 15000000.0  # 125 work years
 
   # Pre-gap AC horizon (minutes)
@@ -144,35 +159,39 @@ software_r_and_d:
   pre_gap_ac_time_horizon:
     dist: lognormal
     ci80: [12456, 1245600]
-    min: 26  # At least GPT-5's horizon
+    min: 60
+    max: 100000000000
     modal: 124600.0
 
   horizon_extrapolation_type: "decaying doubling time"
 
   # Manual horizon fitting
-  present_day: 2025.9  # GPT-5.1-codex-max
-  present_horizon: 32.0
+  # Set to 2025.9 to match reference model (model_config.py: DEFAULT_present_day = 2025.9 # GPT-5.1-codex-max)
+  present_day: 2025.9
+  present_horizon: {value: 32.0, min: 0.001, max: 10000}
 
   present_doubling_time:
     dist: lognormal
     ci80: [0.29, 0.717]
-    min: 0.0
+    min: 0.01
+    max: 2
     modal: 0.458
 
   doubling_difficulty_growth_factor:
     dist: normal
     ci80: [0.82, 1.02]
-    min: 0.6
-    max: 1.02
+    min: 0.5
+    max: 1.5
     modal: 0.92
 
   # Capability milestones
-  strat_ai_m2b: 2.0
+  strat_ai_m2b: {value: 2.0, min: 0.01, max: 100.0}
 
   ted_ai_m2b:
     dist: lognormal
     ci80: [1, 9]
-    min: 0
+    min: 0.01
+    max: 100.0
     modal: 1.5
 
   # =========================================================================
@@ -219,7 +238,7 @@ compute:
   # US compute parameters
   us_compute:
     total_us_compute_tpp_h100e_in_2025: 400000  # Total US compute (frontier developer = this * proportion)
-    total_us_compute_annual_growth_rate: 3.4  # ~4x per year
+    total_us_compute_annual_growth_rate: 2.4
     proportion_of_compute_in_largest_ai_sw_developer: 0.3
 
   # PRC compute parameters (with uncertainty for Monte Carlo)
@@ -230,9 +249,9 @@ compute:
     annual_growth_rate_of_prc_compute_stock:
       dist: metalog
       p10: 1.4
-      p50: 3.4
-      p90: 3.4
-      modal: 3.4
+      p50: 2.4
+      p90: 2.4
+      modal: 2.4
       min: 1.0  # Growth rate must be >= 1 (no shrinking)
     proportion_of_compute_in_largest_ai_sw_developer: 0.3
     prc_architecture_efficiency_relative_to_state_of_the_art: 1.0

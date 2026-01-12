@@ -1,4 +1,4 @@
-import { ParametersType } from '@/constants/parameters';
+import { ParametersType } from '../constants/parameters';
 
 export type ChartType = 'doubling_time' | 'sc_horizon' | 'difficulty_growth_rate';
 

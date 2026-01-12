@@ -120,8 +120,13 @@ def parse_param_value(value: Any) -> ParamValue:
     Returns:
         Either the concrete value or a DistributionSpec if it's a distribution.
     """
-    if isinstance(value, dict) and "dist" in value:
-        return DistributionSpec.from_dict(value)
+    if isinstance(value, dict):
+        if "dist" in value:
+            return DistributionSpec.from_dict(value)
+        # Handle slider format: {value: X, min: Y, max: Z} without a dist key
+        # This is a point estimate with UI bounds - extract just the value
+        if "value" in value and "dist" not in value:
+            return value["value"]
     return value
 
 

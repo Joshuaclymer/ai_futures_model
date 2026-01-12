@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from classes.simulation_primitives import SimulationResult
+    from classes.simulation_primitives import SimulationTrajectory
 
 
 def tensor_to_python(obj: Any) -> Any:
@@ -39,7 +39,7 @@ def tensor_to_python(obj: Any) -> Any:
     return obj
 
 
-def print_simulation_summary(result: "SimulationResult", output_file: str = "simulation_output.json"):
+def print_simulation_summary(result: "SimulationTrajectory", output_file: str = "simulation_output.json"):
     """Convert entire simulation result to JSON and save to file."""
     import sys
 

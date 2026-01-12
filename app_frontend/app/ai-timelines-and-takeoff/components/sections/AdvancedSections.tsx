@@ -1,8 +1,7 @@
 import React, { createContext, useContext } from 'react';
-import { ParametersType } from '@/constants/parameters';
+import { ParametersType } from '../../constants/parameters';
 import { ParameterSlider, ParameterSliderProps } from '../ui/ParameterSlider';
-import { formatSCHorizon, formatAsPowerOfTenText, formatWorkTimeDuration } from '@/utils/formatting';
-import { formatTo3SigFigs } from '@/utils/formatting';
+import { formatSCHorizon, formatAsPowerOfTenText, formatWorkTimeDuration, formatTo3SigFigs } from '../../utils/formatting';
 
 interface ModelDefaults {
     'software_r_and_d.optimal_ces_eta_init'?: number;

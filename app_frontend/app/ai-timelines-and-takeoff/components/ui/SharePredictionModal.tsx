@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ChartDataPoint, BenchmarkPoint } from '@/app/types';
-import type { MilestoneMap } from '@/types/milestones';
-import { copyToClipboard, exportElementAsPng, EXPORT_PRESETS, EXPORT_COLORS } from '@/utils/chartExport';
+import type { MilestoneMap } from '../../types/milestones';
+import { copyToClipboard, exportElementAsPng, EXPORT_PRESETS, EXPORT_COLORS } from '../../utils/chartExport';
 import { CombinedChartExport } from '../export/CombinedChartExport';
 import { StaticHorizonChart } from '../export/StaticHorizonChart';
 import { StaticUpliftChart } from '../export/StaticUpliftChart';

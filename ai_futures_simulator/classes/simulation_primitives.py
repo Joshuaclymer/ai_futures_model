@@ -4,7 +4,7 @@ Simulation primitive classes.
 Contains base classes and data structures for the simulation framework:
 - WorldUpdater: Base class for updating world state
 - StateDerivative: Wrapper for d(state)/dt values
-- SimulationResult: Results from a simulation run
+- SimulationTrajectory: Results from a simulation run
 """
 
 import torch.nn as nn
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class SimulationResult:
+class SimulationTrajectory:
     """Results from a simulation run."""
     times: Tensor
     trajectory: List[World]  # World state at each time point

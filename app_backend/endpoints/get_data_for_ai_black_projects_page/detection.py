@@ -8,11 +8,11 @@ metrics based on likelihood ratio thresholds.
 from typing import Dict, List, Optional, Tuple
 
 
-def get_detection_year(d: Dict, ai_slowdown_start_year: float, lr_threshold: float = 5.0) -> Optional[float]:
+def get_detection_year(d: Dict, lr_threshold: float = 5.0) -> Optional[float]:
     """
     Get the detection year for a simulation based on cumulative LR threshold.
 
-    Returns the first year >= ai_slowdown_start_year where cumulative_lr >= lr_threshold,
+    Returns the first year >= black_project_start_year where cumulative_lr >= lr_threshold,
     or None if no detection occurs.
     """
     bp = d.get('black_project')
@@ -21,10 +21,15 @@ def get_detection_year(d: Dict, ai_slowdown_start_year: float, lr_threshold: flo
     if not bp or not sim_years:
         return None
 
+    # Get black_project_start_year for this simulation (required)
+    black_project_start_year = bp.get('black_project_start_year')
+    if black_project_start_year is None:
+        raise ValueError("black_project_start_year is required but not found in simulation data")
+
     cumulative_lr = bp.get('cumulative_lr', [])
 
     for i, year in enumerate(sim_years):
-        if year >= ai_slowdown_start_year and i < len(cumulative_lr):
+        if year >= black_project_start_year and i < len(cumulative_lr):
             if cumulative_lr[i] >= lr_threshold:
                 return year
 
@@ -34,24 +39,22 @@ def get_detection_year(d: Dict, ai_slowdown_start_year: float, lr_threshold: flo
 def compute_detection_times(
     all_data: List[Dict],
     years: List[float],
-    ai_slowdown_start_year: float,
     lr_threshold: float = 5.0,
     use_final_year_for_never_detected: bool = False
 ) -> List[float]:
     """
     Compute detection times based on when cumulative LR exceeds threshold.
 
-    Returns time (in years) from agreement year to detection for each simulation.
+    Returns time (in years) from black project start year to detection for each simulation.
     This matches the reference implementation which uses LR threshold = 5 for dashboard.
 
-    Detection is defined as the first year >= ai_slowdown_start_year where cumulative_lr >= lr_threshold.
+    Detection is defined as the first year >= black_project_start_year where cumulative_lr >= lr_threshold.
 
     Args:
         all_data: List of simulation data dicts
         years: Time points
-        ai_slowdown_start_year: Year when agreement starts
         lr_threshold: LR threshold for detection
-        use_final_year_for_never_detected: If True, use (final_year - ai_slowdown_start_year) for
+        use_final_year_for_never_detected: If True, use (final_year - black_project_start_year) for
             never-detected cases (for dashboard individual values). If False, use 1000
             (for CCDFs). Reference model uses different values for these two cases.
     """
@@ -64,31 +67,34 @@ def compute_detection_times(
         sim_years = d.get('years', [])
 
         if not bp or not sim_years:
-            if use_final_year_for_never_detected and years:
-                detection_times.append(max(years) - ai_slowdown_start_year)
-            else:
-                detection_times.append(NEVER_DETECTED_VALUE)
+            detection_times.append(NEVER_DETECTED_VALUE)
             continue
+
+        # Get black_project_start_year for this simulation (required)
+        black_project_start_year = bp.get('black_project_start_year')
+        if black_project_start_year is None:
+            raise ValueError("black_project_start_year is required but not found in simulation data")
 
         cumulative_lr = bp.get('cumulative_lr', [])
 
-        # Find first year >= ai_slowdown_start_year where LR >= threshold
+        # Find first year >= black_project_start_year where LR >= threshold
+        # Detection can occur any time after the black project starts
         detection_year = None
         for i, year in enumerate(sim_years):
-            if year >= ai_slowdown_start_year and i < len(cumulative_lr):
+            if year >= black_project_start_year and i < len(cumulative_lr):
                 if cumulative_lr[i] >= lr_threshold:
                     detection_year = year
                     break
 
         if detection_year is not None:
-            # Time from agreement year to detection
-            time_before_detection = detection_year - ai_slowdown_start_year
+            # Time from black project start year to detection
+            time_before_detection = detection_year - black_project_start_year
         else:
             # No detection within simulation
             # Reference model uses final_year for dashboard values, 1000 for CCDFs
             if use_final_year_for_never_detected:
-                final_year = max(sim_years) if sim_years else (max(years) if years else ai_slowdown_start_year + 7)
-                time_before_detection = final_year - ai_slowdown_start_year
+                final_year = max(sim_years) if sim_years else (max(years) if years else black_project_start_year + 7)
+                time_before_detection = final_year - black_project_start_year
             else:
                 time_before_detection = NEVER_DETECTED_VALUE
 
@@ -97,13 +103,13 @@ def compute_detection_times(
     return detection_times
 
 
-def compute_fab_detection_data(all_data: List[Dict], years: List[float], ai_slowdown_start_year: float, lr_threshold: float = 5.0) -> Tuple[List[float], List[float], List[float], List[float]]:
+def compute_fab_detection_data(all_data: List[Dict], years: List[float], lr_threshold: float = 5.0) -> Tuple[List[float], List[float], List[float], List[float]]:
     """
     Compute fab-specific detection data for dashboard display.
 
     Matches reference model's extract_individual_fab_detection_data which:
     1. Uses fab-specific LR (lr_fab_combined) for detection threshold
-    2. Reports time as operational time before detection (not time from ai_slowdown_start_year)
+    2. Reports time as operational time before detection (not time from black_project_start_year)
     3. Gets h100e at the fab detection time (not project detection time)
 
     Returns:
@@ -122,6 +128,11 @@ def compute_fab_detection_data(all_data: List[Dict], years: List[float], ai_slow
         if not bp:
             continue
 
+        # Get black_project_start_year for this simulation (required)
+        black_project_start_year = bp.get('black_project_start_year')
+        if black_project_start_year is None:
+            raise ValueError("black_project_start_year is required but not found in simulation data")
+
         # Check if fab was built
         fab_is_operational = bp.get('fab_is_operational', [])
         if not any(fab_is_operational):
@@ -131,20 +142,21 @@ def compute_fab_detection_data(all_data: List[Dict], years: List[float], ai_slow
         lr_fab_combined = bp.get('lr_fab_combined', [])
 
         # Find fab detection year based on fab LR threshold
+        # Detection can occur any time after black project starts
         fab_detection_year = None
         for i, year in enumerate(sim_years):
-            if year >= ai_slowdown_start_year and i < len(lr_fab_combined):
+            if year >= black_project_start_year and i < len(lr_fab_combined):
                 if lr_fab_combined[i] >= lr_threshold:
                     fab_detection_year = year
                     break
 
         # If no detection, use end of simulation
         if fab_detection_year is None:
-            fab_detection_year = sim_years[-1] if sim_years else ai_slowdown_start_year + 7
+            fab_detection_year = sim_years[-1] if sim_years else black_project_start_year + 7
 
         # Calculate when fab became operational
-        # Fab construction starts at black_project_start_year (black_project_start_year)
-        construction_start = bp.get('fab_construction_start_year', bp.get('black_project_start_year', ai_slowdown_start_year))
+        # Fab construction starts at black_project_start_year
+        construction_start = bp.get('fab_construction_start_year', black_project_start_year)
         construction_duration = bp.get('fab_construction_duration', 1.5)
         operational_start = construction_start + construction_duration
 
@@ -178,7 +190,7 @@ def compute_fab_detection_data(all_data: List[Dict], years: List[float], ai_slow
     return individual_h100e, individual_time, individual_process_nodes, individual_energy
 
 
-def extract_fab_ccdf_values_at_threshold(fab_built_sims: List[Dict], years: List[float], ai_slowdown_start_year: float, lr_threshold: float) -> Tuple[List[float], List[float]]:
+def extract_fab_ccdf_values_at_threshold(fab_built_sims: List[Dict], years: List[float], lr_threshold: float) -> Tuple[List[float], List[float]]:
     """
     Extract fab compute and operational time values at detection for CCDF calculation.
 
@@ -190,7 +202,6 @@ def extract_fab_ccdf_values_at_threshold(fab_built_sims: List[Dict], years: List
     Args:
         fab_built_sims: List of simulation data dicts (filtered to sims with fab)
         years: Time points for the simulation
-        ai_slowdown_start_year: Year when agreement starts
         lr_threshold: Detection threshold (1, 2, 4, etc.)
 
     Returns:
@@ -206,24 +217,30 @@ def extract_fab_ccdf_values_at_threshold(fab_built_sims: List[Dict], years: List
         if not bp or not sim_years:
             continue
 
+        # Get black_project_start_year for this simulation (required)
+        black_project_start_year = bp.get('black_project_start_year')
+        if black_project_start_year is None:
+            raise ValueError("black_project_start_year is required but not found in simulation data")
+
         # Get fab-specific LR for detection calculation
         lr_fab_combined = bp.get('lr_fab_combined', [])
 
         # Find fab detection year based on fab LR threshold
+        # Detection can occur any time after black project starts
         fab_detection_year = None
         for i, year in enumerate(sim_years):
-            if year >= ai_slowdown_start_year and i < len(lr_fab_combined):
+            if year >= black_project_start_year and i < len(lr_fab_combined):
                 if lr_fab_combined[i] >= lr_threshold:
                     fab_detection_year = year
                     break
 
         # If no detection, use end of simulation
         if fab_detection_year is None:
-            fab_detection_year = sim_years[-1] if sim_years else ai_slowdown_start_year + 7
+            fab_detection_year = sim_years[-1] if sim_years else black_project_start_year + 7
 
         # Calculate when fab became operational
-        # Fab construction starts at black_project_start_year (black_project_start_year)
-        construction_start = bp.get('fab_construction_start_year', bp.get('black_project_start_year', ai_slowdown_start_year))
+        # Fab construction starts at black_project_start_year
+        construction_start = bp.get('fab_construction_start_year', black_project_start_year)
         construction_duration = bp.get('fab_construction_duration', 1.5)
         operational_start = construction_start + construction_duration
 
@@ -246,10 +263,11 @@ def extract_fab_ccdf_values_at_threshold(fab_built_sims: List[Dict], years: List
     return compute_values, op_time_values
 
 
-def compute_h100_years_before_detection(all_data: List[Dict], years: List[float], ai_slowdown_start_year: float, lr_threshold: float = 5.0) -> List[float]:
+def compute_h100_years_before_detection(all_data: List[Dict], years: List[float], lr_threshold: float = 5.0) -> List[float]:
     """
     Compute cumulative H100-years of compute before detection for each simulation.
     Uses LR threshold to determine detection time.
+    Sums compute from black_project_start_year to detection_year.
     """
     if not years or len(years) < 2:
         return [0.0 for _ in all_data]
@@ -265,20 +283,25 @@ def compute_h100_years_before_detection(all_data: List[Dict], years: List[float]
             h100_years.append(0.0)
             continue
 
+        # Get black_project_start_year for this simulation (required)
+        black_project_start_year = bp.get('black_project_start_year')
+        if black_project_start_year is None:
+            raise ValueError("black_project_start_year is required but not found in simulation data")
+
         operational_compute = bp.get('operational_compute', [])
         if not operational_compute:
             h100_years.append(0.0)
             continue
 
         # Get detection year based on LR threshold
-        detection_year = get_detection_year(d, ai_slowdown_start_year, lr_threshold)
+        detection_year = get_detection_year(d, lr_threshold)
         if detection_year is None:
-            detection_year = max(sim_years) if sim_years else ai_slowdown_start_year + 10
+            detection_year = max(sim_years) if sim_years else black_project_start_year + 10
 
-        # Sum operational compute from ai_slowdown_start_year to detection_year
+        # Sum operational compute from black_project_start_year to detection_year
         cumulative = 0.0
         for i, year in enumerate(sim_years):
-            if year < ai_slowdown_start_year:
+            if year < black_project_start_year:
                 continue
             if year >= detection_year:
                 break
@@ -290,13 +313,13 @@ def compute_h100_years_before_detection(all_data: List[Dict], years: List[float]
     return h100_years
 
 
-def compute_average_covert_compute(all_data: List[Dict], years: List[float], ai_slowdown_start_year: float, lr_threshold: float) -> List[float]:
+def compute_average_covert_compute(all_data: List[Dict], years: List[float], lr_threshold: float) -> List[float]:
     """
-    Compute average covert compute from agreement to detection for each simulation.
+    Compute average covert compute from black project start to detection for each simulation.
 
     This matches the reference implementation which calculates:
     average_compute = h100_years / time_duration
-    where time_duration = detection_year - ai_slowdown_start_year
+    where time_duration = detection_year - black_project_start_year
     """
     if not years or len(years) < 2:
         return [0.0 for _ in all_data]
@@ -312,26 +335,31 @@ def compute_average_covert_compute(all_data: List[Dict], years: List[float], ai_
             average_compute_values.append(0.0)
             continue
 
+        # Get black_project_start_year for this simulation (required)
+        black_project_start_year = bp.get('black_project_start_year')
+        if black_project_start_year is None:
+            raise ValueError("black_project_start_year is required but not found in simulation data")
+
         operational_compute = bp.get('operational_compute', [])
         if not operational_compute:
             average_compute_values.append(0.0)
             continue
 
         # Get detection year based on LR threshold
-        detection_year = get_detection_year(d, ai_slowdown_start_year, lr_threshold)
+        detection_year = get_detection_year(d, lr_threshold)
         if detection_year is None:
-            detection_year = max(sim_years) if sim_years else ai_slowdown_start_year + 10
+            detection_year = max(sim_years) if sim_years else black_project_start_year + 10
 
-        # Calculate time duration from agreement to detection
-        time_duration = detection_year - ai_slowdown_start_year
+        # Calculate time duration from black project start to detection
+        time_duration = detection_year - black_project_start_year
         if time_duration <= 0:
             average_compute_values.append(0.0)
             continue
 
-        # Sum operational compute from ai_slowdown_start_year to detection_year (H100-years)
+        # Sum operational compute from black_project_start_year to detection_year (H100-years)
         cumulative = 0.0
         for i, year in enumerate(sim_years):
-            if year < ai_slowdown_start_year:
+            if year < black_project_start_year:
                 continue
             if year >= detection_year:
                 break
@@ -400,7 +428,7 @@ def compute_datacenter_capacity_at_detection(all_data: List[Dict], years: List[f
     return capacity_at_detection
 
 
-def compute_h100e_before_detection(all_data: List[Dict], years: List[float], ai_slowdown_start_year: float, lr_threshold: float = 5.0) -> List[float]:
+def compute_h100e_before_detection(all_data: List[Dict], years: List[float], lr_threshold: float = 5.0) -> List[float]:
     """
     Compute chip stock (H100e) at detection time for each simulation.
     Uses LR threshold to determine detection time.
@@ -418,15 +446,20 @@ def compute_h100e_before_detection(all_data: List[Dict], years: List[float], ai_
             h100e.append(0.0)
             continue
 
+        # Get black_project_start_year for this simulation (required)
+        black_project_start_year = bp.get('black_project_start_year')
+        if black_project_start_year is None:
+            raise ValueError("black_project_start_year is required but not found in simulation data")
+
         total_compute = bp.get('total_compute', [])
         if not total_compute:
             h100e.append(0.0)
             continue
 
         # Get detection year based on LR threshold
-        detection_year = get_detection_year(d, ai_slowdown_start_year, lr_threshold)
+        detection_year = get_detection_year(d, lr_threshold)
         if detection_year is None:
-            detection_year = max(sim_years) if sim_years else ai_slowdown_start_year + 10
+            detection_year = max(sim_years) if sim_years else black_project_start_year + 10
 
         # Find chip stock at detection time
         detection_idx = 0

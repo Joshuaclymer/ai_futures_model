@@ -11,10 +11,8 @@ Each endpoint has its own directory under `endpoints/`, named using snake_case m
 ```
 endpoints/
 ├── run_simulation/                      # /api/run-simulation
-├── run_sw_progress_simulation/          # /api/run-sw-progress-simulation
+├── get_data_for_ai_timelines_and_takeoff_page/ # /api/get-data-for-ai-timelines-and-takeoff-page
 ├── get_data_for_ai_black_projects_page/ # /api/get-data-for-ai-black-projects-page
-├── black_project_defaults/              # /api/black-project-defaults
-├── sampling_config/                     # /api/sampling-config
 └── parameter_config/                    # /api/parameter-config
 ```
 
@@ -48,9 +46,9 @@ Runs a single simulation and returns the full raw World trajectory.
 
 ---
 
-### `POST /api/run-sw-progress-simulation`
+### `POST /api/get-data-for-ai-timelines-and-takeoff-page`
 
-Runs a simulation and returns software progress metrics formatted for visualization.
+Runs a simulation and returns software progress metrics for the AI Timelines and Takeoff page.
 
 **Request Body:**
 ```json
@@ -125,46 +123,37 @@ Runs N Monte Carlo simulations for black project scenarios and returns aggregate
 
 ---
 
-### `GET /api/black-project-defaults`
-
-Returns default parameter values for the Black Projects page.
-
-**Response:**
-```json
-{
-  "success": true,
-  "defaults": {
-    "ai_slowdown_start_year": 2030,
-    "end_year": 2037
-  }
-}
-```
-
----
-
-### `GET /api/sampling-config`
-
-Returns parameter distribution configuration for Monte Carlo sampling.
-
-**Response:**
-```json
-{
-  "success": true,
-  "config": {...}
-}
-```
-
----
-
 ### `GET /api/parameter-config`
 
-Returns parameter bounds and default values.
+Returns all parameter configuration including bounds, defaults, the raw config, and black project defaults.
 
 **Response:**
 ```json
 {
   "success": true,
-  "config": {...}
+  "config": {...},
+  "defaults": {
+    "software_r_and_d.rho_coding_labor": -2,
+    "software_r_and_d.present_doubling_time": 0.458,
+    ...
+  },
+  "bounds": {
+    "software_r_and_d.rho_coding_labor": { "min": -10, "max": -0.000001 },
+    ...
+  },
+  "model_constants": {
+    "training_compute_reference_year": 2025.13,
+    "training_compute_reference_ooms": 26.54,
+    "software_progress_scale_reference_year": 2024.0,
+    "base_for_software_lom": 10.0
+  },
+  "black_project_defaults": {
+    "numSimulations": 100,
+    "agreementYear": 2030,
+    "blackProjectStartYear": 2029,
+    "workersInCovertProject": 11300,
+    ...
+  }
 }
 ```
 

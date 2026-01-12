@@ -1,11 +1,11 @@
 import React, { useState, useId, useRef, useEffect } from 'react';
 import { SliderWithThumbValue } from './SliderWithThumbValue';
-import { ParametersType } from '@/constants/parameters';
+import { ParametersType } from '../../constants/parameters';
 import { SliderPopover } from './SliderPopover';
-import { ChartConfig } from '@/types/chartConfig';
+import { ChartConfig } from '../../types/chartConfig';
 import { ParameterConfig } from '../sections/AdvancedSections';
 import { useParameterHover, PARAMETER_RATIONALES } from '@/components/ParameterHoverContext';
-import { PARAMETER_BOUNDS_OVERRIDES } from '@/constants/parameterBoundsOverrides';
+import { PARAMETER_BOUNDS_OVERRIDES } from '../../constants/parameterBoundsOverrides';
 
 const SLIDER_KEYBOARD_KEYS = new Set([
     'ArrowLeft',

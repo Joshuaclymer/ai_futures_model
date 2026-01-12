@@ -22,13 +22,14 @@ import { ChartSyncProvider } from './components/charts/ChartSyncContext';
 import { ParameterHoverProvider } from '@/components/ParameterHoverContext';
 
 // Utils and constants
-import { formatTo3SigFigs, formatWorkTimeDuration, formatUplift, formatCompactNumberNode, formatAsPowerOfTenText, formatSCHorizon, formatTimeDuration, yearsToMinutes } from '@/utils/formatting';
-import { DEFAULT_PARAMETERS, ParametersType, H100E_TPP_TO_FLOP_OOM_OFFSET } from '@/constants/parameters';
-import { CHART_LAYOUT } from '@/constants/chartLayout';
-import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, ParameterRecord } from '@/utils/monteCarlo';
-import { encodeFullStateToParams, decodeFullStateFromParams, DEFAULT_CHECKBOX_STATES } from '@/utils/urlState';
-import type { MilestoneMap } from '@/types/milestones';
-import { SamplingConfig, generateParameterSampleWithUserValues, initializeCorrelationSampling, extractSamplingConfigBounds, flattenMonteCarloConfig } from '@/utils/sampling';
+import { formatTo3SigFigs, formatWorkTimeDuration, formatUplift, formatCompactNumberNode, formatAsPowerOfTenText, formatSCHorizon, formatTimeDuration, yearsToMinutes } from './utils/formatting';
+import { ParametersType, H100E_TPP_TO_FLOP_OOM_OFFSET } from './constants/parameters';
+import { useParameterConfig } from '@/components/ParameterConfigProvider';
+import { CHART_LAYOUT } from './constants/chartLayout';
+import { convertParametersToAPIFormat, convertSampledParametersToAPIFormat, ParameterRecord } from './utils/monteCarlo';
+import { encodeFullStateToParams, decodeFullStateFromParams, DEFAULT_CHECKBOX_STATES } from './utils/urlState';
+import type { MilestoneMap } from './types/milestones';
+import { SamplingConfig, generateParameterSampleWithUserValues, initializeCorrelationSampling, extractSamplingConfigBounds, flattenMonteCarloConfig } from './utils/sampling';
 import type { ComputeApiResponse } from '@/app/types';
 
 interface SampleTrajectoryWithParams {
@@ -64,30 +65,36 @@ const API_BASE_URL = '';
 
 function processInitialData(data: ComputeApiResponse): ChartDataPoint[] {
   if (!data?.time_series) return [];
-  return data.time_series.map((point) => ({
-    year: point.year,
-    horizonLength: point.horizonLength,
-    horizonFormatted: formatWorkTimeDuration(point.horizonLength),
-    effectiveCompute: point.effectiveCompute,
-    // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
-    trainingCompute: point.frontierTrainingCompute && point.frontierTrainingCompute > 0
-      ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
-      : null,
-    automationFraction: point.automationFraction ?? null,
-    aiSoftwareProgressMultiplier: point.aiSoftwareProgressMultiplier,
-    aiSwProgressMultRefPresentDay: point.aiSwProgressMultRefPresentDay,
-    aiResearchTaste: point.aiResearchTaste ?? null,
-    experimentCapacity: point.experimentCapacity ?? null,
-    inferenceCompute: point.inferenceCompute ?? null,
-    experimentCompute: point.experimentCompute ?? null,
-    researchEffort: point.researchEffort ?? null,
-    researchStock: point.researchStock ?? null,
-    softwareProgressRate: point.softwareProgressRate ?? null,
-    softwareEfficiency: point.softwareEfficiency ?? null,
-    aiCodingLaborMultiplier: point.aiCodingLaborMultiplier ?? null,
-    serialCodingLaborMultiplier: point.serialCodingLaborMultiplier ?? null,
-    humanLabor: point.humanLabor ?? null,
-  }));
+  return data.time_series.map((point) => {
+    // Helper to safely convert API values to number | null
+    const toNumberOrNull = (val: unknown): number | null =>
+      typeof val === 'number' ? val : null;
+
+    return {
+      year: point.year,
+      horizonLength: point.horizonLength,
+      horizonFormatted: formatWorkTimeDuration(point.horizonLength),
+      effectiveCompute: point.effectiveCompute,
+      // Use frontierTrainingCompute (actual training compute in H100e units) converted to FLOP OOMs
+      trainingCompute: typeof point.frontierTrainingCompute === 'number' && point.frontierTrainingCompute > 0
+        ? Math.log10(point.frontierTrainingCompute) + H100E_TPP_TO_FLOP_OOM_OFFSET
+        : null,
+      automationFraction: point.automationFraction ?? null,
+      aiSoftwareProgressMultiplier: toNumberOrNull(point.aiSoftwareProgressMultiplier),
+      aiSwProgressMultRefPresentDay: toNumberOrNull(point.aiSwProgressMultRefPresentDay),
+      aiResearchTaste: toNumberOrNull(point.aiResearchTaste),
+      experimentCapacity: toNumberOrNull(point.experimentCapacity),
+      inferenceCompute: toNumberOrNull(point.inferenceCompute),
+      experimentCompute: toNumberOrNull(point.experimentCompute),
+      researchEffort: toNumberOrNull(point.researchEffort),
+      researchStock: toNumberOrNull(point.researchStock),
+      softwareProgressRate: toNumberOrNull(point.softwareProgressRate),
+      softwareEfficiency: toNumberOrNull(point.softwareEfficiency),
+      aiCodingLaborMultiplier: toNumberOrNull(point.aiCodingLaborMultiplier),
+      serialCodingLaborMultiplier: toNumberOrNull(point.serialCodingLaborMultiplier),
+      humanLabor: toNumberOrNull(point.humanLabor),
+    };
+  });
 }
 
 // Simple slider component for playground
@@ -164,8 +171,9 @@ export default function PlaygroundClient({
   initialSampleTrajectories = [],
   hideHeader = false,
 }: PlaygroundClientProps) {
+  const { defaults: contextDefaults, config: contextConfig, isLoading: configLoading } = useParameterConfig();
   const initialChartData = useMemo(() => processInitialData(initialComputeData), [initialComputeData]);
-  const resolvedInitialParameters = useMemo(() => initialParameters ?? { ...DEFAULT_PARAMETERS }, [initialParameters]);
+  const resolvedInitialParameters = useMemo(() => initialParameters ?? { ...contextDefaults }, [initialParameters, contextDefaults]);
   
   const convertedInitialSamples = useMemo(() => {
     return initialSampleTrajectories.map(sample => ({
@@ -187,7 +195,7 @@ export default function PlaygroundClient({
   
   const [chartData, setChartData] = useState<ChartDataPoint[]>(initialChartData);
   const [scHorizonMinutes, setScHorizonMinutes] = useState<number>(
-    Math.pow(10, DEFAULT_PARAMETERS.ac_time_horizon_minutes)
+    Math.pow(10, contextDefaults['software_r_and_d.ac_time_horizon_minutes'] as number || 7.08)
   );
   const [parameters, setParameters] = useState<ParametersType>(resolvedInitialParameters);
   const [uiParameters, setUiParameters] = useState<ParametersType>(resolvedInitialParameters);
@@ -341,45 +349,26 @@ export default function PlaygroundClient({
     setResampleTrigger(prev => prev + 1);
   }, [fetchComputeData]);
 
-  // Load sampling config
+  // Initialize sampling config from context
   useEffect(() => {
-    let isCancelled = false;
+    if (!contextConfig) return;
 
-    const loadSamplingConfig = async () => {
-      try {
-        const response = await fetch('/api/sampling-config');
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
-        if (!isCancelled && data.success) {
-          // Flatten nested default_parameters.yaml structure into flat SamplingConfig
-          const flatConfig = flattenMonteCarloConfig(data.config);
-          initializeCorrelationSampling(flatConfig.correlation_matrix);
-          setSamplingConfig(flatConfig);
+    // Flatten nested default_parameters.yaml structure into flat SamplingConfig
+    const flatConfig = flattenMonteCarloConfig(contextConfig as Record<string, unknown>);
+    initializeCorrelationSampling(flatConfig.correlation_matrix);
+    setSamplingConfig(flatConfig);
 
-          const allParams = new Set<string>();
-          for (const paramName of Object.keys(flatConfig.parameters)) {
-            allParams.add(paramName);
-          }
-          if (flatConfig.time_series_parameters) {
-            for (const paramName of Object.keys(flatConfig.time_series_parameters)) {
-              allParams.add(paramName);
-            }
-          }
-          setEnabledSamplingParams(allParams);
-        }
-      } catch (error) {
-        console.error('Failed to load sampling configuration:', error);
+    const allParams = new Set<string>();
+    for (const paramName of Object.keys(flatConfig.parameters)) {
+      allParams.add(paramName);
+    }
+    if (flatConfig.time_series_parameters) {
+      for (const paramName of Object.keys(flatConfig.time_series_parameters)) {
+        allParams.add(paramName);
       }
-    };
-
-    loadSamplingConfig();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
+    }
+    setEnabledSamplingParams(allParams);
+  }, [contextConfig]);
 
   // Update SC horizon line immediately while slider moves
   useEffect(() => {
@@ -529,7 +518,8 @@ export default function PlaygroundClient({
 
   // URL sync and initial fetch
   useEffect(() => {
-    const urlState = decodeFullStateFromParams(searchParams);
+    if (Object.keys(contextDefaults).length === 0) return; // Wait for defaults to load
+    const urlState = decodeFullStateFromParams(searchParams, contextDefaults);
     if (urlState) {
       setParameters(urlState.parameters);
       setUiParameters(urlState.parameters);
@@ -542,9 +532,10 @@ export default function PlaygroundClient({
       fetchComputeData(parameters);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [contextDefaults]);
 
   useEffect(() => {
+    if (Object.keys(contextDefaults).length === 0) return; // Wait for defaults to load
     const newParams = encodeFullStateToParams({
       parameters,
       enableCodingAutomation,
@@ -553,10 +544,10 @@ export default function PlaygroundClient({
       enableSoftwareProgress,
       useComputeLaborGrowthSlowdown: DEFAULT_CHECKBOX_STATES.useComputeLaborGrowthSlowdown,
       useVariableHorizonDifficulty: DEFAULT_CHECKBOX_STATES.useVariableHorizonDifficulty,
-    });
+    }, contextDefaults);
     const newUrl = `${pathname}?${newParams.toString()}`;
     router.replace(newUrl, { scroll: false });
-  }, [parameters, enableCodingAutomation, enableExperimentAutomation, enableSoftwareProgress, pathname, router]);
+  }, [parameters, enableCodingAutomation, enableExperimentAutomation, enableSoftwareProgress, pathname, router, contextDefaults]);
 
   // Render data
   const renderData = useMemo(() => chartData, [chartData]);
@@ -916,15 +907,15 @@ export default function PlaygroundClient({
             <div className="mt-2 pt-2 border-t border-gray-200/60">
               <button
                 onClick={() => {
-                  setParameters({ ...DEFAULT_PARAMETERS });
-                  setUiParameters({ ...DEFAULT_PARAMETERS });
+                  setParameters({ ...contextDefaults });
+                  setUiParameters({ ...contextDefaults });
                   setEnableCodingAutomation(DEFAULT_CHECKBOX_STATES.enableCodingAutomation);
                   setEnableExperimentAutomation(DEFAULT_CHECKBOX_STATES.enableExperimentAutomation);
                   setEnableSoftwareProgress(DEFAULT_CHECKBOX_STATES.enableSoftwareProgress);
                   setUseExperimentThroughputCES(DEFAULT_CHECKBOX_STATES.useExperimentThroughputCES);
                   setUseComputeLaborGrowthSlowdown(DEFAULT_CHECKBOX_STATES.useComputeLaborGrowthSlowdown);
                   setUseVariableHorizonDifficulty(DEFAULT_CHECKBOX_STATES.useVariableHorizonDifficulty);
-                  fetchComputeData({ ...DEFAULT_PARAMETERS });
+                  fetchComputeData({ ...contextDefaults });
                   setResampleTrigger(prev => prev + 1);
                 }}
                 className="text-[10px] text-gray-500 hover:text-gray-700"

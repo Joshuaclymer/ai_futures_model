@@ -9,12 +9,12 @@ type TabType = 'timelines' | 'black-projects';
 
 interface UnifiedAppClientProps {
   initialTab?: TabType;
-  // Props for PlaygroundClient
-  benchmarkData: any;
-  initialComputeData: any;
-  initialParameters: any;
-  initialSampleTrajectories: any[];
-  initialSeed: number;
+  // Props for PlaygroundClient (only needed for timelines tab)
+  benchmarkData?: any;
+  initialComputeData?: any;
+  initialParameters?: any;
+  initialSampleTrajectories?: any[];
+  initialSeed?: number;
 }
 
 export default function UnifiedAppClient({

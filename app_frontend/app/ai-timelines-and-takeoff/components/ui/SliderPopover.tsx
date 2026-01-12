@@ -6,13 +6,13 @@ import {
   SliderPopoverProps,
   ChartDefinition,
   YDomainFunction
-} from '@/types/chartConfig';
-import { TRAINING_COMPUTE_REFERENCE_OOMS, ParametersType } from '@/constants/parameters';
+} from '../../types/chartConfig';
+import { TRAINING_COMPUTE_REFERENCE_OOMS, ParametersType } from '../../constants/parameters';
 import {
   generateHorizonData,
   generateSCHorizonData,
   createDefaultSCHorizonConfig
-} from '@/utils/chartCalculations';
+} from '../../utils/chartCalculations';
 
 // Helper function to resolve y-domain values
 function resolveYDomain(

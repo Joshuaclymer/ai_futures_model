@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import type { ChartDataPoint } from '@/app/types';
-import type { MilestoneMap } from '@/types/milestones';
+import type { MilestoneMap } from '../../types/milestones';
 
 export interface StaticUpliftChartProps {
   chartData: ChartDataPoint[];

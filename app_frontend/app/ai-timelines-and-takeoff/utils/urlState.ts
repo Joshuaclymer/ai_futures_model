@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_PARAMETERS, ParametersType } from '@/constants/parameters';
+import { ParametersType } from '../constants/parameters';
 
 type CheckboxStateKey =
   | 'enableCodingAutomation'
@@ -94,13 +94,14 @@ const CHECKBOX_ABBREVIATIONS_REVERSE: Record<string, string> = Object.fromEntrie
 
 const sanitizeParameterValue = (
   key: string,
-  value: string | null
+  value: string | null,
+  defaults: ParametersType
 ): string | number | boolean | null | undefined => {
   if (value === null) {
     return undefined;
   }
 
-  const defaultValue = DEFAULT_PARAMETERS[key];
+  const defaultValue = defaults[key];
 
   if (typeof defaultValue === 'number') {
     const parsed = Number(value);
@@ -138,13 +139,13 @@ const sanitizeParameterValue = (
   return undefined;
 };
 
-export const encodeFullStateToParams = (state: FullUIState): URLSearchParams => {
+export const encodeFullStateToParams = (state: FullUIState, defaults: ParametersType): URLSearchParams => {
   const params = new URLSearchParams();
 
   // Add all parameters that differ from defaults (using short names)
-  Object.keys(DEFAULT_PARAMETERS).forEach((paramKey) => {
+  Object.keys(defaults).forEach((paramKey) => {
     const value = state.parameters[paramKey];
-    const defaultValue = DEFAULT_PARAMETERS[paramKey];
+    const defaultValue = defaults[paramKey];
 
     if (value !== defaultValue) {
       const shortName = PARAM_ABBREVIATIONS_REVERSE[paramKey];
@@ -177,14 +178,14 @@ export const encodeFullStateToParams = (state: FullUIState): URLSearchParams => 
   return params;
 };
 
-export const decodeFullStateFromParams = (searchParams: URLSearchParams): FullUIState => {
-  const parameters: ParametersType = { ...DEFAULT_PARAMETERS };
+export const decodeFullStateFromParams = (searchParams: URLSearchParams, defaults: ParametersType): FullUIState => {
+  const parameters: ParametersType = { ...defaults };
 
   Object.entries(PARAM_ABBREVIATIONS).forEach(([shortName, paramKey]) => {
     const value = searchParams.get(shortName);
 
     if (value !== null) {
-      const sanitized = sanitizeParameterValue(paramKey, value);
+      const sanitized = sanitizeParameterValue(paramKey, value, defaults);
       if (sanitized !== undefined) {
         parameters[paramKey] = sanitized;
       }
