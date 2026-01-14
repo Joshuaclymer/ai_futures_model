@@ -79,7 +79,7 @@ export default function UnifiedAppClient({
             }`}
             style={{ fontFamily: 'et-book, Georgia, serif' }}
           >
-            Black Projects
+            Black Projects (test)
           </button>
         </nav>
 
